@@ -1,0 +1,12 @@
+diff --git a/lib/index.js b/lib/index.js
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -24,7 +24,7 @@
+  * @property {Runtime | null | undefined} [runtime='classic']
+  *   Choose the runtime (default: `'classic'`).
+  *
+- *   Comment form: `@jsxRuntime theRuntime`.
++ *   Comment form: `jsxRuntime: theRuntime`.
+  * @property {string | null | undefined} [importSource='react']
+  *   Place to import `jsx`, `jsxs`, `jsxDEV`, and `Fragment` from, when the
+  *   effective runtime is automatic (default: `'react'`).

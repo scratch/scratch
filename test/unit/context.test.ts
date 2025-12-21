@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from 'bun:test';
 import { BuildContext, Entry, setBuildContext, getBuildContext } from '../../src/context';
 import { mkTempDir } from '../test-util';
 import path from 'path';
-import template from '../../src/template';
+import { materializeTemplates } from '../../src/template';
 import fs from 'fs/promises';
 
 let tempDir: string;
@@ -14,7 +14,7 @@ beforeAll(async () => {
 describe('BuildContext.constructor', () => {
   test('constructs build context with correct root directory', async () => {
     const projectDir = path.join(tempDir, 'project');
-    await fs.cp(template.defaultTemplateDir, projectDir, { recursive: true });
+    await materializeTemplates('default', projectDir);
 
     // sleep for 1 second to ensure the files are created
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -168,13 +168,15 @@ describe('BuildContext path finding methods', () => {
     expect(mdCompDir).toBe(path.join(projectDir, 'components/markdown'));
   });
 
-  test('markdownComponentsDir falls back to template directory', async () => {
+  test('markdownComponentsDir falls back to embedded template directory', async () => {
     const projectDir = path.join(tempDir, 'markdown-components-fallback');
     await fs.mkdir(projectDir, { recursive: true });
     const context = new BuildContext({ path: projectDir });
 
     const mdCompDir = await context.markdownComponentsDir();
-    expect(mdCompDir).toBe(template.markdownComponentsTemplateDir);
+    // Fallback path should be in embedded-templates and contain expected files
+    expect(mdCompDir).toContain('embedded-templates');
+    expect(await fs.exists(path.join(mdCompDir, 'index.ts'))).toBe(true);
   });
 
   test('tailwindCssSrcPath finds existing tailwind.css', async () => {
@@ -211,7 +213,7 @@ describe('BuildContext path finding methods', () => {
 describe('BuildContext.getEntries', () => {
   test('finds and creates entries for all mdx files', async () => {
     const projectDir = path.join(tempDir, 'get-entries-test');
-    await fs.cp(template.defaultTemplateDir, projectDir, { recursive: true });
+    await materializeTemplates('default', projectDir);
 
     // Add a short delay to ensure files are written
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -226,7 +228,7 @@ describe('BuildContext.getEntries', () => {
 
   test('caches entries on subsequent calls', async () => {
     const projectDir = path.join(tempDir, 'entries-cache-test');
-    await fs.cp(template.defaultTemplateDir, projectDir, { recursive: true });
+    await materializeTemplates('default', projectDir);
     const context = new BuildContext({ path: projectDir });
 
     const entries1 = await context.getEntries();

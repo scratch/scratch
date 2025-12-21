@@ -25,6 +25,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "estree-util-build-jsx@3.0.1": "patches/estree-util-build-jsx@3.0.1.patch",
+  },
   "packages": {
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.27.1", "", { "os": "aix", "cpu": "ppc64" }, "sha512-HHB50pdsBX6k47S4u5g/CaLjqS3qwaOVE5ILsq64jyzgMhLuCuZ8rGzM9yhsAjfjkbgUPMzZEPa7DAp7yz6vuA=="],
 

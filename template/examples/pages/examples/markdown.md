@@ -40,7 +40,7 @@ Autolinks: <https://example.com>
 
 ## Images
 
-![Alt text for image](/scratch.png "Scratch logo")
+![Alt text for image](/scratch.svg "Scratch logo")
 
 ## Lists
 

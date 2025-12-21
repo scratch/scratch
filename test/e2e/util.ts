@@ -1,9 +1,11 @@
 import path from "path";
 import { spawnSync } from "child_process";
-import { getRepoRoot } from "../../src/util";
 
 // Re-export shared test utility
 export { mkTempDir } from "../test-util";
+
+// Path to the compiled scratch executable
+export const scratchPath = path.resolve(import.meta.dir, "../../dist/scratch");
 
 /**
  * Helper: sleep for the specified milliseconds.
@@ -17,10 +19,7 @@ export function sleep(ms: number) {
  * non–zero status code.
  */
 export function runCliSync(args: string[], cwd: string) {
-  const repoRoot = getRepoRoot();
-  const indexPath = path.resolve(repoRoot, "src", "index.ts");
-
-  const result = spawnSync("bun", [indexPath, ...args], {
+  const result = spawnSync(scratchPath, args, {
     cwd,
     encoding: "utf-8",
     stdio: "inherit",

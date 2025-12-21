@@ -33,8 +33,8 @@ describe("Public assets", () => {
     const distDir = path.join(sandboxDir, "dist");
 
     // 4. Verify files are copied to dist/
-    // scratch.png (from template)
-    expect(await fs.exists(path.join(distDir, "scratch.png"))).toBe(true);
+    // scratch.svg (from template)
+    expect(await fs.exists(path.join(distDir, "scratch.svg"))).toBe(true);
 
     // robots.txt
     expect(await fs.exists(path.join(distDir, "robots.txt"))).toBe(true);

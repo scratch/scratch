@@ -1,8 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFile, rm } from "fs/promises";
 import path from "path";
-import { runCliSync, mkTempDir, sleep } from "./util";
-import { getRepoRoot } from "../../src/util";
+import { runCliSync, mkTempDir, sleep, scratchPath } from "./util";
 import { spawn } from "child_process";
 
 
@@ -12,8 +11,6 @@ describe("scratch create → build → preview", () => {
   test(
     "serves the built index page via the preview server",
     async () => {
-      const repoRoot = getRepoRoot();
-      const indexPath = path.resolve(repoRoot, "src", "index.ts");
 
       // 1. Create a fresh sandbox project inside a temporary directory.
       //    Using the repository directory avoids permission issues that can
@@ -32,8 +29,7 @@ describe("scratch create → build → preview", () => {
 
       // 3. Start the preview server on an unusual port to avoid clashes.
       const port = 51234;
-      const previewProc = spawn("bun", [
-        indexPath,
+      const previewProc = spawn(scratchPath, [
         "preview",
         "sandbox",
         "--port",

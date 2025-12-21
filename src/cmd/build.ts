@@ -248,9 +248,10 @@ async function buildTailwindCss() {
   // This ensures Tailwind scans the template directory for classes used in fallback components
   let cssContent = await fs.readFile(inputCss, 'utf-8');
 
-  // Add @source directive for template components (after @import "tailwindcss" if present)
-  const templateComponentsDir = path.resolve(__dirname, '../../template/default/components');
-  const sourceDirective = `@source "${templateComponentsDir}";\n`;
+  // Add @source directive for embedded template components (after @import "tailwindcss" if present)
+  // The embedded templates are materialized to the temp directory during the build
+  const embeddedComponentsDir = path.resolve(ctx.embeddedTemplatesDir(), 'default', 'components');
+  const sourceDirective = `@source "${embeddedComponentsDir}";\n`;
 
   // Insert after @import "tailwindcss" or at the beginning
   if (cssContent.includes('@import "tailwindcss"')) {

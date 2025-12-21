@@ -24,13 +24,6 @@ export function resolve(p: string, root: string = process.cwd()) {
 }
 
 /**
- * Return the root directory of the project
- */
-export function getRepoRoot() {
-  return path.resolve(__dirname, '..');
-}
-
-/**
  * Format a byte count so that it is human readable
  * @param bytes
  */
