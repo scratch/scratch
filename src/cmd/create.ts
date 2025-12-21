@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs/promises';
+import readline from 'readline';
 import { materializeProjectTemplates } from '../template';
 import { BUILD_DEPENDENCIES } from '../context';
 import log from '../logger';
@@ -10,6 +11,30 @@ interface CreateOptions {
   package?: boolean;
   minimal?: boolean;
   full?: boolean;
+}
+
+/**
+ * Prompt user for yes/no confirmation.
+ */
+async function confirm(question: string, defaultValue: boolean): Promise<boolean> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  const hint = defaultValue ? '[Y/n]' : '[y/N]';
+
+  return new Promise((resolve) => {
+    rl.question(`${question} ${hint} `, (answer) => {
+      rl.close();
+      const trimmed = answer.trim().toLowerCase();
+      if (trimmed === '') {
+        resolve(defaultValue);
+      } else {
+        resolve(trimmed === 'y' || trimmed === 'yes');
+      }
+    });
+  });
 }
 
 /**
@@ -34,12 +59,21 @@ async function generatePackageJson(targetDir: string, projectName: string): Prom
 
 /**
  * Create a new Scratch project.
- * Flag-based with sensible defaults.
+ * Flag-based with sensible defaults, or interactive prompts if flags not provided.
  *
  * Defaults: --src, --examples, --no-package
  * Shorthands: --minimal (no src, no examples, no package), --full (everything)
  */
 export async function createCommand(targetPath: string, options: CreateOptions = {}) {
+  // If shorthand flags are used, skip prompts
+  const useShorthand = options.minimal || options.full;
+
+  // Only prompt if running interactively (TTY) and flags not explicitly set
+  const isInteractive = process.stdin.isTTY;
+  const needsExamplesPrompt = isInteractive && !useShorthand && options.examples === undefined;
+  const needsSrcPrompt = isInteractive && !useShorthand && options.src === undefined;
+  const needsPackagePrompt = isInteractive && !useShorthand && options.package === undefined;
+
   // Start with defaults
   let includeSrc = true;
   let includeExamples = true;
@@ -61,6 +95,25 @@ export async function createCommand(targetPath: string, options: CreateOptions =
   if (options.src !== undefined) includeSrc = options.src;
   if (options.examples !== undefined) includeExamples = options.examples;
   if (options.package !== undefined) includePackage = options.package;
+
+  // Interactive prompts for options not explicitly set
+  if (needsExamplesPrompt) {
+    log.info('Include pages/examples/?');
+    includeExamples = await confirm('Include a set of example pages', true);
+    log.info('');
+  }
+
+  if (needsSrcPrompt) {
+    log.info('Include src/?');
+    includeSrc = await confirm('Allows for customizing styles, wrapper and Markdown components', true);
+    log.info('');
+  }
+
+  if (needsPackagePrompt) {
+    log.info('Include package.json?');
+    includePackage = await confirm('Allows for adding third-party packages & custom build scripts', false);
+    log.info('');
+  }
 
   const created = await materializeProjectTemplates(targetPath, {
     includeSrc,
