@@ -1,4 +1,5 @@
-
+# generated files
+src/template.generated.ts
 
 # dependencies (bun install)
 node_modules
