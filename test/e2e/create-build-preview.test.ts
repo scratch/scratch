@@ -17,7 +17,7 @@ describe("scratch create → build → preview", () => {
       //    arise in some restricted CI environments when writing to the OS
       //    tmp directory.
       const tempDir = await mkTempDir("e2e-");
-      runCliSync(["create", "sandbox", "--no-examples"], tempDir);
+      runCliSync(["init", "sandbox", "--full"], tempDir);
 
       const sandboxDir = path.join(tempDir, "sandbox");
 

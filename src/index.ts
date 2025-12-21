@@ -21,11 +21,13 @@ program
 
 program
   .command('init')
-  .description('Initialize a minimal Scratch project')
+  .description('Initialize a Scratch project (flag-based, no prompts)')
   .argument('[path]', 'Path to project directory', '.')
-  .action(async (path) => {
+  .option('-f, --full', 'Include theme.css and components')
+  .option('-e, --examples', 'Include example files')
+  .action(async (path, options) => {
     try {
-      await initCommand(path);
+      await initCommand(path, options);
     } catch (error) {
       log.error('Failed to initialize project:', error);
       process.exit(1);
@@ -34,15 +36,11 @@ program
 
 program
   .command('create')
-  .description('Create a new Scratch project with optional components and examples')
+  .description('Create a new Scratch project (interactive prompts)')
   .argument('[path]', 'Path to project directory', '.')
-  .option('-f, --full', 'Include theme.css and components')
-  .option('-F, --no-full', 'Exclude theme.css and components')
-  .option('-e, --examples', 'Include example files')
-  .option('-E, --no-examples', 'Do not include example files')
-  .action(async (path, options) => {
+  .action(async (path) => {
     try {
-      await createCommand(path, options);
+      await createCommand(path);
     } catch (error) {
       log.error('Failed to create project:', error);
       process.exit(1);

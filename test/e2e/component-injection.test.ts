@@ -7,7 +7,7 @@ describe("Component auto-injection", () => {
   test("components are automatically available in MDX without explicit imports", async () => {
     // 1. Create a fresh project
     const tempDir = await mkTempDir("component-injection-");
-    runCliSync(["create", "sandbox", "--no-examples"], tempDir);
+    runCliSync(["init", "sandbox", "--full"], tempDir);
 
     const sandboxDir = path.join(tempDir, "sandbox");
 

@@ -10,7 +10,7 @@ describe("Component conflict detection", () => {
     const tempDir = await mkTempDir("component-conflict-");
 
     // Run create
-    spawnSync(scratchPath, ["create", "sandbox", "--no-examples"], {
+    spawnSync(scratchPath, ["init", "sandbox", "--full"], {
       cwd: tempDir,
       encoding: "utf-8",
       stdio: "pipe",
@@ -70,7 +70,7 @@ describe("Component conflict detection", () => {
     const tempDir = await mkTempDir("component-conflict-explicit-");
 
     // Run create
-    spawnSync(scratchPath, ["create", "sandbox", "--no-examples"], {
+    spawnSync(scratchPath, ["init", "sandbox", "--full"], {
       cwd: tempDir,
       encoding: "utf-8",
       stdio: "pipe",

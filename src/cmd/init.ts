@@ -1,15 +1,23 @@
 import { materializeProjectTemplates } from '../template';
 import log from '../logger';
 
+interface InitOptions {
+  full?: boolean;
+  examples?: boolean;
+}
+
 /**
- * Initialize a minimal Scratch project.
- * Creates only the essential files: pages/, public/, .gitignore, AGENTS.md
- * No prompts - just creates the minimal structure.
+ * Initialize a Scratch project.
+ * Flag-based, no prompts.
+ *
+ * Flags:
+ * - --full: Include theme.css and components
+ * - --examples: Include example pages
  */
-export async function initCommand(targetPath: string) {
+export async function initCommand(targetPath: string, options: InitOptions = {}) {
   const created = await materializeProjectTemplates(targetPath, {
-    includeComponents: false,
-    includeExamples: false,
+    includeComponents: options.full ?? false,
+    includeExamples: options.examples ?? false,
   });
 
   if (created.length > 0) {

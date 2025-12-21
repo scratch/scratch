@@ -7,7 +7,7 @@ describe("Frontmatter meta tags", () => {
   test("frontmatter is injected as HTML meta tags", async () => {
     // 1. Create a fresh project
     const tempDir = await mkTempDir("frontmatter-");
-    runCliSync(["create", "sandbox", "--no-examples"], tempDir);
+    runCliSync(["init", "sandbox", "--full"], tempDir);
 
     const sandboxDir = path.join(tempDir, "sandbox");
 
