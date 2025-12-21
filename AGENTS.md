@@ -8,7 +8,7 @@ scratch is a CLI tool for building static MDX-based websites using Bun. Users cr
 
 ### CLI Commands (`src/index.ts`)
 - `init [path]` - Initialize a project (flag-based, no prompts)
-  - `--full` - Include theme.css and components/
+  - `--full` - Include src/ (tailwind.css, PageWrapper, markdown components)
   - `--examples` - Include example pages
 - `create [path]` - Create a project (interactive prompts for components and examples)
 - `build [path]` - Build the static site
@@ -58,7 +58,7 @@ Templates are embedded directly into the compiled executable for portability.
 **Directory structure** (`template/`):
 - `_build/` - Internal build infrastructure (entry-client.tsx, entry-server.jsx) - never copied to user projects
 - `pages/examples/` - Example pages (TodoList, markdown examples) - optionally included via `--examples` flag
-- Everything else - Default project files copied to new projects (pages, components, theme.css, .gitignore)
+- Everything else - Default project files copied to new projects (pages, src, .gitignore)
 
 **Compilation**: `scripts/compile-templates.ts` reads all template files and generates `src/template.generated.ts` as a flat `{ path: content }` object. This runs automatically during `bun run build`.
 
@@ -86,7 +86,7 @@ Templates are embedded directly into the compiled executable for portability.
 
 ### File Search Patterns
 The build system searches multiple file names for key files, falling back to embedded templates:
-- **CSS input**: `theme.css` → `tailwind.css` → `index.css` → `globals.css` → embedded `theme.css`
+- **CSS input**: `src/tailwind.css` → `src/index.css` → `src/globals.css` → embedded fallback
 - **Client entry**: `entry-client.tsx` → `entry.tsx` → `client.tsx` → `build/entry-client.tsx` → `_build/entry-client.tsx` → embedded `_build/entry-client.tsx`
 - **Server entry**: `entry-server.jsx` → `index.jsx` → `server.jsx` → `build/entry-server.jsx` → `_build/entry-server.jsx` → embedded `_build/entry-server.jsx`
 - **PageWrapper**: `components/PageWrapper.jsx` or `.tsx` → embedded `components/PageWrapper.jsx`

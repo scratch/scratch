@@ -23,9 +23,6 @@ scratch create
 
 # Start the dev server
 scratch dev
-
-# Build for production
-scratch build
 ```
 
 ## Why Scratch?
@@ -57,9 +54,9 @@ mysite/
 
 Use `scratch build` to compile this project into a [static website](https://scratch.dev/template).
 
-Borrowing heavily from [Tailwind Typography](https://github.com/tailwindlabs/tailwindcss-typography), Scratch uses default styles and Markdown components to render your prose with a clean aesthetic. Code blocks use syntax hilighting by [Shiki](https://shiki.style/).
+Borrowing heavily from [Tailwind Typography](https://github.com/tailwindlabs/tailwindcss-typography), Scratch uses default styles and Markdown components to render your prose with a clean aesthetic. Code blocks use syntax highlighting by [Shiki](https://shiki.style/).
 
-You can change the look and feel and customize the page wrapper component by including the `src/` directory when you run `scratch create`:
+You can change styles and customize the page wrapper component by including the `src/` directory when you run `scratch create`:
 
 ```
 mysite/
@@ -87,14 +84,50 @@ Scratch compiles Javascript (.js), Typescript (.ts), JSX (.jsx), TSX (.tsx), Mar
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `scratch init [path]` | Initialize a minimal project (flags: `--full`, `--examples`) |
-| `scratch create [path]` | Create a project with interactive prompts |
-| `scratch dev [path]` | Start the development server |
-| `scratch build [path]` | Build for production |
-| `scratch preview [path]` | Preview the production build |
-| `scratch clean [path]` | Clean build artifacts |
+### `scratch create [path]`
+
+Create a new Scratch project. When run interactively, prompts for which components to include. Use flags to skip prompts.
+
+**Options:**
+- `--src` / `--no-src` - Include or exclude the `src/` directory (default: include)
+- `--examples` / `--no-examples` - Include or exclude example pages (default: include)
+- `--package` / `--no-package` - Include or exclude `package.json` (default: exclude)
+- `--minimal` - Shorthand for `--no-src --no-examples --no-package`
+- `--full` - Shorthand for `--src --examples --package`
+
+```bash
+scratch create mysite           # Interactive prompts
+scratch create mysite --full    # Include everything
+scratch create mysite --minimal # Minimal project (pages only)
+```
+
+### `scratch dev`
+
+Start the development server with hot module replacement. Watches for file changes and automatically rebuilds. Opens your browser to the local server.
+
+```bash
+scratch dev mysite
+```
+
+### `scratch build`
+
+Build your project for production. Compiles all MDX/MD files to static HTML, bundles JavaScript, and processes Tailwind CSS.
+
+**Options:**
+- `--ssg [true/false]` - Enable static site generation to pre-render pages. (default: true)
+- `--development` - Build in development mode (unminified, with source maps)
+
+### `scratch preview`
+
+Preview the production build locally. Serves the `dist/` directory on a local server.
+
+```bash
+scratch preview mysite
+```
+
+### `scratch clean`
+
+Remove build artifacts (`dist/` and `.scratch-build-cache/` directories).xs
 
 ## License
 

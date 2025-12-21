@@ -22,10 +22,11 @@ export function runCliSync(args: string[], cwd: string) {
   const result = spawnSync(scratchPath, args, {
     cwd,
     encoding: "utf-8",
-    stdio: "inherit",
+    stdio: "pipe",
   });
 
   if (result.status !== 0) {
-    throw new Error(`scratch CLI ${args.join(" ")} exited with code ${result.status}`);
+    const output = (result.stdout || "") + (result.stderr || "");
+    throw new Error(`scratch CLI ${args.join(" ")} exited with code ${result.status}\n${output}`);
   }
 }

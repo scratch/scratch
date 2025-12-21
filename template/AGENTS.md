@@ -35,7 +35,7 @@ project/
 │   └── Button.jsx
 ├── public/          # Static assets (optional, copied as-is)
 │   └── logo.png
-├── theme.css        # Tailwind theme customization (optional)
+├── tailwind.css     # Tailwind theme customization (optional)
 └── dist/            # Build output (generated)
 ```
 
@@ -148,21 +148,21 @@ Files in `public/` are copied directly to the build output. Reference them with 
 
 ## Theming
 
-Scratch uses custom prose styling defined in `theme.css` for markdown content. The default template includes:
+Scratch uses custom prose styling defined in `tailwind.css` for markdown content. The default template includes:
 
 - `scratch-prose` class for typography styling
 - Dark mode support (follows system preference via `.dark` class)
 
 ### Customizing the Theme
 
-The `theme.css` file contains all prose styling for markdown elements. You can customize:
+The `tailwind.css` file contains all prose styling for markdown elements. You can customize:
 
 - Headings (h1-h4), paragraphs, links, lists
 - Code blocks and inline code
 - Blockquotes, tables, images
 - Light and dark mode colors
 
-Simply edit the `.scratch-prose` rules in `theme.css` to match your design.
+Simply edit the `.scratch-prose` rules in `tailwind.css` to match your design.
 
 ### Dark Mode
 

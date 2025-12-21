@@ -222,8 +222,8 @@ export class BuildContext {
    */
   async tailwindCssSrcPath(): Promise<string> {
     return this.resolvePathWithFallback(
-      ['src/theme.css', 'src/tailwind.css', 'src/index.css', 'src/globals.css'],
-      'src/theme.css'
+      ['src/tailwind.css', 'src/index.css', 'src/globals.css'],
+      'src/tailwind.css'
     );
   }
 
