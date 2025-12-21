@@ -250,7 +250,7 @@ async function buildTailwindCss() {
 
   // Add @source directive for embedded template components (after @import "tailwindcss" if present)
   // The embedded templates are materialized to the temp directory during the build
-  const embeddedComponentsDir = path.resolve(ctx.embeddedTemplatesDir(), 'default', 'components');
+  const embeddedComponentsDir = path.resolve(ctx.embeddedTemplatesDir(), 'components');
   const sourceDirective = `@source "${embeddedComponentsDir}";\n`;
 
   // Insert after @import "tailwindcss" or at the beginning
