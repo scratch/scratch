@@ -1,14 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { readFile, rm, writeFile } from "fs/promises";
 import path from "path";
-import { getRepoRoot } from "../../src/util";
 import { runCliSync, mkTempDir } from "./util";
 
 
 describe("Tailwind integration", () => {
   test("build succeeds and rendered HTML contains Tailwind class", async () => {
-    const repoRoot = getRepoRoot();
-
     // 1. Create a fresh sandbox project inside a temporary directory.
     const tempDir = await mkTempDir("tailwind-");
     runCliSync(["create", "sandbox", "--no-examples"], tempDir);

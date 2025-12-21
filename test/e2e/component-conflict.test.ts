@@ -2,18 +2,15 @@ import { describe, expect, test } from "bun:test";
 import { rm, writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { spawnSync } from "child_process";
-import { mkTempDir } from "./util";
-import { getRepoRoot } from "../../src/util";
+import { mkTempDir, scratchPath } from "./util";
 
 describe("Component conflict detection", () => {
   test("build fails when MDX uses a component with conflicting filenames", async () => {
     // 1. Create a fresh project
     const tempDir = await mkTempDir("component-conflict-");
-    const repoRoot = getRepoRoot();
-    const indexPath = path.resolve(repoRoot, "src", "index.ts");
 
     // Run create
-    spawnSync("bun", [indexPath, "create", "sandbox", "--no-examples"], {
+    spawnSync(scratchPath, ["create", "sandbox", "--no-examples"], {
       cwd: tempDir,
       encoding: "utf-8",
       stdio: "pipe",
@@ -50,7 +47,7 @@ describe("Component conflict detection", () => {
     );
 
     // 4. Build should fail due to ambiguous component
-    const result = spawnSync("bun", [indexPath, "build", "sandbox"], {
+    const result = spawnSync(scratchPath, ["build", "sandbox"], {
       cwd: tempDir,
       encoding: "utf-8",
       stdio: "pipe",
@@ -71,11 +68,9 @@ describe("Component conflict detection", () => {
   test("build succeeds when MDX explicitly imports one of the conflicting components", async () => {
     // 1. Create a fresh project
     const tempDir = await mkTempDir("component-conflict-explicit-");
-    const repoRoot = getRepoRoot();
-    const indexPath = path.resolve(repoRoot, "src", "index.ts");
 
     // Run create
-    spawnSync("bun", [indexPath, "create", "sandbox", "--no-examples"], {
+    spawnSync(scratchPath, ["create", "sandbox", "--no-examples"], {
       cwd: tempDir,
       encoding: "utf-8",
       stdio: "pipe",
@@ -114,7 +109,7 @@ describe("Component conflict detection", () => {
     );
 
     // 4. Build should succeed because we explicitly imported
-    const result = spawnSync("bun", [indexPath, "build", "sandbox", "--ssg", "--development"], {
+    const result = spawnSync(scratchPath, ["build", "sandbox", "--ssg", "--development"], {
       cwd: tempDir,
       encoding: "utf-8",
       stdio: "pipe",

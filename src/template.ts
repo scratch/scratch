@@ -1,9 +1,10 @@
 import fs from 'fs/promises';
 import path from 'path';
 import log from './logger';
-import { templates, TemplateCategory } from './template.generated';
+import { templates, type TemplateCategory } from './template.generated';
 
-export { templates, TemplateCategory };
+export { templates };
+export type { TemplateCategory };
 
 // ============================================================================
 // HELPER FUNCTIONS
