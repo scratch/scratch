@@ -8,10 +8,6 @@
     Make beatiful websites with markdown and react
 </p>
 
----
-
-Scratch compiles MDX files into beautiful static websites. Write in Markdown, embed React components, and publish to the web.
-
 ## Quick Start
 
 ```bash
