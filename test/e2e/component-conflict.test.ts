@@ -10,7 +10,7 @@ describe("Component conflict detection", () => {
     const tempDir = await mkTempDir("component-conflict-");
 
     // Run create
-    spawnSync(scratchPath, ["init", "sandbox", "--full"], {
+    spawnSync(scratchPath, ["init", "sandbox", "--src"], {
       cwd: tempDir,
       encoding: "utf-8",
       stdio: "pipe",
@@ -18,19 +18,19 @@ describe("Component conflict detection", () => {
 
     const sandboxDir = path.join(tempDir, "sandbox");
 
-    // 2. Create two components with the same name in different directories
-    await mkdir(path.join(sandboxDir, "components", "ui"), { recursive: true });
-    await mkdir(path.join(sandboxDir, "components", "forms"), { recursive: true });
+    // 2. Create two src with the same name in different directories
+    await mkdir(path.join(sandboxDir, "src", "ui"), { recursive: true });
+    await mkdir(path.join(sandboxDir, "src", "forms"), { recursive: true });
 
     await writeFile(
-      path.join(sandboxDir, "components", "ui", "Button.jsx"),
+      path.join(sandboxDir, "src", "ui", "Button.jsx"),
       `export default function Button({ children }) {
   return <button className="ui-button">{children}</button>;
 }`
     );
 
     await writeFile(
-      path.join(sandboxDir, "components", "forms", "Button.jsx"),
+      path.join(sandboxDir, "src", "forms", "Button.jsx"),
       `export default function Button({ children }) {
   return <button className="forms-button">{children}</button>;
 }`
@@ -65,12 +65,12 @@ describe("Component conflict detection", () => {
     await rm(tempDir, { recursive: true, force: true });
   }, 180_000);
 
-  test("build succeeds when MDX explicitly imports one of the conflicting components", async () => {
+  test("build succeeds when MDX explicitly imports one of the conflicting src", async () => {
     // 1. Create a fresh project
     const tempDir = await mkTempDir("component-conflict-explicit-");
 
     // Run create
-    spawnSync(scratchPath, ["init", "sandbox", "--full"], {
+    spawnSync(scratchPath, ["init", "sandbox", "--src"], {
       cwd: tempDir,
       encoding: "utf-8",
       stdio: "pipe",
@@ -78,19 +78,19 @@ describe("Component conflict detection", () => {
 
     const sandboxDir = path.join(tempDir, "sandbox");
 
-    // 2. Create two components with the same name in different directories
-    await mkdir(path.join(sandboxDir, "components", "ui"), { recursive: true });
-    await mkdir(path.join(sandboxDir, "components", "forms"), { recursive: true });
+    // 2. Create two src with the same name in different directories
+    await mkdir(path.join(sandboxDir, "src", "ui"), { recursive: true });
+    await mkdir(path.join(sandboxDir, "src", "forms"), { recursive: true });
 
     await writeFile(
-      path.join(sandboxDir, "components", "ui", "Button.jsx"),
+      path.join(sandboxDir, "src", "ui", "Button.jsx"),
       `export default function Button({ children }) {
   return <button className="ui-button">{children}</button>;
 }`
     );
 
     await writeFile(
-      path.join(sandboxDir, "components", "forms", "Button.jsx"),
+      path.join(sandboxDir, "src", "forms", "Button.jsx"),
       `export default function Button({ children }) {
   return <button className="forms-button">{children}</button>;
 }`
@@ -100,7 +100,7 @@ describe("Component conflict detection", () => {
     const mdxPath = path.join(sandboxDir, "pages", "index.mdx");
     await writeFile(
       mdxPath,
-      `import Button from '../components/ui/Button.jsx';
+      `import Button from '../src/ui/Button.jsx';
 
 # Button Test
 

@@ -8,7 +8,7 @@ describe("Tailwind integration", () => {
   test("build succeeds and rendered HTML contains Tailwind class", async () => {
     // 1. Create a fresh sandbox project inside a temporary directory.
     const tempDir = await mkTempDir("tailwind-");
-    runCliSync(["init", "sandbox", "--full"], tempDir);
+    runCliSync(["init", "sandbox", "--src"], tempDir);
 
     const sandboxDir = path.join(tempDir, "sandbox");
 

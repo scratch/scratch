@@ -37,7 +37,7 @@ const ERROR_PATTERNS: Array<{ pattern: RegExp; getMessage: (match: RegExpMatchAr
       `     Instead of:  <img src="...">\n` +
       `     Use:         <img src="..." />\n\n` +
       `  2. Missing component - check the component name is correct\n` +
-      `     and the file exists in components/ or pages/`,
+      `     and the file exists in src/ or pages/`,
   },
   {
     pattern: /Expected corresponding JSX closing tag for <(\w+)>/,
@@ -244,14 +244,14 @@ async function buildTailwindCss() {
   // Ensure output directory exists
   await fs.mkdir(path.dirname(outputCss), { recursive: true });
 
-  // Read the input CSS and prepend @source directives for template components
+  // Read the input CSS and prepend @source directives for template src
   // This ensures Tailwind scans the template directory for classes used in fallback components
   let cssContent = await fs.readFile(inputCss, 'utf-8');
 
-  // Add @source directive for embedded template components (after @import "tailwindcss" if present)
+  // Add @source directive for embedded template src (after @import "tailwindcss" if present)
   // The embedded templates are materialized to the temp directory during the build
-  const embeddedComponentsDir = path.resolve(ctx.embeddedTemplatesDir(), 'components');
-  const sourceDirective = `@source "${embeddedComponentsDir}";\n`;
+  const embeddedSrcDir = path.resolve(ctx.embeddedTemplatesDir(), 'src');
+  const sourceDirective = `@source "${embeddedSrcDir}";\n`;
 
   // Insert after @import "tailwindcss" or at the beginning
   if (cssContent.includes('@import "tailwindcss"')) {

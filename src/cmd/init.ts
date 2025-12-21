@@ -2,7 +2,7 @@ import { materializeProjectTemplates } from '../template';
 import log from '../logger';
 
 interface InitOptions {
-  full?: boolean;
+  src?: boolean;
   examples?: boolean;
 }
 
@@ -11,12 +11,12 @@ interface InitOptions {
  * Flag-based, no prompts.
  *
  * Flags:
- * - --full: Include theme.css and components
+ * - --src: Include src/ directory
  * - --examples: Include example pages
  */
 export async function initCommand(targetPath: string, options: InitOptions = {}) {
   const created = await materializeProjectTemplates(targetPath, {
-    includeComponents: options.full ?? false,
+    includeSrc: options.src ?? false,
     includeExamples: options.examples ?? false,
   });
 

@@ -8,7 +8,7 @@ describe("Page routing", () => {
   test("generates correct HTML files for nested page structure", async () => {
     // 1. Create a fresh project
     const tempDir = await mkTempDir("routing-");
-    runCliSync(["init", "sandbox", "--full"], tempDir);
+    runCliSync(["init", "sandbox", "--src"], tempDir);
 
     const sandboxDir = path.join(tempDir, "sandbox");
     const pagesDir = path.join(sandboxDir, "pages");

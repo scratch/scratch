@@ -25,11 +25,11 @@ async function promptYesNo(question: string): Promise<boolean> {
  * Always prompts interactively for options.
  */
 export async function createCommand(targetPath: string) {
-  const includeComponents = await promptYesNo('Include theme.css, PageWrapper.jsx, and Markdown components?');
+  const includeSrc = await promptYesNo('Include src/ directory?');
   const includeExamples = await promptYesNo('Include examples?');
 
   const created = await materializeProjectTemplates(targetPath, {
-    includeComponents,
+    includeSrc,
     includeExamples,
   });
 

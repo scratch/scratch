@@ -26,7 +26,7 @@ export interface BuildContextInitOptions {
   rootDirName?: string;
   tempDirName?: string;
   buildDirName?: string;
-  componentsDirName?: string;
+  srcDirName?: string;
   pagesDirName?: string;
   staticDirName?: string;
 
@@ -40,7 +40,7 @@ export class BuildContext {
   rootDir: string;
   tempDir: string;
   buildDir: string;
-  componentsDir: string;
+  srcDir: string;
   pagesDir: string;
   staticDir: string;
 
@@ -58,9 +58,9 @@ export class BuildContext {
     this.rootDir = _path.resolve(opts.path || opts.rootDirName || '.');
     this.tempDir = _path.resolve(this.rootDir, opts.tempDirName || '.scratch-build-cache');
     this.buildDir = _path.resolve(this.rootDir, opts.buildDirName || 'dist');
-    this.componentsDir = _path.resolve(
+    this.srcDir = _path.resolve(
       this.rootDir,
-      opts.componentsDirName || 'components'
+      opts.srcDirName || 'src'
     );
     this.pagesDir = _path.resolve(this.rootDir, opts.pagesDirName || 'pages');
     this.staticDir = _path.resolve(this.rootDir, opts.staticDirName || 'public');
@@ -209,11 +209,11 @@ export class BuildContext {
    * Falls back to embedded templates if not in project.
    */
   async markdownComponentsDir(): Promise<string> {
-    const userMarkdownDir = _path.resolve(this.componentsDir, 'markdown');
+    const userMarkdownDir = _path.resolve(this.srcDir, 'markdown');
     if (await fs.exists(userMarkdownDir)) {
       return userMarkdownDir;
     }
-    return this.materializeEmbeddedDir('components/markdown');
+    return this.materializeEmbeddedDir('src/markdown');
   }
 
   /**
@@ -222,8 +222,8 @@ export class BuildContext {
    */
   async tailwindCssSrcPath(): Promise<string> {
     return this.resolvePathWithFallback(
-      ['theme.css', 'tailwind.css', 'index.css', 'globals.css'],
-      'theme.css'
+      ['src/theme.css', 'src/tailwind.css', 'src/index.css', 'src/globals.css'],
+      'src/theme.css'
     );
   }
 
@@ -255,8 +255,8 @@ export class BuildContext {
    */
   async pageWrapperPath(): Promise<string> {
     return this.resolvePathWithFallback(
-      ['components/PageWrapper.jsx', 'components/PageWrapper.tsx'],
-      'components/PageWrapper.jsx'
+      ['src/PageWrapper.jsx', 'src/PageWrapper.tsx'],
+      'src/PageWrapper.jsx'
     );
   }
 
@@ -322,7 +322,7 @@ export class BuildContext {
   }
 
   /**
-   * Catalogue all of the component files in the components directory and pages directory.
+   * Catalogue all of the component files in the src directory and pages directory.
    * Falls back to template components for PageWrapper and markdown components
    * if they are not found in the project.
    */
@@ -332,8 +332,8 @@ export class BuildContext {
 
       // Start with project components (if directory exists)
       let result: FileMapResult = { map: {}, conflicts: new Set() };
-      if (await fs.exists(this.componentsDir)) {
-        result = await buildFileMap(this.componentsDir, pattern, true);
+      if (await fs.exists(this.srcDir)) {
+        result = await buildFileMap(this.srcDir, pattern, true);
       }
 
       // Also scan pages directory for co-located components
@@ -354,7 +354,7 @@ export class BuildContext {
       // Fallback: Add PageWrapper from embedded template if not in project
       if (!('PageWrapper' in result.map)) {
         const pageWrapperPath = await this.materializeEmbeddedFile(
-          'components/PageWrapper.jsx'
+          'src/PageWrapper.jsx'
         );
         result.map['PageWrapper'] = pageWrapperPath;
       }
@@ -364,7 +364,7 @@ export class BuildContext {
       for (const comp of markdownComponents) {
         if (!(comp in result.map)) {
           // Check for .tsx variant first
-          const templatePath = `components/markdown/${comp}.tsx`;
+          const templatePath = `src/markdown/${comp}.tsx`;
           if (hasTemplate(templatePath)) {
             const componentPath = await this.materializeEmbeddedFile(templatePath);
             result.map[comp] = componentPath;

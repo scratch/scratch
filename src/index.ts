@@ -23,7 +23,7 @@ program
   .command('init')
   .description('Initialize a Scratch project (flag-based, no prompts)')
   .argument('[path]', 'Path to project directory', '.')
-  .option('-f, --full', 'Include theme.css and components')
+  .option('-s, --src', 'Include src/ directory')
   .option('-e, --examples', 'Include example files')
   .action(async (path, options) => {
     try {

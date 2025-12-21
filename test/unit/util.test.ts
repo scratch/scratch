@@ -286,12 +286,12 @@ describe("util.buildFileMap", () => {
 
     test("uses full path when basename is false", async () => {
         const dir = path.join(tempDir, "filemap-fullpath");
-        await fs.mkdir(path.join(dir, "components"), { recursive: true });
-        await fs.writeFile(path.join(dir, "components", "Button.jsx"), "button");
+        await fs.mkdir(path.join(dir, "src"), { recursive: true });
+        await fs.writeFile(path.join(dir, "src", "Button.jsx"), "button");
 
         const result = await buildFileMap(dir, "**/*.jsx", false);
 
-        expect(result.map).toHaveProperty("components/Button");
+        expect(result.map).toHaveProperty("src/Button");
         expect(result.map).not.toHaveProperty("Button");
     });
 

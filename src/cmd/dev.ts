@@ -134,11 +134,10 @@ export async function devCommand(options: DevOptions = {}) {
     Bun.spawn([opener, `http://localhost:${port}`]);
   }
 
-  // Watch for file changes (pages, components, and src config)
+  // Watch for file changes (pages and src)
   const watchDirs = [
     ctx.pagesDir,
-    ctx.componentsDir,
-    path.join(ctx.rootDir, 'src'),
+    ctx.srcDir,
   ];
   const watchers: ReturnType<typeof watch>[] = [];
 

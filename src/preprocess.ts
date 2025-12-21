@@ -50,7 +50,7 @@ const PAGE_WRAPPER = "PageWrapper";
 
 /**
  * Create a remark plugin that injects import statements for locally defined
- * React components discovered in `components/` so authors don't have to import
+ * React components discovered in `src/` so authors don't have to import
  * them manually in every MDX file.
  */
 export const createPreprocessMdxPlugin = (
@@ -70,7 +70,7 @@ export const createPreprocessMdxPlugin = (
       log.debug(`Processing: ${file?.path ? path.relative(process.cwd(), file.path) : 'unknown'}`);
 
       // wrap mdx content in PageWrapper component if it is found in the
-      // components directory and not already invoked in the MDX file
+      // src directory and not already invoked in the MDX file
       if (PAGE_WRAPPER in componentMap && !invoked.has(PAGE_WRAPPER)) {
         log.debug(`  - Wrapping content in PageWrapper`);
         const wrapperNode = {
@@ -93,7 +93,7 @@ export const createPreprocessMdxPlugin = (
         const filePath = file.path ? path.relative(process.cwd(), file.path) : 'unknown';
         const err = new Error(
           `Ambiguous component import in ${filePath}: "${ambiguous.join('", "')}" ` +
-          `exists in multiple files in components/. ` +
+          `exists in multiple files in src/. ` +
           `Add an explicit import to specify which one to use.`
         );
         // Collect error since Bun.build() swallows thrown errors from remark plugins

@@ -10,8 +10,8 @@ export { templates };
 // ============================================================================
 
 /**
- * Files included in minimal tier (init command, or create --no-full --no-examples)
- * All other project files are in the "full" tier (components, theme.css)
+ * Files included in minimal tier (init command without --src)
+ * All other project files are in the "src" tier (src/*)
  */
 const MINIMAL_FILES = new Set([
   '.gitignore',
@@ -44,13 +44,10 @@ function isExamplesFile(relativePath: string): boolean {
 }
 
 /**
- * Check if a file belongs to the full tier (components + theme)
+ * Check if a file belongs to the src tier (src/*)
  */
-function isFullFile(relativePath: string): boolean {
-  return (
-    relativePath === 'theme.css' ||
-    relativePath.startsWith('components/')
-  );
+function isSrcFile(relativePath: string): boolean {
+  return relativePath.startsWith('src/');
 }
 
 // ============================================================================
@@ -58,8 +55,8 @@ function isFullFile(relativePath: string): boolean {
 // ============================================================================
 
 export interface MaterializeOptions {
-  /** Include theme.css and components/ (default: true) */
-  includeComponents?: boolean;
+  /** Include src/ directory (default: true) */
+  includeSrc?: boolean;
   /** Include pages/examples/ (default: false) */
   includeExamples?: boolean;
   /** Overwrite existing files (default: false) */
@@ -72,7 +69,7 @@ export interface MaterializeOptions {
  *
  * Tiers:
  * - Minimal: pages/index.mdx, pages/Counter.jsx, public/, .gitignore, AGENTS.md
- * - Full components: theme.css, components/* (controlled by includeComponents)
+ * - Src: src/* (controlled by includeSrc)
  * - Examples: pages/examples/* (controlled by includeExamples)
  *
  * Returns list of files that were created.
@@ -81,7 +78,7 @@ export async function materializeProjectTemplates(
   targetDir: string,
   options: MaterializeOptions = {}
 ): Promise<string[]> {
-  const { includeComponents = true, includeExamples = false, overwrite = false } = options;
+  const { includeSrc = true, includeExamples = false, overwrite = false } = options;
   const created: string[] = [];
 
   await fs.mkdir(targetDir, { recursive: true });
@@ -94,11 +91,11 @@ export async function materializeProjectTemplates(
 
     // Determine if file should be included based on tier
     const isMinimal = isMinimalFile(relativePath);
-    const isFull = isFullFile(relativePath);
+    const isSrc = isSrcFile(relativePath);
     const isExamples = isExamplesFile(relativePath);
 
-    // Skip full tier files unless includeComponents is true
-    if (isFull && !includeComponents) {
+    // Skip src tier files unless includeSrc is true
+    if (isSrc && !includeSrc) {
       continue;
     }
 
@@ -108,7 +105,7 @@ export async function materializeProjectTemplates(
     }
 
     // Skip files that don't belong to any known tier (shouldn't happen)
-    if (!isMinimal && !isFull && !isExamples) {
+    if (!isMinimal && !isSrc && !isExamples) {
       log.debug(`Skipping unknown tier file: ${relativePath}`);
       continue;
     }

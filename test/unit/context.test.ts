@@ -161,11 +161,11 @@ describe('BuildContext reset methods', () => {
 describe('BuildContext path finding methods', () => {
   test('markdownComponentsDir finds existing markdown components directory', async () => {
     const projectDir = path.join(tempDir, 'markdown-components-test');
-    await fs.mkdir(path.join(projectDir, 'components/markdown'), { recursive: true });
+    await fs.mkdir(path.join(projectDir, 'src/markdown'), { recursive: true });
     const context = new BuildContext({ path: projectDir });
 
     const mdCompDir = await context.markdownComponentsDir();
-    expect(mdCompDir).toBe(path.join(projectDir, 'components/markdown'));
+    expect(mdCompDir).toBe(path.join(projectDir, 'src/markdown'));
   });
 
   test('markdownComponentsDir falls back to embedded template directory', async () => {
@@ -179,24 +179,24 @@ describe('BuildContext path finding methods', () => {
     expect(await fs.exists(path.join(mdCompDir, 'index.ts'))).toBe(true);
   });
 
-  test('tailwindCssSrcPath finds existing tailwind.css', async () => {
+  test('tailwindCssSrcPath finds existing tailwind.css in src/', async () => {
     const projectDir = path.join(tempDir, 'tailwind-test');
-    await fs.mkdir(projectDir, { recursive: true });
-    await fs.writeFile(path.join(projectDir, 'tailwind.css'), '/* tailwind */');
+    await fs.mkdir(path.join(projectDir, 'src'), { recursive: true });
+    await fs.writeFile(path.join(projectDir, 'src', 'tailwind.css'), '/* tailwind */');
     const context = new BuildContext({ path: projectDir });
 
     const tailwindPath = await context.tailwindCssSrcPath();
-    expect(tailwindPath).toBe(path.join(projectDir, 'tailwind.css'));
+    expect(tailwindPath).toBe(path.join(projectDir, 'src', 'tailwind.css'));
   });
 
-  test('tailwindCssSrcPath finds index.css when tailwind.css not found', async () => {
+  test('tailwindCssSrcPath finds index.css in src/ when tailwind.css not found', async () => {
     const projectDir = path.join(tempDir, 'index-css-test');
-    await fs.mkdir(projectDir, { recursive: true });
-    await fs.writeFile(path.join(projectDir, 'index.css'), '/* index css */');
+    await fs.mkdir(path.join(projectDir, 'src'), { recursive: true });
+    await fs.writeFile(path.join(projectDir, 'src', 'index.css'), '/* index css */');
     const context = new BuildContext({ path: projectDir });
 
     const tailwindPath = await context.tailwindCssSrcPath();
-    expect(tailwindPath).toBe(path.join(projectDir, 'index.css'));
+    expect(tailwindPath).toBe(path.join(projectDir, 'src', 'index.css'));
   });
 
   test('serverJsxSrcPath finds existing index.jsx', async () => {
@@ -241,13 +241,13 @@ describe('BuildContext.getEntries', () => {
 describe('BuildContext.getComponentMap', () => {
   test('finds all component files', async () => {
     const projectDir = path.join(tempDir, 'component-map-test');
-    const componentsDir = path.join(projectDir, 'components');
-    await fs.mkdir(componentsDir, { recursive: true });
+    const srcDir = path.join(projectDir, 'src');
+    await fs.mkdir(srcDir, { recursive: true });
 
     // Create test component files
-    await fs.writeFile(path.join(componentsDir, 'Button.jsx'), 'export default () => {}');
-    await fs.writeFile(path.join(componentsDir, 'Card.tsx'), 'export default () => {}');
-    await fs.writeFile(path.join(componentsDir, 'Header.js'), 'export default () => {}');
+    await fs.writeFile(path.join(srcDir, 'Button.jsx'), 'export default () => {}');
+    await fs.writeFile(path.join(srcDir, 'Card.tsx'), 'export default () => {}');
+    await fs.writeFile(path.join(srcDir, 'Header.js'), 'export default () => {}');
 
     const context = new BuildContext({ path: projectDir });
     const componentMap = await context.getComponentMap();

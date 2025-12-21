@@ -7,12 +7,12 @@ describe("Component auto-injection", () => {
   test("components are automatically available in MDX without explicit imports", async () => {
     // 1. Create a fresh project
     const tempDir = await mkTempDir("component-injection-");
-    runCliSync(["init", "sandbox", "--full"], tempDir);
+    runCliSync(["init", "sandbox", "--src"], tempDir);
 
     const sandboxDir = path.join(tempDir, "sandbox");
 
     // 2. Create a custom component
-    const componentPath = path.join(sandboxDir, "components", "TestBadge.jsx");
+    const componentPath = path.join(sandboxDir, "src", "TestBadge.jsx");
     await writeFile(
       componentPath,
       `export default function TestBadge({ label }) {
