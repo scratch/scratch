@@ -17,8 +17,8 @@ const MINIMAL_FILES = new Set([
   '.gitignore',
   'AGENTS.md',
   'pages/index.mdx',
-  'pages/Counter.jsx',
-  'public/scratch.svg',
+  'pages/Counter.tsx',
+  'public/scratch-logo.svg',
 ]);
 
 /**
@@ -68,7 +68,7 @@ export interface MaterializeOptions {
  * Excludes _build/ files (internal build infrastructure).
  *
  * Tiers:
- * - Minimal: pages/index.mdx, pages/Counter.jsx, public/, .gitignore, AGENTS.md
+ * - Minimal: pages/index.mdx, pages/Counter.tsx, public/, .gitignore, AGENTS.md
  * - Src: src/* (controlled by includeSrc)
  * - Examples: pages/examples/* (controlled by includeExamples)
  *

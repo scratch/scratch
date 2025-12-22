@@ -99,6 +99,19 @@
   @apply my-3;
 }
 
+/* Task lists (checkboxes) - remove bullet points */
+.scratch-prose :where(ul.contains-task-list):not(:where([class~="not-prose"] *)) {
+  @apply list-none pl-0;
+}
+
+.scratch-prose :where(li.task-list-item):not(:where([class~="not-prose"] *)) {
+  @apply pl-0;
+}
+
+.scratch-prose :where(li.task-list-item > input[type="checkbox"]):not(:where([class~="not-prose"] *)) {
+  @apply mr-2 align-middle;
+}
+
 .scratch-prose :where(dl):not(:where([class~="not-prose"] *)) {
   @apply my-5;
 }

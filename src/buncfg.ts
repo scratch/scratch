@@ -5,9 +5,11 @@ import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 import rehypeShikiFromHighlighter from '@shikijs/rehype/core';
 import { createHighlighter, type Highlighter } from 'shiki';
+import { realpathSync } from 'fs';
 import { getBuildContext } from './context';
 import { createPreprocessMdxPlugin, createRehypeFootnotesPlugin } from './preprocess';
 import path from 'path';
+import type { VFile } from 'vfile';
 
 // Cached highlighter instance for reuse across builds
 let cachedHighlighter: Highlighter | null = null;
@@ -57,7 +59,7 @@ export function createFrontmatterRemarkPlugin() {
   const ctx = getBuildContext();
 
   return () => {
-    return async (tree: any, file: any) => {
+    return async (tree: unknown, file: VFile) => {
       if (!file.path) return;
 
       const code = await Bun.file(file.path).text();
@@ -66,11 +68,11 @@ export function createFrontmatterRemarkPlugin() {
       // Store frontmatter for later HTML injection
       // Match by entry absPath (resolve symlinks for comparison on macOS)
       const entries = await ctx.getEntries();
-      const realFilePath = require('fs').realpathSync(file.path);
+      const realFilePath = realpathSync(file.path);
 
       for (const entry of Object.values(entries)) {
         try {
-          const realEntryPath = require('fs').realpathSync(entry.absPath);
+          const realEntryPath = realpathSync(entry.absPath);
           if (realFilePath === realEntryPath) {
             entry.frontmatterData = extracted.data;
             break;

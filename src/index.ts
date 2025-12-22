@@ -6,15 +6,17 @@ import { buildCommand } from './cmd/build';
 import { createCommand } from './cmd/create';
 import { devCommand } from './cmd/dev';
 import { previewCommand } from './cmd/preview';
+import { updateCommand } from './cmd/update';
 import { getBuildContext, setBuildContext } from './context';
 import log, { setLogLevel } from './logger';
+import { VERSION } from './version';
 
 const program = new Command();
 
 program
   .name('scratch')
   .description('Scratch, implemented with bun')
-  .version('0.1')
+  .version(VERSION)
   .option('-v, --verbose', 'Verbose output')
   .option('-q, --quiet', 'Quiet mode (errors only)');
 
@@ -112,6 +114,18 @@ program
       log.info('Cleaned dist/ and .scratch-build-cache/');
     } catch (error) {
       log.error('Clean failed:', error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('update')
+  .description('Update scratch to the latest version')
+  .action(async () => {
+    try {
+      await updateCommand();
+    } catch (error) {
+      log.error('Update failed:', error);
       process.exit(1);
     }
   });

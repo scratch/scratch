@@ -94,7 +94,7 @@ The build automatically injects the necessary imports.
 **Important:** The component name must match the filename:
 - `components/Button.jsx` → `<Button />` works
 - `components/ui/Card.tsx` → `<Card />` works (subdirectories are fine)
-- `pages/Counter.jsx` → `<Counter />` works (co-located components)
+- `pages/Counter.tsx` → `<Counter />` works (co-located components)
 - But a component named `Button` defined inside `helpers.jsx` will NOT auto-import
 
 If two files have the same basename (e.g., `components/Button.jsx` and `pages/Button.jsx`), only one will be available.

@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build all platforms
+        run: bun run build:all
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          echo '{' > checksums.json
+          for file in scratch-*; do
+            platform="${file#scratch-}"
+            hash=$(sha256sum "$file" | awk '{print $1}')
+            echo "  \"$platform\": \"$hash\"," >> checksums.json
+          done
+          # Remove trailing comma and close JSON
+          sed -i '$ s/,$//' checksums.json
+          echo '}' >> checksums.json
+          cat checksums.json
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/scratch-darwin-arm64
+            dist/scratch-darwin-x64
+            dist/scratch-linux-arm64
+            dist/scratch-linux-x64
+            dist/checksums.json
+          generate_release_notes: true

@@ -2,6 +2,7 @@ import { getBuildContext } from "../context";
 import fs from "fs/promises";
 import path from "path";
 import log from "../logger";
+import { getContentType } from "../util";
 
 interface PreviewOptions {
     port?: number;
@@ -53,7 +54,7 @@ async function startServerWithFallback(
             return { server, port };
         } catch (error) {
             // If port is in use, try the next one
-            const err = error as any;
+            const err = error as NodeJS.ErrnoException;
             if (err.code === 'EADDRINUSE' || (error instanceof Error && error.message.includes('port'))) {
                 log.debug(`Port ${port} in use, trying ${port + 1}`);
                 continue;
@@ -106,28 +107,4 @@ export async function previewCommand(options: PreviewOptions) {
 
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
-}
-
-/**
- * Get content type for a file
- */
-function getContentType(filePath: string): string {
-    const ext = path.extname(filePath).toLowerCase();
-    const types: Record<string, string> = {
-        '.html': 'text/html',
-        '.js': 'application/javascript',
-        '.css': 'text/css',
-        '.json': 'application/json',
-        '.png': 'image/png',
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.gif': 'image/gif',
-        '.svg': 'image/svg+xml',
-        '.ico': 'image/x-icon',
-        '.woff': 'font/woff',
-        '.woff2': 'font/woff2',
-        '.ttf': 'font/ttf',
-        '.eot': 'application/vnd.ms-fontobject',
-    };
-    return types[ext] || 'application/octet-stream';
 }

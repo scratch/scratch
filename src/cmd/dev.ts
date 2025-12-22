@@ -1,7 +1,9 @@
 import { watch } from 'fs';
 import path from 'path';
+import type { ServerWebSocket } from 'bun';
 import { getBuildContext } from '../context';
 import { buildCommand } from './build';
+import { getContentType } from '../util';
 import log from '../logger';
 
 interface DevOptions {
@@ -10,7 +12,7 @@ interface DevOptions {
 }
 
 // Store connected WebSocket clients for live reload
-const clients = new Set<any>();
+const clients = new Set<ServerWebSocket<unknown>>();
 
 /**
  * Try to start a dev server on the given port, with fallback to subsequent ports if in use.
@@ -35,7 +37,7 @@ async function startDevServerWithFallback(
             if (!upgraded) {
               return new Response('WebSocket upgrade failed', { status: 400 });
             }
-            return undefined as any;
+            return; // WebSocket upgrade handled
           }
 
           // Serve files from build directory
@@ -91,7 +93,7 @@ async function startDevServerWithFallback(
       return { server, port };
     } catch (error) {
       // If port is in use, try the next one
-      const err = error as any;
+      const err = error as NodeJS.ErrnoException;
       if (err.code === 'EADDRINUSE' || (error instanceof Error && error.message.includes('port'))) {
         log.debug(`Port ${port} in use, trying ${port + 1}`);
         continue;
@@ -216,28 +218,4 @@ function injectLiveReloadScript(html: string, port: number): string {
 </script>`;
 
   return html.replace('</body>', `${script}\n</body>`);
-}
-
-/**
- * Get content type for a file
- */
-function getContentType(filePath: string): string {
-  const ext = path.extname(filePath).toLowerCase();
-  const types: Record<string, string> = {
-    '.html': 'text/html',
-    '.js': 'application/javascript',
-    '.css': 'text/css',
-    '.json': 'application/json',
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.gif': 'image/gif',
-    '.svg': 'image/svg+xml',
-    '.ico': 'image/x-icon',
-    '.woff': 'font/woff',
-    '.woff2': 'font/woff2',
-    '.ttf': 'font/ttf',
-    '.eot': 'application/vnd.ms-fontobject',
-  };
-  return types[ext] || 'application/octet-stream';
 }

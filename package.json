@@ -3,6 +3,7 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "version": "0.0.1",
   "patchedDependencies": {
     "estree-util-build-jsx@3.0.1": "patches/estree-util-build-jsx@3.0.1.patch"
   },
@@ -17,7 +18,11 @@
     "build:darwin-arm64": "bun build src/index.ts --compile --target=bun-darwin-arm64 --outfile dist/scratch-darwin-arm64",
     "build:darwin-x64": "bun build src/index.ts --compile --target=bun-darwin-x64 --outfile dist/scratch-darwin-x64",
     "build:linux-arm64": "bun build src/index.ts --compile --target=bun-linux-arm64 --outfile dist/scratch-linux-arm64",
-    "build:linux-x64": "bun build src/index.ts --compile --target=bun-linux-x64 --outfile dist/scratch-linux-x64"
+    "build:linux-x64": "bun build src/index.ts --compile --target=bun-linux-x64 --outfile dist/scratch-linux-x64",
+    "release": "bun scripts/release.ts",
+    "release:patch": "bun scripts/release.ts patch",
+    "release:minor": "bun scripts/release.ts minor",
+    "release:major": "bun scripts/release.ts major"
   },
   "devDependencies": {
     "@types/bun": "latest"
