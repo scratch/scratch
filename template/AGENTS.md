@@ -29,13 +29,16 @@ Run `scratch --help` to see all available commands.
 project/
 ├── pages/           # MDX and Markdown content (required)
 │   ├── index.mdx    # Homepage (resolves to /)
+│   ├── Counter.tsx  # Components can live alongside pages
 │   └── posts/
 │       └── hello.mdx  # Resolves to /posts/hello/
-├── components/      # React components (optional)
-│   └── Button.jsx
+├── src/             # React components and styles (optional)
+│   ├── Button.jsx
+│   ├── PageWrapper.jsx
+│   ├── tailwind.css
+│   └── markdown/    # Custom markdown renderers
 ├── public/          # Static assets (optional, copied as-is)
 │   └── logo.png
-├── tailwind.css     # Tailwind theme customization (optional)
 └── dist/            # Build output (generated)
 ```
 
@@ -79,7 +82,7 @@ The pattern: `index.mdx` resolves to its parent directory path, other files get 
 
 ### Auto-Import (No Explicit Imports Needed!)
 
-Components in `components/` or `pages/` are **automatically available** in MDX files without importing them. Just use them:
+Components in `src/` or `pages/` are **automatically available** in MDX files without importing them. Just use them:
 
 ```mdx
 # My Page
@@ -92,19 +95,51 @@ Components in `components/` or `pages/` are **automatically available** in MDX f
 The build automatically injects the necessary imports.
 
 **Important:** The component name must match the filename:
-- `components/Button.jsx` → `<Button />` works
-- `components/ui/Card.tsx` → `<Card />` works (subdirectories are fine)
+- `src/Button.jsx` → `<Button />` works
+- `src/ui/Card.tsx` → `<Card />` works (subdirectories are fine)
 - `pages/Counter.tsx` → `<Counter />` works (co-located components)
 - But a component named `Button` defined inside `helpers.jsx` will NOT auto-import
 
-If two files have the same basename (e.g., `components/Button.jsx` and `pages/Button.jsx`), only one will be available.
+If two files have the same basename (e.g., `src/Button.jsx` and `pages/Button.jsx`), only one will be available.
+
+### Component Children Patterns
+
+Components can accept children in different ways:
+
+**Self-closing (no children):**
+```mdx
+<Counter />
+<Chart data={myData} />
+```
+
+**Inline children** (text on the same line):
+```mdx
+<Button>Click me</Button>
+<Highlight>important text</Highlight>
+```
+
+**Block children** (markdown with blank lines):
+```mdx
+<Callout type="warning">
+
+## Warning Title
+
+This is a **markdown** paragraph inside the component.
+
+- List item one
+- List item two
+
+</Callout>
+```
+
+The blank lines after the opening tag and before the closing tag are required for block-level markdown to be parsed correctly.
 
 ### Styling with Tailwind
 
 Components can use Tailwind CSS utility classes - they're globally available:
 
 ```jsx
-// components/Card.jsx
+// src/Card.jsx
 export function Card({ children }) {
   return (
     <div className="p-4 rounded-lg shadow-md bg-white hover:shadow-lg transition-shadow">
@@ -116,10 +151,10 @@ export function Card({ children }) {
 
 ### PageWrapper Component
 
-If you create a `components/PageWrapper.jsx`, it will **automatically wrap all page content**. Useful for layouts:
+If you create a `src/PageWrapper.jsx`, it will **automatically wrap all page content**. Useful for layouts:
 
 ```jsx
-// components/PageWrapper.jsx
+// src/PageWrapper.jsx
 export default function PageWrapper({ children }) {
   return (
     <div className="max-w-2xl mx-auto p-8">
@@ -133,7 +168,7 @@ export default function PageWrapper({ children }) {
 
 ### Markdown Components
 
-Components in `components/markdown/` override default Markdown element rendering:
+Components in `src/markdown/` override default Markdown element rendering:
 
 - `Heading.tsx` - Custom heading rendering (h1-h6)
 - `CodeBlock.tsx` - Custom code block rendering with syntax highlighting
@@ -148,21 +183,21 @@ Files in `public/` are copied directly to the build output. Reference them with 
 
 ## Theming
 
-Scratch uses custom prose styling defined in `tailwind.css` for markdown content. The default template includes:
+Scratch uses custom prose styling defined in `src/tailwind.css` for markdown content. The default template includes:
 
 - `scratch-prose` class for typography styling
 - Dark mode support (follows system preference via `.dark` class)
 
 ### Customizing the Theme
 
-The `tailwind.css` file contains all prose styling for markdown elements. You can customize:
+The `src/tailwind.css` file contains all prose styling for markdown elements. You can customize:
 
 - Headings (h1-h4), paragraphs, links, lists
 - Code blocks and inline code
 - Blockquotes, tables, images
 - Light and dark mode colors
 
-Simply edit the `.scratch-prose` rules in `tailwind.css` to match your design.
+Simply edit the `.scratch-prose` rules in `src/tailwind.css` to match your design.
 
 ### Dark Mode
 

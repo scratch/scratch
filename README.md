@@ -19,7 +19,7 @@ scratch dev
 
 ## Why Scratch?
 
-Scratch was designed for **collaborative writing with coding agents** like [Claude Code](https://www.claude.com/product/claude-code). Use your favorite editor to write in [Markdown](https://daringfireball.net/projects/markdown/) and embed React components when it's easier to express yourselve with code.
+Scratch was designed for **collaborative writing with coding agents** like [Claude Code](https://www.claude.com/product/claude-code). Use your favorite editor to write in [Markdown](https://daringfireball.net/projects/markdown/) and embed React components when it's easier to express yourself with code.
 
 Scratch uses an opinionated project structure and requires **no boilerplate or configuration**: just create a project, run the dev server with `scratch dev`, and start writing.
 
@@ -27,21 +27,21 @@ When you're ready, `scratch build` your project into a static website that can b
 
 ## No Boilerplate
 
-Scratch uses an opionated project structure to avoid the need for boilerplate and configuration. A simple Scratch project (created with `scratch create`) looks like this:
+Scratch uses an opinionated project structure to avoid the need for boilerplate and configuration. A simple Scratch project (created with `scratch create`) looks like this:
 
 ```
-mysite/
-├── pages/
-│   ├── index.mdx
-│   ├── Counter.tsx
-|   └── examples/
-|       ├── index.md
-|       ├── markdown.md
-|       ├── todolist-spec.mdx
-|       └── todolist.tsx
-└── public/
-    ├── logo.png
-    └── favicon.ico
+    mysite/
+    ├── pages/
+    │   ├── index.mdx
+    │   ├── Counter.tsx
+    │   └── examples/
+    │       ├── index.md
+    │       ├── markdown.md
+    │       ├── todolist-spec.mdx
+    │       └── TodoList.tsx
+    └── public/
+        ├── logo.png
+        └── favicon.svg
 ```
 
 Use `scratch build` to compile this project into a [static website](https://scratch.dev/template).
@@ -51,75 +51,50 @@ Borrowing heavily from [Tailwind Typography](https://github.com/tailwindlabs/tai
 You can change styles and customize the page wrapper component by including the `src/` directory when you run `scratch create`:
 
 ```
-mysite/
-├── pages/
-├── public/
-└── src/
-    ├── markdown/
-    ├── PageWrapper.tsx
-    └── tailwind.css
+    mysite/
+    ├── pages/
+    ├── public/
+    └── src/
+        ├── markdown/
+        ├── PageWrapper.tsx
+        └── tailwind.css
 ```
 
-Component files and js/ts libraries can live anywhere in `pages/` and `src/`. They are auto-detected by Scratch and don't need to be explicitly importated in your .mdx files as long as the filename matches the component name.
+Component files and js/ts libraries can live anywhere in `pages/` and `src/`. They are auto-detected by Scratch and don't need to be explicitly imported in your .mdx files as long as the filename matches the component name.
 
-Scratch installs build dependencies You can add third-party dependencies by including a `package.json` file in your project root.
+Scratch installs build dependencies automatically. You can add additional third-party dependencies by including a `package.json` file in your project root.
 
 ## Built on Bun
 
 Scratch is built on [Bun](https://bun.com/) for lightning-fast builds, development with HMR, and native typescript support. It uses the [Tailwind CSS](https://tailwindcss.com/) framework to make component styling easy. 
 
-Scratch compiles Javascript (.js), Typescript (.ts), JSX (.jsx), TSX (.tsx), Markdown (.md), and MDX (.mdx
+Scratch compiles Javascript (.js), Typescript (.ts), JSX (.jsx), TSX (.tsx), Markdown (.md), and MDX (.mdx).
 
 ## Commands
 
-### `scratch create [path]`
-
-Create a new Scratch project. When run interactively, prompts for which components to include. Use flags to skip prompts.
-
-**Options:**
-- `--src` / `--no-src` - Include or exclude the `src/` directory (default: include)
-- `--examples` / `--no-examples` - Include or exclude example pages (default: include)
-- `--package` / `--no-package` - Include or exclude `package.json` (default: exclude)
-- `--minimal` - Shorthand for `--no-src --no-examples --no-package`
-- `--full` - Shorthand for `--src --examples --package`
-
 ```bash
-scratch create mysite           # Interactive prompts
-scratch create mysite --full    # Include everything
-scratch create mysite --minimal # Minimal project (pages only)
+# Create a new project
+scratch create my-site    # interactive
+scratch create --minimal  # omit src/ and page examples
+scratch create --full     # include src/, examples, and package.json
+
+# Start dev server with hot module reloading
+scratch dev
+
+# Build for production
+scratch build
+scratch build --ssg false    # disable static site generation
+scratch build --development  # unminified, with source maps
+
+# Preview production build locally
+scratch preview
+
+# Remove build artifacts
+scratch clean
+
+# Update scratch to latest version
+scratch update
 ```
-
-### `scratch dev`
-
-Start the development server with hot module replacement. Watches for file changes and automatically rebuilds. Opens your browser to the local server.
-
-```bash
-scratch dev mysite
-```
-
-### `scratch build`
-
-Build your project for production. Compiles all MDX/MD files to static HTML, bundles JavaScript, and processes Tailwind CSS.
-
-**Options:**
-- `--ssg [true/false]` - Enable static site generation to pre-render pages. (default: true)
-- `--development` - Build in development mode (unminified, with source maps)
-
-### `scratch preview`
-
-Preview the production build locally. Serves the `dist/` directory on a local server.
-
-```bash
-scratch preview mysite
-```
-
-### `scratch clean`
-
-Remove build artifacts (`dist/` and `.scratch-build-cache/` directories).xs
-
-### `scratch update`
-
-Update the scratch executable to the latest version
 
 ## License
 
