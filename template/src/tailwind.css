@@ -211,7 +211,7 @@
 }
 
 .scratch-prose :where(code):not(:where([class~='not-prose'] *)) {
-  @apply text-gray-900 font-medium text-sm bg-gray-100 px-1.5 py-0.5 rounded;
+  @apply text-gray-900 font-medium text-[0.9em] bg-gray-100 px-1.5 py-0.5 rounded;
 }
 
 .scratch-prose :where(a code):not(:where([class~='not-prose'] *)),
@@ -260,11 +260,11 @@
 
 .scratch-prose
   :where(thead th:first-child):not(:where([class~='not-prose'] *)) {
-  @apply pl-0;
+  @apply pl-4;
 }
 
 .scratch-prose :where(thead th:last-child):not(:where([class~='not-prose'] *)) {
-  @apply pr-0;
+  @apply pr-4;
 }
 
 .scratch-prose :where(tbody tr):not(:where([class~='not-prose'] *)) {
@@ -281,11 +281,11 @@
 
 .scratch-prose
   :where(tbody td:first-child):not(:where([class~='not-prose'] *)) {
-  @apply pl-0;
+  @apply pl-4;
 }
 
 .scratch-prose :where(tbody td:last-child):not(:where([class~='not-prose'] *)) {
-  @apply pr-0;
+  @apply pr-4;
 }
 
 .scratch-prose :where(tfoot):not(:where([class~='not-prose'] *)) {
@@ -294,6 +294,15 @@
 
 .scratch-prose :where(tfoot td):not(:where([class~='not-prose'] *)) {
   @apply align-top py-3 pr-3 pl-0;
+}
+
+.scratch-prose
+  :where(tfoot td:first-child):not(:where([class~='not-prose'] *)) {
+  @apply pl-4;
+}
+
+.scratch-prose :where(tfoot td:last-child):not(:where([class~='not-prose'] *)) {
+  @apply pr-4;
 }
 
 .scratch-prose :where(figure):not(:where([class~='not-prose'] *)) {
