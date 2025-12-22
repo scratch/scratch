@@ -186,6 +186,11 @@ export class BuildContext {
 
     // Clear materialized paths cache
     this.materializedPaths.clear();
+
+    // Clear component and entry caches so new files are detected on rebuild
+    this.entries = undefined;
+    this.componentMap = undefined;
+    this.componentConflicts = undefined;
   }
 
   /**
