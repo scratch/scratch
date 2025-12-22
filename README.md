@@ -53,11 +53,7 @@ You can change styles and customize the page wrapper component by including the 
 ```
 mysite/
 ├── pages/
-│   ├── index.mdx
-|   └── Counter.tsx
 ├── public/
-|   ├── logo.png
-|   └── favicon.ico
 └── src/
     ├── markdown/
     ├── PageWrapper.tsx
