@@ -102,6 +102,38 @@ The build automatically injects the necessary imports.
 
 If two files have the same basename (e.g., `src/Button.jsx` and `pages/Button.jsx`), only one will be available.
 
+### Component Children Patterns
+
+Components can accept children in different ways:
+
+**Self-closing (no children):**
+```mdx
+<Counter />
+<Chart data={myData} />
+```
+
+**Inline children** (text on the same line):
+```mdx
+<Button>Click me</Button>
+<Highlight>important text</Highlight>
+```
+
+**Block children** (markdown with blank lines):
+```mdx
+<Callout type="warning">
+
+## Warning Title
+
+This is a **markdown** paragraph inside the component.
+
+- List item one
+- List item two
+
+</Callout>
+```
+
+The blank lines after the opening tag and before the closing tag are required for block-level markdown to be parsed correctly.
+
 ### Styling with Tailwind
 
 Components can use Tailwind CSS utility classes - they're globally available:
