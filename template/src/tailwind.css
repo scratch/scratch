@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /*
  * Prose styling for markdown content
@@ -11,270 +11,309 @@
   @apply text-gray-700 leading-7;
 }
 
-.scratch-prose :where(p):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(p):not(:where([class~='not-prose'] *)) {
   @apply my-5;
 }
 
-.scratch-prose :where([class~="lead"]):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where([class~='lead']):not(:where([class~='not-prose'] *)) {
   @apply text-xl text-gray-600 leading-8;
 }
 
-.scratch-prose :where(a):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(a):not(:where([class~='not-prose'] *)) {
   @apply text-gray-900 underline underline-offset-2 decoration-gray-300 hover:decoration-gray-500 font-medium;
 }
 
-.scratch-prose :where(strong):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(strong):not(:where([class~='not-prose'] *)) {
   @apply text-gray-900 font-semibold;
 }
 
-.scratch-prose :where(a strong):not(:where([class~="not-prose"] *)),
-.scratch-prose :where(blockquote strong):not(:where([class~="not-prose"] *)),
-.scratch-prose :where(thead th strong):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(a strong):not(:where([class~='not-prose'] *)),
+.scratch-prose :where(blockquote strong):not(:where([class~='not-prose'] *)),
+.scratch-prose :where(thead th strong):not(:where([class~='not-prose'] *)) {
   @apply text-inherit;
 }
 
-.scratch-prose :where(ol):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(ol):not(:where([class~='not-prose'] *)) {
   @apply list-decimal my-5 pl-6;
 }
 
-.scratch-prose :where(ol[type="A"]):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(ol[type='A']):not(:where([class~='not-prose'] *)) {
   @apply list-[upper-alpha];
 }
 
-.scratch-prose :where(ol[type="a"]):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(ol[type='a']):not(:where([class~='not-prose'] *)) {
   @apply list-[lower-alpha];
 }
 
-.scratch-prose :where(ol[type="I"]):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(ol[type='I']):not(:where([class~='not-prose'] *)) {
   @apply list-[upper-roman];
 }
 
-.scratch-prose :where(ol[type="i"]):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(ol[type='i']):not(:where([class~='not-prose'] *)) {
   @apply list-[lower-roman];
 }
 
-.scratch-prose :where(ol[type="1"]):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(ol[type='1']):not(:where([class~='not-prose'] *)) {
   @apply list-decimal;
 }
 
-.scratch-prose :where(ul):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(ul):not(:where([class~='not-prose'] *)) {
   @apply list-disc my-5 pl-6;
 }
 
-.scratch-prose :where(ol > li):not(:where([class~="not-prose"] *))::marker,
-.scratch-prose :where(ul > li):not(:where([class~="not-prose"] *))::marker {
+.scratch-prose :where(ol > li):not(:where([class~='not-prose'] *))::marker,
+.scratch-prose :where(ul > li):not(:where([class~='not-prose'] *))::marker {
   @apply text-gray-400;
 }
 
-.scratch-prose :where(li):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(li):not(:where([class~='not-prose'] *)) {
   @apply my-2;
 }
 
-.scratch-prose :where(ol > li):not(:where([class~="not-prose"] *)),
-.scratch-prose :where(ul > li):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(ol > li):not(:where([class~='not-prose'] *)),
+.scratch-prose :where(ul > li):not(:where([class~='not-prose'] *)) {
   @apply pl-1.5;
 }
 
-.scratch-prose :where(.scratch-prose > ul > li p):not(:where([class~="not-prose"] *)) {
+.scratch-prose
+  :where(.scratch-prose > ul > li p):not(:where([class~='not-prose'] *)) {
   @apply my-3;
 }
 
-.scratch-prose :where(.scratch-prose > ul > li > p:first-child):not(:where([class~="not-prose"] *)) {
+.scratch-prose
+  :where(.scratch-prose > ul > li > p:first-child):not(
+    :where([class~='not-prose'] *)
+  ) {
   @apply mt-0;
 }
 
-.scratch-prose :where(.scratch-prose > ul > li > p:last-child):not(:where([class~="not-prose"] *)) {
+.scratch-prose
+  :where(.scratch-prose > ul > li > p:last-child):not(
+    :where([class~='not-prose'] *)
+  ) {
   @apply mb-0;
 }
 
-.scratch-prose :where(.scratch-prose > ol > li > p:first-child):not(:where([class~="not-prose"] *)) {
+.scratch-prose
+  :where(.scratch-prose > ol > li > p:first-child):not(
+    :where([class~='not-prose'] *)
+  ) {
   @apply mt-0;
 }
 
-.scratch-prose :where(.scratch-prose > ol > li > p:last-child):not(:where([class~="not-prose"] *)) {
+.scratch-prose
+  :where(.scratch-prose > ol > li > p:last-child):not(
+    :where([class~='not-prose'] *)
+  ) {
   @apply mb-0;
 }
 
-.scratch-prose :where(ul ul, ul ol, ol ul, ol ol):not(:where([class~="not-prose"] *)) {
+.scratch-prose
+  :where(ul ul, ul ol, ol ul, ol ol):not(:where([class~='not-prose'] *)) {
   @apply my-3;
 }
 
 /* Task lists (checkboxes) - remove bullet points */
-.scratch-prose :where(ul.contains-task-list):not(:where([class~="not-prose"] *)) {
+.scratch-prose
+  :where(ul.contains-task-list):not(:where([class~='not-prose'] *)) {
   @apply list-none pl-0;
 }
 
-.scratch-prose :where(li.task-list-item):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(li.task-list-item):not(:where([class~='not-prose'] *)) {
   @apply pl-0;
 }
 
-.scratch-prose :where(li.task-list-item > input[type="checkbox"]):not(:where([class~="not-prose"] *)) {
+.scratch-prose
+  :where(li.task-list-item > input[type='checkbox']):not(
+    :where([class~='not-prose'] *)
+  ) {
   @apply mr-2 align-middle;
 }
 
-.scratch-prose :where(dl):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(dl):not(:where([class~='not-prose'] *)) {
   @apply my-5;
 }
 
-.scratch-prose :where(dt):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(dt):not(:where([class~='not-prose'] *)) {
   @apply text-gray-900 font-semibold mt-5;
 }
 
-.scratch-prose :where(dd):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(dd):not(:where([class~='not-prose'] *)) {
   @apply mt-2 pl-6;
 }
 
-.scratch-prose :where(hr):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(hr):not(:where([class~='not-prose'] *)) {
   @apply border-gray-200 my-12;
 }
 
-.scratch-prose :where(blockquote):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(blockquote):not(:where([class~='not-prose'] *)) {
   @apply border-l-4 border-gray-200 pl-6 my-6 text-gray-900 font-normal italic;
 }
 
-.scratch-prose :where(blockquote p:first-of-type):not(:where([class~="not-prose"] *))::before {
+.scratch-prose
+  :where(blockquote p:first-of-type):not(
+    :where([class~='not-prose'] *)
+  )::before {
   content: none;
 }
 
-.scratch-prose :where(blockquote p:last-of-type):not(:where([class~="not-prose"] *))::after {
+.scratch-prose
+  :where(blockquote p:last-of-type):not(:where([class~='not-prose'] *))::after {
   content: none;
 }
 
-.scratch-prose :where(h1):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(h1):not(:where([class~='not-prose'] *)) {
   @apply text-gray-900 font-extrabold text-4xl mt-0 mb-6 leading-tight;
 }
 
-.scratch-prose :where(h1 strong):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(h1 strong):not(:where([class~='not-prose'] *)) {
   @apply font-black text-inherit;
 }
 
-.scratch-prose :where(h2):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(h2):not(:where([class~='not-prose'] *)) {
   @apply text-gray-900 font-bold text-2xl mt-12 mb-4 leading-snug;
 }
 
-.scratch-prose :where(h2 strong):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(h2 strong):not(:where([class~='not-prose'] *)) {
   @apply font-extrabold text-inherit;
 }
 
-.scratch-prose :where(h3):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(h3):not(:where([class~='not-prose'] *)) {
   @apply text-gray-900 font-semibold text-xl mt-8 mb-3 leading-snug;
 }
 
-.scratch-prose :where(h3 strong):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(h3 strong):not(:where([class~='not-prose'] *)) {
   @apply font-bold text-inherit;
 }
 
-.scratch-prose :where(h4):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(h4):not(:where([class~='not-prose'] *)) {
   @apply text-gray-900 font-semibold mt-6 mb-2 leading-normal;
 }
 
-.scratch-prose :where(h4 strong):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(h4 strong):not(:where([class~='not-prose'] *)) {
   @apply font-bold text-inherit;
 }
 
-.scratch-prose :where(img):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(img):not(:where([class~='not-prose'] *)) {
   @apply my-8;
 }
 
-.scratch-prose :where(picture):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(picture):not(:where([class~='not-prose'] *)) {
   @apply block my-8;
 }
 
-.scratch-prose :where(video):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(video):not(:where([class~='not-prose'] *)) {
   @apply my-8;
 }
 
-.scratch-prose :where(kbd):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(kbd):not(:where([class~='not-prose'] *)) {
   @apply text-gray-900 font-semibold text-sm bg-gray-100 rounded px-1.5 py-0.5 border border-gray-300 shadow-sm;
 }
 
-.scratch-prose :where(code):not(:where([class~="not-prose"] *)) {
-  @apply text-gray-900 font-medium text-sm bg-gray-100 px-1.5 py-0.5 rounded;
+.scratch-prose :where(code):not(:where([class~='not-prose'] *)) {
+  @apply text-gray-900 font-medium text-[0.9em] bg-gray-100 px-1.5 py-0.5 rounded;
 }
 
-.scratch-prose :where(a code):not(:where([class~="not-prose"] *)),
-.scratch-prose :where(h1 code):not(:where([class~="not-prose"] *)),
-.scratch-prose :where(h2 code):not(:where([class~="not-prose"] *)),
-.scratch-prose :where(h3 code):not(:where([class~="not-prose"] *)),
-.scratch-prose :where(h4 code):not(:where([class~="not-prose"] *)),
-.scratch-prose :where(blockquote code):not(:where([class~="not-prose"] *)),
-.scratch-prose :where(thead th code):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(a code):not(:where([class~='not-prose'] *)),
+.scratch-prose :where(h1 code):not(:where([class~='not-prose'] *)),
+.scratch-prose :where(h2 code):not(:where([class~='not-prose'] *)),
+.scratch-prose :where(h3 code):not(:where([class~='not-prose'] *)),
+.scratch-prose :where(h4 code):not(:where([class~='not-prose'] *)),
+.scratch-prose :where(blockquote code):not(:where([class~='not-prose'] *)),
+.scratch-prose :where(thead th code):not(:where([class~='not-prose'] *)) {
   @apply text-inherit;
 }
 
-.scratch-prose :where(pre):not(:where([class~="not-prose"] *)) {
-  @apply text-gray-200 bg-gray-800 rounded-lg overflow-x-auto py-3 px-4 my-5 text-sm leading-relaxed;
+.scratch-prose :where(pre):not(:where([class~='not-prose'] *)) {
+  @apply text-gray-800 bg-white rounded-lg overflow-x-auto py-3 px-4 my-5 text-sm leading-relaxed;
 }
 
-.scratch-prose :where(pre code):not(:where([class~="not-prose"] *)) {
+/* Add extra top margin to code blocks after paragraphs */
+.scratch-prose :where(p + div > pre):not(:where([class~='not-prose'] *)),
+.scratch-prose :where(p + pre):not(:where([class~='not-prose'] *)) {
+  @apply mt-6;
+}
+
+.scratch-prose :where(pre code):not(:where([class~='not-prose'] *)) {
   @apply bg-transparent border-0 rounded-none p-0 font-normal text-inherit text-inherit;
 }
 
-.scratch-prose :where(pre code):not(:where([class~="not-prose"] *))::before {
+.scratch-prose :where(pre code):not(:where([class~='not-prose'] *))::before {
   content: none;
 }
 
-.scratch-prose :where(pre code):not(:where([class~="not-prose"] *))::after {
+.scratch-prose :where(pre code):not(:where([class~='not-prose'] *))::after {
   content: none;
 }
 
-.scratch-prose :where(table):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(table):not(:where([class~='not-prose'] *)) {
   @apply w-full table-auto text-left text-sm my-8;
 }
 
-.scratch-prose :where(thead):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(thead):not(:where([class~='not-prose'] *)) {
   @apply border-b border-gray-300;
 }
 
-.scratch-prose :where(thead th):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(thead th):not(:where([class~='not-prose'] *)) {
   @apply text-gray-900 font-semibold align-bottom pb-3 pr-3 pl-0;
 }
 
-.scratch-prose :where(thead th:first-child):not(:where([class~="not-prose"] *)) {
-  @apply pl-0;
+.scratch-prose
+  :where(thead th:first-child):not(:where([class~='not-prose'] *)) {
+  @apply pl-4;
 }
 
-.scratch-prose :where(thead th:last-child):not(:where([class~="not-prose"] *)) {
-  @apply pr-0;
+.scratch-prose :where(thead th:last-child):not(:where([class~='not-prose'] *)) {
+  @apply pr-4;
 }
 
-.scratch-prose :where(tbody tr):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(tbody tr):not(:where([class~='not-prose'] *)) {
   @apply border-b border-gray-200;
 }
 
-.scratch-prose :where(tbody tr:last-child):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(tbody tr:last-child):not(:where([class~='not-prose'] *)) {
   @apply border-b-0;
 }
 
-.scratch-prose :where(tbody td):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(tbody td):not(:where([class~='not-prose'] *)) {
   @apply align-baseline py-3 pr-3 pl-0;
 }
 
-.scratch-prose :where(tbody td:first-child):not(:where([class~="not-prose"] *)) {
-  @apply pl-0;
+.scratch-prose
+  :where(tbody td:first-child):not(:where([class~='not-prose'] *)) {
+  @apply pl-4;
 }
 
-.scratch-prose :where(tbody td:last-child):not(:where([class~="not-prose"] *)) {
-  @apply pr-0;
+.scratch-prose :where(tbody td:last-child):not(:where([class~='not-prose'] *)) {
+  @apply pr-4;
 }
 
-.scratch-prose :where(tfoot):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(tfoot):not(:where([class~='not-prose'] *)) {
   @apply border-t border-gray-300;
 }
 
-.scratch-prose :where(tfoot td):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(tfoot td):not(:where([class~='not-prose'] *)) {
   @apply align-top py-3 pr-3 pl-0;
 }
 
-.scratch-prose :where(figure):not(:where([class~="not-prose"] *)) {
+.scratch-prose
+  :where(tfoot td:first-child):not(:where([class~='not-prose'] *)) {
+  @apply pl-4;
+}
+
+.scratch-prose :where(tfoot td:last-child):not(:where([class~='not-prose'] *)) {
+  @apply pr-4;
+}
+
+.scratch-prose :where(figure):not(:where([class~='not-prose'] *)) {
   @apply my-8;
 }
 
-.scratch-prose :where(figure > *):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(figure > *):not(:where([class~='not-prose'] *)) {
   @apply my-0;
 }
 
-.scratch-prose :where(figcaption):not(:where([class~="not-prose"] *)) {
+.scratch-prose :where(figcaption):not(:where([class~='not-prose'] *)) {
   @apply text-gray-500 text-sm mt-3;
 }
 
@@ -283,81 +322,95 @@
   @apply text-gray-300;
 }
 
-.dark .scratch-prose :where([class~="lead"]):not(:where([class~="not-prose"] *)) {
+.dark
+  .scratch-prose
+  :where([class~='lead']):not(:where([class~='not-prose'] *)) {
   @apply text-gray-400;
 }
 
-.dark .scratch-prose :where(a):not(:where([class~="not-prose"] *)) {
+.dark .scratch-prose :where(a):not(:where([class~='not-prose'] *)) {
   @apply text-white decoration-gray-600 hover:decoration-gray-400;
 }
 
-.dark .scratch-prose :where(strong):not(:where([class~="not-prose"] *)) {
+.dark .scratch-prose :where(strong):not(:where([class~='not-prose'] *)) {
   @apply text-white;
 }
 
-.dark .scratch-prose :where(ol > li):not(:where([class~="not-prose"] *))::marker,
-.dark .scratch-prose :where(ul > li):not(:where([class~="not-prose"] *))::marker {
+.dark
+  .scratch-prose
+  :where(ol > li):not(:where([class~='not-prose'] *))::marker,
+.dark
+  .scratch-prose
+  :where(ul > li):not(:where([class~='not-prose'] *))::marker {
   @apply text-gray-500;
 }
 
-.dark .scratch-prose :where(dt):not(:where([class~="not-prose"] *)) {
+.dark .scratch-prose :where(dt):not(:where([class~='not-prose'] *)) {
   @apply text-white;
 }
 
-.dark .scratch-prose :where(hr):not(:where([class~="not-prose"] *)) {
+.dark .scratch-prose :where(hr):not(:where([class~='not-prose'] *)) {
   @apply border-gray-700;
 }
 
-.dark .scratch-prose :where(blockquote):not(:where([class~="not-prose"] *)) {
+.dark .scratch-prose :where(blockquote):not(:where([class~='not-prose'] *)) {
   @apply border-gray-700 text-gray-100;
 }
 
-.dark .scratch-prose :where(h1):not(:where([class~="not-prose"] *)),
-.dark .scratch-prose :where(h2):not(:where([class~="not-prose"] *)),
-.dark .scratch-prose :where(h3):not(:where([class~="not-prose"] *)),
-.dark .scratch-prose :where(h4):not(:where([class~="not-prose"] *)) {
+.dark .scratch-prose :where(h1):not(:where([class~='not-prose'] *)),
+.dark .scratch-prose :where(h2):not(:where([class~='not-prose'] *)),
+.dark .scratch-prose :where(h3):not(:where([class~='not-prose'] *)),
+.dark .scratch-prose :where(h4):not(:where([class~='not-prose'] *)) {
   @apply text-white;
 }
 
-.dark .scratch-prose :where(kbd):not(:where([class~="not-prose"] *)) {
+.dark .scratch-prose :where(kbd):not(:where([class~='not-prose'] *)) {
   @apply text-white bg-gray-700 border-gray-600;
 }
 
-.dark .scratch-prose :where(code):not(:where([class~="not-prose"] *)) {
+.dark .scratch-prose :where(code):not(:where([class~='not-prose'] *)) {
   @apply text-gray-100 bg-gray-800;
 }
 
-.dark .scratch-prose :where(pre):not(:where([class~="not-prose"] *)) {
+.dark .scratch-prose :where(pre):not(:where([class~='not-prose'] *)) {
   @apply bg-gray-950 text-gray-200;
 }
 
-.dark .scratch-prose :where(thead):not(:where([class~="not-prose"] *)) {
+.dark .scratch-prose :where(thead):not(:where([class~='not-prose'] *)) {
   @apply border-gray-600;
 }
 
-.dark .scratch-prose :where(thead th):not(:where([class~="not-prose"] *)) {
+.dark .scratch-prose :where(thead th):not(:where([class~='not-prose'] *)) {
   @apply text-white;
 }
 
-.dark .scratch-prose :where(tbody tr):not(:where([class~="not-prose"] *)) {
+.dark .scratch-prose :where(tbody tr):not(:where([class~='not-prose'] *)) {
   @apply border-gray-700;
 }
 
-.dark .scratch-prose :where(tfoot):not(:where([class~="not-prose"] *)) {
+.dark .scratch-prose :where(tfoot):not(:where([class~='not-prose'] *)) {
   @apply border-gray-600;
 }
 
-.dark .scratch-prose :where(figcaption):not(:where([class~="not-prose"] *)) {
+.dark .scratch-prose :where(figcaption):not(:where([class~='not-prose'] *)) {
   @apply text-gray-400;
 }
 
 /* Custom interactive elements */
 .copy-button {
   @apply absolute top-2 right-2 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity;
-  @apply text-gray-400 hover:text-gray-200 bg-gray-800;
+  @apply text-gray-500 hover:text-gray-700 bg-gray-200;
 }
 .dark .copy-button {
-  @apply text-gray-500 hover:text-gray-300 bg-gray-700;
+  @apply text-gray-400 hover:text-gray-200 bg-gray-700;
+}
+
+/* Shiki dual theme support - switch to dark theme colors in dark mode */
+.dark .shiki {
+  background-color: var(--shiki-dark-bg) !important;
+}
+.dark .shiki span {
+  color: var(--shiki-dark) !important;
 }
 
 .heading-anchor {

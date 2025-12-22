@@ -17,7 +17,7 @@ let cachedHighlighter: Highlighter | null = null;
 async function getShikiHighlighter(): Promise<Highlighter> {
   if (!cachedHighlighter) {
     cachedHighlighter = await createHighlighter({
-      themes: ['github-dark'],
+      themes: ['github-light', 'github-dark'],
       langs: ['javascript', 'typescript', 'jsx', 'tsx', 'css', 'html', 'json', 'bash', 'shell', 'python', 'markdown'],
     });
   }
@@ -119,7 +119,7 @@ export async function getBunBuildConfig(options: BunBuildConfigOptions): Promise
   // Build rehype plugins list
   const highlighter = await getShikiHighlighter();
   const rehypePlugins: any[] = [
-    [rehypeShikiFromHighlighter, highlighter, { theme: 'github-dark' }],
+    [rehypeShikiFromHighlighter, highlighter, { themes: { light: 'github-light', dark: 'github-dark' } }],
   ];
   if (!ctx.options.strict) {
     rehypePlugins.push(createRehypeFootnotesPlugin());
@@ -183,7 +183,7 @@ export async function getServerBunBuildConfig(options: BunBuildConfigOptions): P
   // Build rehype plugins list
   const highlighter = await getShikiHighlighter();
   const rehypePlugins: any[] = [
-    [rehypeShikiFromHighlighter, highlighter, { theme: 'github-dark' }],
+    [rehypeShikiFromHighlighter, highlighter, { themes: { light: 'github-light', dark: 'github-dark' } }],
   ];
   if (!ctx.options.strict) {
     rehypePlugins.push(createRehypeFootnotesPlugin());
