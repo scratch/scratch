@@ -380,11 +380,36 @@ async function createServerEntries(): Promise<Record<string, string>> {
 }
 
 /**
+ * Detect favicons in the public directory and return appropriate link tags
+ */
+async function getFaviconLinkTags(): Promise<string> {
+  const ctx = getBuildContext();
+  const links: string[] = [];
+
+  // Check for SVG favicon (preferred for modern browsers)
+  const svgFaviconPath = path.join(ctx.staticDir, 'favicon.svg');
+  if (await fs.exists(svgFaviconPath)) {
+    links.push('<link rel="icon" type="image/svg+xml" href="/favicon.svg" />');
+  }
+
+  // Check for ICO favicon (fallback for older browsers)
+  const icoFaviconPath = path.join(ctx.staticDir, 'favicon.ico');
+  if (await fs.exists(icoFaviconPath)) {
+    links.push('<link rel="icon" href="/favicon.ico" />');
+  }
+
+  return links.join('\n    ');
+}
+
+/**
  * Create HTML entry files that reference the compiled JS bundles
  */
 async function createHtmlEntries(ssg: boolean = false) {
   const ctx = getBuildContext();
   const entries = await ctx.getEntries();
+
+  // Detect favicons once for all entries
+  const faviconLinks = await getFaviconLinkTags();
 
   // Build HTML for each entry
   const ssgFlagScript = '<script rel="modulepreload" type="module">window.__scratch_ssg = true;</script>';
@@ -406,6 +431,7 @@ async function createHtmlEntries(ssg: boolean = false) {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="/tailwind.css" />
+    ${faviconLinks}
     ${ssg ? ssgFlagScript : ''}
   </head>
   <body>
