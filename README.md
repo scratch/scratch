@@ -64,7 +64,7 @@ Component files and js/ts libraries can live anywhere in `pages/` and `src/`. Th
 
 Scratch installs build dependencies You can add third-party dependencies by including a `package.json` file in your project root.
 
-## Built with [Bun](https://bun.com/)
+## Built on Bun
 
 Scratch is built on [Bun](https://bun.com/) for lightning-fast builds, development with HMR, and native typescript support. It uses the [Tailwind CSS](https://tailwindcss.com/) framework to make component styling easy. 
 
