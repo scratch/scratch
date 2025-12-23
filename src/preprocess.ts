@@ -2,7 +2,6 @@ import path from "path";
 import type { Plugin } from "unified";
 import { visit } from "unist-util-visit";
 import { is } from "unist-util-is";
-import { parse } from "acorn";
 import type { Node, Root } from "mdast";
 import log from "./logger";
 
@@ -110,6 +109,9 @@ export const createPreprocessMdxPlugin = (
       }
 
       // create import statements for missing components
+      // Note: We don't attach pre-parsed estree data because Bun.build() throws
+      // "Bundle failed" when multiple imports have estree attached. MDX will
+      // re-parse the value string automatically.
       const newImportNodes: MdxjsEsmNode[] = toInject.map((name) => {
         const absPath = componentMap[name]!; // non-null assertion – guarded above
         let relPath = path.relative(mdxFileDir, absPath).replace(/\\/g, "/");
@@ -119,14 +121,9 @@ export const createPreprocessMdxPlugin = (
 
         const stmt = `import ${name} from '${relPath}';`;
         log.debug(`  - injecting import from ${relPath}`);
-        const estree = parse(stmt, {
-          ecmaVersion: "latest",
-          sourceType: "module",
-        });
         return {
           type: "mdxjsEsm",
           value: stmt,
-          data: { estree },
         };
       });
 
