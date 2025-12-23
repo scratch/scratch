@@ -23,7 +23,8 @@
     "release": "bun scripts/release.ts",
     "release:patch": "bun scripts/release.ts patch",
     "release:minor": "bun scripts/release.ts minor",
-    "release:major": "bun scripts/release.ts major"
+    "release:major": "bun scripts/release.ts major",
+    "pr": "bun scripts/pr.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
