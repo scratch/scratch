@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { createHash } from 'crypto';
 import { getBuildContext } from '../context';
 import { getBunBuildConfig, getServerBunBuildConfig } from '../buncfg';
 import { render } from '../util';
@@ -120,14 +121,23 @@ async function doBuild(options: BuildOptions = {}) {
 
   log.debug(`Building with Bun${ssg ? ' (SSG)' : ''}...`);
 
+  // Timing helper
+  const timings: Record<string, number> = {};
+  const time = async <T>(name: string, fn: () => Promise<T>): Promise<T> => {
+    const start = performance.now();
+    const result = await fn();
+    timings[name] = performance.now() - start;
+    return result;
+  };
+
   // Reset preprocessing state from any previous builds
   resetPreprocessingState();
 
   // Step 1: Ensure build dependencies are installed
-  await ctx.ensureBuildDependencies();
+  await time('1. Dependencies', () => ctx.ensureBuildDependencies());
 
   // Step 2: Reset directories (preserves node_modules)
-  await ctx.reset();
+  await time('2. Reset dirs', () => ctx.reset());
 
   // Step 3: Create TypeScript entry files for each MDX page
   log.debug('=== TSX ENTRY FILES ===');
@@ -141,16 +151,16 @@ async function doBuild(options: BuildOptions = {}) {
         `Then run 'scratch build' again.`
     );
   }
-  const tsxEntryPts = await createTsxEntries();
+  const tsxEntryPts = await time('3. TSX entries', () => createTsxEntries());
 
   // Step 4: Build Tailwind CSS separately
   log.debug('=== TAILWIND CSS ===');
-  await buildTailwindCss();
+  const cssFilename = await time('4. Tailwind CSS', () => buildTailwindCss());
 
   // Step 5 (SSG only): Build and render server modules
   if (ssg) {
     log.debug('=== SERVER BUILD (SSG) ===');
-    await buildAndRenderServerModules();
+    await time('5. Server build', () => buildAndRenderServerModules());
   }
 
   // Step 6: Run Bun.build() on the TSX entry points (client build)
@@ -162,7 +172,7 @@ async function doBuild(options: BuildOptions = {}) {
   });
 
   log.debug('=== CLIENT BUILD ===');
-  const result = await Bun.build(buildConfig);
+  const result = await time('6. Client build', () => Bun.build(buildConfig));
 
   if (!result.success) {
     log.error('Build failed:');
@@ -182,32 +192,71 @@ async function doBuild(options: BuildOptions = {}) {
   }
 
   log.debug(`Built ${result.outputs.length} client bundles:`);
+
+  // Build map from entry name to hashed JS output path
+  // Use the source TSX paths to match outputs to entries
+  const jsOutputMap: Record<string, string> = {};
+
+  // Build reverse map: relative base path (without extension) -> entry name
+  // e.g., "index" -> "index", "examples/index" -> "examples/index"
+  const basePathToEntry: Record<string, string> = {};
+  for (const [entryName, tsxPath] of Object.entries(tsxEntryPts)) {
+    const relativeTsx = path.relative(ctx.clientSrcDir(), tsxPath);
+    const basePath = relativeTsx.replace(/\.tsx$/, '');
+    basePathToEntry[basePath] = entryName;
+  }
+
   for (const output of result.outputs) {
     log.debug(`  ${path.relative(ctx.rootDir, output.path)}`);
+
+    // Only process JS entry files (not chunks)
+    if (output.kind === 'entry-point' && output.path.endsWith('.js')) {
+      // Get relative path and strip hash to get base path
+      // e.g., "examples/index-abc123.js" -> "examples/index"
+      const relativePath = path.relative(ctx.clientCompiledDir(), output.path);
+      const dir = path.dirname(relativePath);
+      const basename = path.basename(relativePath, '.js');
+      const nameWithoutHash = basename.replace(/-[a-z0-9]+$/, '');
+
+      const basePath = dir === '.' ? nameWithoutHash : path.join(dir, nameWithoutHash);
+      const entryName = basePathToEntry[basePath];
+
+      if (entryName) {
+        jsOutputMap[entryName] = output.path;
+      }
+    }
   }
 
   // Step 7: Create HTML files with proper script references
   log.debug('=== HTML GENERATION ===');
-  await createHtmlEntries(ssg);
+  await time('7. HTML generation', () => createHtmlEntries(ssg, cssFilename, jsOutputMap));
 
   // Step 8: Inject frontmatter meta tags into HTML files
   log.debug('=== FRONTMATTER INJECTION ===');
-  await injectFrontmatterMeta();
+  await time('8. Frontmatter', () => injectFrontmatterMeta());
 
   // Step 9: Copy to build directory
-  await fs.cp(ctx.clientCompiledDir(), ctx.buildDir, { recursive: true });
+  await time('9. Copy to dist', () => fs.cp(ctx.clientCompiledDir(), ctx.buildDir, { recursive: true }));
 
   // Step 10: Copy static assets from public directory
   if (await fs.exists(ctx.staticDir)) {
     log.debug('=== STATIC ASSETS ===');
-    await fs.cp(ctx.staticDir, ctx.buildDir, { recursive: true });
-    const files = await fs.readdir(ctx.staticDir);
-    for (const file of files) {
-      log.debug(`  ${file}`);
-    }
+    await time('10. Static assets', async () => {
+      await fs.cp(ctx.staticDir, ctx.buildDir, { recursive: true });
+      const files = await fs.readdir(ctx.staticDir);
+      for (const file of files) {
+        log.debug(`  ${file}`);
+      }
+    });
   }
 
   log.debug(`Output in: ${ctx.buildDir}`);
+
+  // Print timing breakdown
+  log.debug('=== TIMING BREAKDOWN ===');
+  for (const [name, ms] of Object.entries(timings)) {
+    log.debug(`  ${name}: ${ms.toFixed(0)}ms`);
+  }
 }
 
 /**
@@ -294,6 +343,15 @@ async function buildTailwindCss() {
     const stderr = await new Response(proc.stderr).text();
     throw new Error(`Tailwind CSS build failed: ${stderr}`);
   }
+
+  // Hash the CSS content and rename file for cache busting
+  const builtCssContent = await fs.readFile(outputCss);
+  const hash = createHash('md5').update(builtCssContent).digest('hex').slice(0, 8);
+  const hashedFilename = `tailwind-${hash}.css`;
+  const hashedOutputCss = path.join(ctx.clientCompiledDir(), hashedFilename);
+  await fs.rename(outputCss, hashedOutputCss);
+
+  return hashedFilename;
 }
 
 // Store rendered HTML content for SSG (keyed by entry name)
@@ -412,7 +470,7 @@ async function getFaviconLinkTags(): Promise<string> {
 /**
  * Create HTML entry files that reference the compiled JS bundles
  */
-async function createHtmlEntries(ssg: boolean = false) {
+async function createHtmlEntries(ssg: boolean = false, cssFilename: string, jsOutputMap: Record<string, string>) {
   const ctx = getBuildContext();
   const entries = await ctx.getEntries();
 
@@ -425,7 +483,12 @@ async function createHtmlEntries(ssg: boolean = false) {
 
   for (const [name, entry] of Object.entries(entries)) {
     const htmlPath = entry.getArtifactPath('.html', ctx.clientCompiledDir());
-    const jsPath = entry.getArtifactPath('.js', ctx.clientCompiledDir());
+
+    // Look up the actual hashed JS path from the build output
+    const jsPath = jsOutputMap[name];
+    if (!jsPath) {
+      throw new Error(`No JS output found for entry: ${name}`);
+    }
 
     // Calculate relative path from HTML to JS
     const relativeJsPath = '/' + path.relative(ctx.clientCompiledDir(), jsPath);
@@ -440,7 +503,7 @@ async function createHtmlEntries(ssg: boolean = false) {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="/tailwind.css" />
+    <link rel="stylesheet" href="/${cssFilename}" />
     ${faviconLinks}
     ${ssg ? ssgFlagScript : ''}
   </head>

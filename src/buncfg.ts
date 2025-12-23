@@ -148,7 +148,7 @@ export async function getBunBuildConfig(options: BunBuildConfigOptions): Promise
     sourcemap: ctx.options.development ? 'linked' : 'none',
 
     naming: {
-      entry: '[dir]/[name].[ext]',
+      entry: '[dir]/[name]-[hash].[ext]',
       chunk: 'chunks/[name]-[hash].[ext]',
       asset: 'assets/[name]-[hash].[ext]',
     },
