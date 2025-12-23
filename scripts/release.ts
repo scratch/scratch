@@ -116,7 +116,7 @@ Release notes guidelines:
   const claudeResult = spawnSync('claude', [
     '--print',
     '--allowedTools', 'Read,Edit,Bash(git log:*)',
-    prompt
+    '-p', prompt
   ], {
     encoding: 'utf-8',
     stdio: ['inherit', 'inherit', 'inherit'],

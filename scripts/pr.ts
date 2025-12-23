@@ -75,7 +75,7 @@ PR guidelines:
   const claudeResult = spawnSync('claude', [
     '--print',
     '--allowedTools', 'Read,Edit,Write,Bash(git log:*)',
-    prompt
+    '-p', prompt
   ], {
     encoding: 'utf-8',
     stdio: ['inherit', 'inherit', 'inherit'],
