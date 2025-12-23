@@ -29,7 +29,14 @@ if (!['patch', 'minor', 'major'].includes(bumpType)) {
 // Check for uncommitted changes (allow only CHANGELOG.md and package.json)
 const status = runCapture('git status --porcelain');
 if (status) {
-  const changedFiles = status.split('\n').map(line => line.slice(3).trim());
+  const changedFiles = status.split('\n')
+    .filter(line => line.length > 0)
+    .map(line => {
+      // Git porcelain format: XY PATH (2 status chars + optional space + path)
+      const match = line.match(/^.{2}\s*(.+)$/);
+      return match ? match[1].trim() : '';
+    })
+    .filter(f => f.length > 0);
   const allowedFiles = ['CHANGELOG.md', 'package.json'];
   const disallowedFiles = changedFiles.filter(f => !allowedFiles.includes(f));
 

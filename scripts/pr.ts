@@ -5,9 +5,12 @@ import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
 import { createInterface } from 'readline';
 import path from 'path';
 
-const run = (cmd: string) => {
+const run = (cmd: string, opts?: { stdin?: boolean }) => {
   console.log(`$ ${cmd}`);
-  return execSync(cmd, { encoding: 'utf-8', stdio: 'inherit' });
+  const stdio = opts?.stdin === false
+    ? ['ignore', 'inherit', 'inherit'] as const
+    : 'inherit' as const;
+  return execSync(cmd, { encoding: 'utf-8', stdio });
 };
 
 const runCapture = (cmd: string) => {
@@ -25,7 +28,14 @@ if (currentBranch === 'main') {
 // Check for uncommitted changes (allow only PULL_REQUEST.md)
 const status = runCapture('git status --porcelain');
 if (status) {
-  const changedFiles = status.split('\n').map(line => line.slice(3).trim());
+  const changedFiles = status.split('\n')
+    .filter(line => line.length > 0)
+    .map(line => {
+      // Git porcelain format: XY PATH (2 status chars + optional space + path)
+      const match = line.match(/^.{2}\s*(.+)$/);
+      return match ? match[1].trim() : '';
+    })
+    .filter(f => f.length > 0);
   const allowedFiles = ['PULL_REQUEST.md'];
   const disallowedFiles = changedFiles.filter(f => !allowedFiles.includes(f));
 
@@ -132,14 +142,9 @@ if (!titleMatch) {
 const prTitle = titleMatch[1].trim();
 const prBody = prContent.replace(/^---\s*\ntitle:\s*.+\s*\n---\s*\n?/, '').trim();
 
-// Push branch if needed
+// Push branch to remote (always push to ensure remote is up-to-date)
 console.log('\n==> Ensuring branch is pushed...');
-try {
-  runCapture(`git rev-parse --abbrev-ref --symbolic-full-name @{u}`);
-} catch {
-  // No upstream, push with -u
-  run(`git push -u origin ${currentBranch}`);
-}
+run(`git push -u origin ${currentBranch}`);
 
 // Create PR using gh
 console.log('\n==> Creating pull request...');
@@ -152,7 +157,7 @@ const bodyFile = '/tmp/pr-body.md';
 writeFileSync(bodyFile, prBody);
 
 try {
-  run(`gh pr create --repo ${repoName} --title "${prTitle.replace(/"/g, '\\"')}" --body-file ${bodyFile}`);
+  run(`gh pr create --repo ${repoName} --title "${prTitle.replace(/"/g, '\\"')}" --body-file ${bodyFile}`, { stdin: false });
 } finally {
   // Clean up
   unlinkSync(bodyFile);
