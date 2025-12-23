@@ -142,14 +142,9 @@ if (!titleMatch) {
 const prTitle = titleMatch[1].trim();
 const prBody = prContent.replace(/^---\s*\ntitle:\s*.+\s*\n---\s*\n?/, '').trim();
 
-// Push branch if needed
+// Push branch to remote (always push to ensure remote is up-to-date)
 console.log('\n==> Ensuring branch is pushed...');
-try {
-  runCapture(`git rev-parse --abbrev-ref --symbolic-full-name @{u}`);
-} catch {
-  // No upstream, push with -u
-  run(`git push -u origin ${currentBranch}`);
-}
+run(`git push -u origin ${currentBranch}`);
 
 // Create PR using gh
 console.log('\n==> Creating pull request...');
