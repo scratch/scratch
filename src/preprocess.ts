@@ -1,10 +1,37 @@
 import path from "path";
+import fs from "fs";
 import type { Plugin } from "unified";
 import { visit } from "unist-util-visit";
 import { is } from "unist-util-is";
 import { parse } from "acorn";
 import type { Node, Root } from "mdast";
 import log from "./logger";
+
+// Cache for checking if files have default exports
+const defaultExportCache = new Map<string, boolean>();
+
+/**
+ * Check if a file has a default export by reading and parsing it.
+ * Results are cached for performance.
+ */
+function hasDefaultExport(filePath: string): boolean {
+  if (defaultExportCache.has(filePath)) {
+    return defaultExportCache.get(filePath)!;
+  }
+
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    // Simple heuristic: check for common default export patterns
+    const hasDefault = /export\s+default\s+/.test(content) ||
+                       /export\s*\{\s*\w+\s+as\s+default\s*\}/.test(content);
+    defaultExportCache.set(filePath, hasDefault);
+    return hasDefault;
+  } catch {
+    // If we can't read the file, assume named export
+    defaultExportCache.set(filePath, false);
+    return false;
+  }
+}
 
 let PREPROCESSING_STARTED = false;
 
@@ -27,6 +54,7 @@ export function getPreprocessingErrors(): Error[] {
 export function resetPreprocessingState(): void {
   PREPROCESSING_STARTED = false;
   preprocessingErrors.length = 0;
+  defaultExportCache.clear();
 }
 
 // MDAST node type representing an import/export block in MDX.  The typings in
@@ -117,8 +145,12 @@ export const createPreprocessMdxPlugin = (
           relPath = "./" + relPath;
         }
 
-        const stmt = `import ${name} from '${relPath}';`;
-        log.debug(`  - injecting import from ${relPath}`);
+        // Use default import if file has default export, otherwise use named import
+        const isDefault = hasDefaultExport(absPath);
+        const stmt = isDefault
+          ? `import ${name} from '${relPath}';`
+          : `import { ${name} } from '${relPath}';`;
+        log.debug(`  - injecting ${isDefault ? 'default' : 'named'} import from ${relPath}`);
         const estree = parse(stmt, {
           ecmaVersion: "latest",
           sourceType: "module",

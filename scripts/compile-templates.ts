@@ -14,6 +14,9 @@ const OUTPUT_FILE = path.join(import.meta.dir, '..', 'src', 'template.generated.
 // Files to skip
 const SKIP_FILES = new Set(['.DS_Store']);
 
+// Directories to skip
+const SKIP_DIRS = new Set(['node_modules', 'dist']);
+
 async function readFilesRecursively(dir: string, baseDir: string): Promise<Record<string, string>> {
   const files: Record<string, string> = {};
   const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -25,6 +28,7 @@ async function readFilesRecursively(dir: string, baseDir: string): Promise<Recor
     const relativePath = path.relative(baseDir, fullPath);
 
     if (entry.isDirectory()) {
+      if (SKIP_DIRS.has(entry.name)) continue;
       const subFiles = await readFilesRecursively(fullPath, baseDir);
       Object.assign(files, subFiles);
     } else {
