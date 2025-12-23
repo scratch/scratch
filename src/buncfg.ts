@@ -11,10 +11,21 @@ import { createPreprocessMdxPlugin, createRehypeFootnotesPlugin, createNotProseP
 import path from 'path';
 import type { VFile } from 'vfile';
 
-// Cached highlighter instance for reuse across builds
+// Cached highlighter instance for reuse across builds (production only)
 let cachedHighlighter: Highlighter | null = null;
 
 async function getShikiHighlighter(): Promise<Highlighter> {
+  const ctx = getBuildContext();
+
+  // Don't cache during development to avoid HMR issues with stale highlighter state
+  if (ctx.options.development) {
+    return createHighlighter({
+      themes: ['github-light'],
+      langs: ['javascript', 'typescript', 'jsx', 'tsx', 'css', 'html', 'json', 'bash', 'shell', 'python', 'markdown'],
+    });
+  }
+
+  // Cache in production for performance
   if (!cachedHighlighter) {
     cachedHighlighter = await createHighlighter({
       themes: ['github-light'],
