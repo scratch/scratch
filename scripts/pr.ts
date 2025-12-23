@@ -73,6 +73,7 @@ PR guidelines:
 - Be specific about testing steps`;
 
   const claudeResult = spawnSync('claude', [
+    '--print',
     '--allowedTools', 'Read,Edit,Write,Bash(git log:*)',
     prompt
   ], {

@@ -114,6 +114,7 @@ Release notes guidelines:
 - Do NOT include commit hashes`;
 
   const claudeResult = spawnSync('claude', [
+    '--print',
     '--allowedTools', 'Read,Edit,Bash(git log:*)',
     prompt
   ], {
