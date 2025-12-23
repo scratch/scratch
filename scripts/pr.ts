@@ -144,12 +144,15 @@ try {
 // Create PR using gh
 console.log('\n==> Creating pull request...');
 
+// Get the repo name
+const repoName = runCapture('gh repo view --json nameWithOwner -q .nameWithOwner');
+
 // Write body to temp file for gh (handles special characters better)
 const bodyFile = '/tmp/pr-body.md';
 writeFileSync(bodyFile, prBody);
 
 try {
-  run(`gh pr create --title "${prTitle.replace(/"/g, '\\"')}" --body-file ${bodyFile}`);
+  run(`gh pr create --repo ${repoName} --title "${prTitle.replace(/"/g, '\\"')}" --body-file ${bodyFile}`);
 } finally {
   // Clean up
   unlinkSync(bodyFile);
