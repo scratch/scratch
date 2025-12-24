@@ -4,7 +4,7 @@ import {
   rmWithRetry,
   type FileMapResult,
 } from './util';
-import _path from 'path';
+import path from 'path';
 import fs from 'fs/promises';
 import { globSync } from 'fast-glob';
 import { templates, materializeTemplate, hasTemplate } from './template';
@@ -67,41 +67,50 @@ export class BuildContext {
 
   constructor(opts: BuildContextInitOptions) {
     this.options = opts;
-    this.rootDir = _path.resolve(opts.path || opts.rootDirName || '.');
-    this.tempDir = _path.resolve(
+    this.rootDir = path.resolve(opts.path || opts.rootDirName || '.');
+    this.tempDir = path.resolve(
       this.rootDir,
       opts.tempDirName || '.scratch-build-cache'
     );
-    this.buildDir = _path.resolve(this.rootDir, opts.buildDirName || 'dist');
-    this.srcDir = _path.resolve(this.rootDir, opts.srcDirName || 'src');
-    this.pagesDir = _path.resolve(this.rootDir, opts.pagesDirName || 'pages');
-    this.staticDir = _path.resolve(
+    this.buildDir = path.resolve(this.rootDir, opts.buildDirName || 'dist');
+    this.srcDir = path.resolve(this.rootDir, opts.srcDirName || 'src');
+    this.pagesDir = path.resolve(this.rootDir, opts.pagesDirName || 'pages');
+    this.staticDir = path.resolve(
       this.rootDir,
       opts.staticDirName || 'public'
     );
   }
 
-  clientSrcDir = () => _path.resolve(this.tempDir, 'client-src');
-  clientCompiledDir = () => _path.resolve(this.tempDir, 'client-compiled');
-  serverSrcDir = () => _path.resolve(this.tempDir, 'server-src');
-  serverCompiledDir = () => _path.resolve(this.tempDir, 'server-compiled');
+  get clientSrcDir(): string {
+    return path.resolve(this.tempDir, 'client-src');
+  }
 
-  /**
-   * Directory where embedded templates are materialized
-   */
-  embeddedTemplatesDir = () =>
-    _path.resolve(this.tempDir, 'embedded-templates');
+  get clientCompiledDir(): string {
+    return path.resolve(this.tempDir, 'client-compiled');
+  }
+
+  get serverSrcDir(): string {
+    return path.resolve(this.tempDir, 'server-src');
+  }
+
+  get serverCompiledDir(): string {
+    return path.resolve(this.tempDir, 'server-compiled');
+  }
+
+  get embeddedTemplatesDir(): string {
+    return path.resolve(this.tempDir, 'embedded-templates');
+  }
 
   /**
    * Returns the node_modules directory to use for build dependencies.
    * If user has package.json, uses project root. Otherwise uses cache.
    */
   async nodeModulesDir(): Promise<string> {
-    const userPackageJson = _path.resolve(this.rootDir, 'package.json');
+    const userPackageJson = path.resolve(this.rootDir, 'package.json');
     if (await fs.exists(userPackageJson)) {
-      return _path.resolve(this.rootDir, 'node_modules');
+      return path.resolve(this.rootDir, 'node_modules');
     }
-    return _path.resolve(this.tempDir, 'node_modules');
+    return path.resolve(this.tempDir, 'node_modules');
   }
 
   /**
@@ -110,7 +119,7 @@ export class BuildContext {
    * - Otherwise: installs required packages to .scratch-build-cache/node_modules
    */
   async ensureBuildDependencies(): Promise<void> {
-    const userPackageJson = _path.resolve(this.rootDir, 'package.json');
+    const userPackageJson = path.resolve(this.rootDir, 'package.json');
 
     if (await fs.exists(userPackageJson)) {
       bunInstall(this.rootDir);
@@ -124,7 +133,7 @@ export class BuildContext {
    * Ensures a package.json exists in the build cache with required dependencies.
    */
   private async ensureCachePackageJson(): Promise<void> {
-    const cachePackageJson = _path.resolve(this.tempDir, 'package.json');
+    const cachePackageJson = path.resolve(this.tempDir, 'package.json');
     if (await fs.exists(cachePackageJson)) {
       return;
     }
@@ -152,8 +161,7 @@ export class BuildContext {
 
   async resetTempDir() {
     // Preserve node_modules if it exists to avoid reinstalling every build
-    const nodeModulesPath = _path.resolve(this.tempDir, 'node_modules');
-    const packageJsonPath = _path.resolve(this.tempDir, 'package.json');
+    const nodeModulesPath = path.resolve(this.tempDir, 'node_modules');
     const hasNodeModules = await fs.exists(nodeModulesPath);
 
     if (hasNodeModules) {
@@ -161,7 +169,7 @@ export class BuildContext {
       const entries = await fs.readdir(this.tempDir);
       for (const entry of entries) {
         if (entry !== 'node_modules' && entry !== 'package.json') {
-          await rmWithRetry(_path.resolve(this.tempDir, entry), {
+          await rmWithRetry(path.resolve(this.tempDir, entry), {
             recursive: true,
             force: true,
           });
@@ -189,7 +197,7 @@ export class BuildContext {
     fallbackTemplatePath: string
   ): Promise<string> {
     for (const candidate of candidates) {
-      const userPath = _path.resolve(this.rootDir, candidate);
+      const userPath = path.resolve(this.rootDir, candidate);
       if (await fs.exists(userPath)) {
         return userPath;
       }
@@ -202,7 +210,7 @@ export class BuildContext {
    * Falls back to embedded templates if not in project.
    */
   async markdownComponentsDir(): Promise<string> {
-    const userMarkdownDir = _path.resolve(this.srcDir, 'markdown');
+    const userMarkdownDir = path.resolve(this.srcDir, 'markdown');
     if (await fs.exists(userMarkdownDir)) {
       return userMarkdownDir;
     }
@@ -262,7 +270,7 @@ export class BuildContext {
       return this.materializedPaths.get(templatePath)!;
     }
 
-    const targetPath = _path.resolve(this.embeddedTemplatesDir(), templatePath);
+    const targetPath = path.resolve(this.embeddedTemplatesDir, templatePath);
     await materializeTemplate(templatePath, targetPath);
     this.materializedPaths.set(templatePath, targetPath);
     return targetPath;
@@ -278,15 +286,15 @@ export class BuildContext {
       return this.materializedPaths.get(cacheKey)!;
     }
 
-    const targetDir = _path.resolve(this.embeddedTemplatesDir(), dirname);
+    const targetDir = path.resolve(this.embeddedTemplatesDir, dirname);
 
     // Find all files that start with this dirname
     const prefix = dirname + '/';
     for (const [filename, content] of Object.entries(templates)) {
       if (filename.startsWith(prefix)) {
         const relativePath = filename.slice(prefix.length);
-        const targetPath = _path.resolve(targetDir, relativePath);
-        await fs.mkdir(_path.dirname(targetPath), { recursive: true });
+        const targetPath = path.resolve(targetDir, relativePath);
+        await fs.mkdir(path.dirname(targetPath), { recursive: true });
         await fs.writeFile(targetPath, content);
       }
     }
@@ -398,10 +406,10 @@ export class Entry {
   frontmatterData?: Record<string, any>;
 
   constructor(sourceFile: string, baseDir: string) {
-    this.absPath = _path.resolve(sourceFile);
-    this.baseDir = _path.resolve(baseDir);
+    this.absPath = path.resolve(sourceFile);
+    this.baseDir = path.resolve(baseDir);
 
-    this.relPath = _path.relative(this.baseDir, this.absPath);
+    this.relPath = path.relative(this.baseDir, this.absPath);
 
     // The entry name is the relative path to the source file without the extension
     this.name = this.relPath.replace(/\.[^/.]+$/, '');
@@ -412,10 +420,10 @@ export class Entry {
    */
   getArtifactPath(extension: string, baseDir: string): string {
     // check if the basename of the entry name is "index"
-    const basename = _path.basename(this.name);
+    const basename = path.basename(this.name);
     if (basename === 'index') {
-      return _path.resolve(baseDir, this.name + extension);
+      return path.resolve(baseDir, this.name + extension);
     }
-    return _path.resolve(baseDir, this.name + '/index' + extension);
+    return path.resolve(baseDir, this.name + '/index' + extension);
   }
 }

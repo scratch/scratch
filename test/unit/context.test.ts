@@ -254,10 +254,10 @@ describe('BuildContext directory getter methods', () => {
     const projectDir = '/test/project';
     const context = new BuildContext({ path: projectDir });
 
-    expect(context.clientSrcDir()).toBe(path.resolve(projectDir, '.scratch-build-cache/client-src'));
-    expect(context.clientCompiledDir()).toBe(path.resolve(projectDir, '.scratch-build-cache/client-compiled'));
-    expect(context.serverSrcDir()).toBe(path.resolve(projectDir, '.scratch-build-cache/server-src'));
-    expect(context.serverCompiledDir()).toBe(path.resolve(projectDir, '.scratch-build-cache/server-compiled'));
+    expect(context.clientSrcDir).toBe(path.resolve(projectDir, '.scratch-build-cache/client-src'));
+    expect(context.clientCompiledDir).toBe(path.resolve(projectDir, '.scratch-build-cache/client-compiled'));
+    expect(context.serverSrcDir).toBe(path.resolve(projectDir, '.scratch-build-cache/server-src'));
+    expect(context.serverCompiledDir).toBe(path.resolve(projectDir, '.scratch-build-cache/server-compiled'));
   });
 });
 

@@ -167,8 +167,8 @@ async function doBuild(options: BuildOptions = {}) {
   const entryPaths = Object.values(tsxEntryPts);
   const buildConfig = await getBunBuildConfig({
     entryPts: entryPaths,
-    outDir: ctx.clientCompiledDir(),
-    root: ctx.clientSrcDir(),
+    outDir: ctx.clientCompiledDir,
+    root: ctx.clientSrcDir,
   });
 
   log.debug('=== CLIENT BUILD ===');
@@ -205,7 +205,7 @@ async function doBuild(options: BuildOptions = {}) {
   // e.g., "index" -> "index", "examples/index" -> "examples/index"
   const basePathToEntry: Record<string, string> = {};
   for (const [entryName, tsxPath] of Object.entries(tsxEntryPts)) {
-    const relativeTsx = path.relative(ctx.clientSrcDir(), tsxPath);
+    const relativeTsx = path.relative(ctx.clientSrcDir, tsxPath);
     const basePath = relativeTsx.replace(/\.tsx$/, '');
     basePathToEntry[basePath] = entryName;
   }
@@ -217,7 +217,7 @@ async function doBuild(options: BuildOptions = {}) {
     if (output.kind === 'entry-point' && output.path.endsWith('.js')) {
       // Get relative path and strip hash to get base path
       // e.g., "examples/index-abc123.js" -> "examples/index"
-      const relativePath = path.relative(ctx.clientCompiledDir(), output.path);
+      const relativePath = path.relative(ctx.clientCompiledDir, output.path);
       const dir = path.dirname(relativePath);
       const basename = path.basename(relativePath, '.js');
       const nameWithoutHash = basename.replace(/-[a-z0-9]+$/, '');
@@ -240,7 +240,7 @@ async function doBuild(options: BuildOptions = {}) {
   await time('8. Frontmatter', () => injectFrontmatterMeta());
 
   // Step 9: Copy to build directory
-  await time('9. Copy to dist', () => fs.cp(ctx.clientCompiledDir(), ctx.buildDir, { recursive: true }));
+  await time('9. Copy to dist', () => fs.cp(ctx.clientCompiledDir, ctx.buildDir, { recursive: true }));
 
   // Step 10: Copy static assets from public directory
   if (await fs.exists(ctx.staticDir)) {
@@ -274,7 +274,7 @@ async function createTsxEntries(): Promise<Record<string, string>> {
   const tsxTemplatePath = await ctx.clientTsxSrcPath();
 
   for (const [name, entry] of Object.entries(entries)) {
-    const artifactPath = entry.getArtifactPath('.tsx', ctx.clientSrcDir());
+    const artifactPath = entry.getArtifactPath('.tsx', ctx.clientSrcDir);
 
     await render(
       tsxTemplatePath,
@@ -299,7 +299,7 @@ async function createTsxEntries(): Promise<Record<string, string>> {
 async function buildTailwindCss() {
   const ctx = getBuildContext();
   const inputCss = await ctx.tailwindCssSrcPath();
-  const outputCss = path.join(ctx.clientCompiledDir(), 'tailwind.css');
+  const outputCss = path.join(ctx.clientCompiledDir, 'tailwind.css');
   const nodeModulesDir = await ctx.nodeModulesDir();
 
   // Ensure output directory exists
@@ -311,7 +311,7 @@ async function buildTailwindCss() {
 
   // Add @source directive for embedded template src (after @import "tailwindcss" if present)
   // The embedded templates are materialized to the temp directory during the build
-  const embeddedSrcDir = path.resolve(ctx.embeddedTemplatesDir(), 'src');
+  const embeddedSrcDir = path.resolve(ctx.embeddedTemplatesDir, 'src');
   const sourceDirective = `@source "${embeddedSrcDir}";\n`;
 
   // Insert after @import "tailwindcss" or at the beginning
@@ -352,7 +352,7 @@ async function buildTailwindCss() {
   const builtCssContent = await fs.readFile(outputCss);
   const hash = createHash('md5').update(builtCssContent).digest('hex').slice(0, 8);
   const hashedFilename = `tailwind-${hash}.css`;
-  const hashedOutputCss = path.join(ctx.clientCompiledDir(), hashedFilename);
+  const hashedOutputCss = path.join(ctx.clientCompiledDir, hashedFilename);
   await fs.rename(outputCss, hashedOutputCss);
 
   return hashedFilename;
@@ -374,8 +374,8 @@ async function buildAndRenderServerModules() {
   // Build server modules with Bun (target: bun for server-side execution)
   const buildConfig = await getServerBunBuildConfig({
     entryPts: Object.values(serverEntryPts),
-    outDir: ctx.serverCompiledDir(),
-    root: ctx.serverSrcDir(),
+    outDir: ctx.serverCompiledDir,
+    root: ctx.serverSrcDir,
   });
 
   log.debug('Running Bun.build() for server...');
@@ -414,7 +414,7 @@ async function buildAndRenderServerModules() {
   const entries = await ctx.getEntries();
   log.debug(`Rendering ${Object.keys(entries).length} pages:`);
   for (const [name, entry] of Object.entries(entries)) {
-    const modulePath = entry.getArtifactPath('.js', ctx.serverCompiledDir());
+    const modulePath = entry.getArtifactPath('.js', ctx.serverCompiledDir);
 
     // Import the compiled server module
     const serverModule = await import(modulePath);
@@ -437,7 +437,7 @@ async function createServerEntries(): Promise<Record<string, string>> {
   const serverTemplatePath = await ctx.serverJsxSrcPath();
 
   for (const [name, entry] of Object.entries(entries)) {
-    const artifactPath = entry.getArtifactPath('.jsx', ctx.serverSrcDir());
+    const artifactPath = entry.getArtifactPath('.jsx', ctx.serverSrcDir);
 
     await render(
       serverTemplatePath,
@@ -493,7 +493,7 @@ async function createHtmlEntries(ssg: boolean = false, cssFilename: string, jsOu
     '<script rel="modulepreload" type="module">window.__scratch_ssg = true;</script>';
 
   for (const [name, entry] of Object.entries(entries)) {
-    const htmlPath = entry.getArtifactPath('.html', ctx.clientCompiledDir());
+    const htmlPath = entry.getArtifactPath('.html', ctx.clientCompiledDir);
 
     // Look up the actual hashed JS path from the build output
     const jsPath = jsOutputMap[name];
@@ -502,7 +502,7 @@ async function createHtmlEntries(ssg: boolean = false, cssFilename: string, jsOu
     }
 
     // Calculate relative path from HTML to JS
-    const relativeJsPath = '/' + path.relative(ctx.clientCompiledDir(), jsPath);
+    const relativeJsPath = '/' + path.relative(ctx.clientCompiledDir, jsPath);
 
     // Get SSG content if available
     const ssgContent =
@@ -546,7 +546,7 @@ async function injectFrontmatterMeta() {
       continue;
     }
 
-    const htmlPath = entry.getArtifactPath('.html', ctx.clientCompiledDir());
+    const htmlPath = entry.getArtifactPath('.html', ctx.clientCompiledDir);
     let html = await fs.readFile(htmlPath, 'utf-8');
 
     const metadata = entry.frontmatterData;
