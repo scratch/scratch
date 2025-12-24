@@ -1,4 +1,9 @@
-import { buildFileMap, bunInstall, type FileMapResult } from './util';
+import {
+  buildFileMap,
+  bunInstall,
+  rmWithRetry,
+  type FileMapResult,
+} from './util';
 import _path from 'path';
 import fs from 'fs/promises';
 import { spawnSync } from 'child_process';
@@ -14,34 +19,6 @@ export const BUILD_DEPENDENCIES = [
   '@tailwindcss/cli',
   '@tailwindcss/typography',
 ];
-
-/**
- * Remove a file or directory with retry logic for transient errors (EACCES, EBUSY).
- * This handles cases where files are temporarily locked by other processes.
- */
-async function rmWithRetry(
-  path: string,
-  options: { recursive?: boolean; force?: boolean } = {},
-  maxRetries = 3,
-  delayMs = 100
-): Promise<void> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      await fs.rm(path, options);
-      return;
-    } catch (error: any) {
-      const isRetryable = error?.code === 'EACCES' || error?.code === 'EBUSY';
-      if (isRetryable && attempt < maxRetries) {
-        log.debug(
-          `Retry ${attempt}/${maxRetries} for rm ${path}: ${error.code}`
-        );
-        await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
-      } else {
-        throw error;
-      }
-    }
-  }
-}
 
 let CONTEXT: BuildContext | undefined;
 

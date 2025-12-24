@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { glob } from 'fast-glob';
 import { spawnSync } from 'child_process';
+import log from './logger';
 
 /**
  * Spawn bun commands synchronously using Node's child_process.
@@ -44,6 +45,34 @@ export function bunInstall(cwd: string): void {
         `  - Disk space is low\n\n` +
         `Details: ${result.stderr || result.stdout || 'Unknown error'}`
     );
+  }
+}
+
+/**
+ * Remove a file or directory with retry logic for transient errors (EACCES, EBUSY).
+ * This handles cases where files are temporarily locked by other processes.
+ */
+export async function rmWithRetry(
+  filePath: string,
+  options: { recursive?: boolean; force?: boolean } = {},
+  maxRetries = 3,
+  delayMs = 100
+): Promise<void> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await fs.rm(filePath, options);
+      return;
+    } catch (error: any) {
+      const isRetryable = error?.code === 'EACCES' || error?.code === 'EBUSY';
+      if (isRetryable && attempt < maxRetries) {
+        log.debug(
+          `Retry ${attempt}/${maxRetries} for rm ${filePath}: ${error.code}`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+      } else {
+        throw error;
+      }
+    }
   }
 }
 
