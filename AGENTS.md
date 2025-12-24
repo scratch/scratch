@@ -15,6 +15,10 @@ scratch is a CLI tool for building static MDX-based websites using Bun. Users cr
 - `dev [path]` - Development server with hot reload
 - `preview [path]` - Preview the built site
 - `clean [path]` - Clean build artifacts
+- `get [file]` - Clone file/directory from built-in templates
+  - Aliases: `revert`, `eject`
+  - `-l, --list` - List available template files
+  - `-f, --force` - Overwrite existing files without confirmation
 
 ### Build Pipeline (`src/cmd/build.ts`)
 1. Ensure build dependencies are installed (react, react-dom, @mdx-js/react, tailwindcss, @tailwindcss/cli)
@@ -47,6 +51,7 @@ Components from both directories are auto-imported into MDX files by basename.
 - `src/cmd/dev.ts` - Development server with live reload
 - `src/cmd/create.ts` - Create command handler
 - `src/cmd/preview.ts` - Preview server for built sites
+- `src/cmd/get.ts` - Get/revert command handler
 - `src/template.ts` - Template runtime API (materialize, getContent, list templates)
 - `src/template.generated.ts` - Compiled template content (generated, not checked in)
 - `scripts/compile-templates.ts` - Compiles template/ files into executable
@@ -58,7 +63,10 @@ Templates are embedded directly into the compiled executable for portability.
 **Directory structure** (`template/`):
 - `_build/` - Internal build infrastructure (entry-client.tsx, entry-server.jsx) - never copied to user projects
 - `pages/examples/` - Example pages (TodoList, markdown examples) - optionally included via `--examples` flag
-- Everything else - Default project files copied to new projects (pages, src, .gitignore)
+- `pages/` - Default pages (index.mdx, Counter.tsx)
+- `src/` - PageWrapper.jsx, tailwind.css, markdown component overrides (src/markdown/)
+- `public/` - Static assets (scratch-logo.svg, favicon.svg)
+- Root files: .gitignore, AGENTS.md
 
 **Compilation**: `scripts/compile-templates.ts` reads all template files and generates `src/template.generated.ts` as a flat `{ path: content }` object. This runs automatically during `bun run build`.
 
