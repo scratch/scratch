@@ -66,7 +66,11 @@ export async function createCommand(
   }
 
   if (created.length > 0) {
-    log.info(`Created a new scratch project in ${targetPath}`);
+    if (targetPath == '.') {
+      log.info(`Created a new Scratch project:\n`);
+    } else {
+      log.info(`Created a new Scratch project in ${targetPath}:\n`);
+    }
     for (const line of formatFileTree(created)) {
       log.info(`  ${line}`);
     }
