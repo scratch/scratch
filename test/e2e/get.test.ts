@@ -21,9 +21,9 @@ function runCliCapture(args: string[], cwd: string) {
   };
 }
 
-describe("revert command", () => {
-  test("reverts a single file to template version", async () => {
-    const tempDir = await mkTempDir("revert-single-");
+describe("get command", () => {
+  test("gets a single file from templates", async () => {
+    const tempDir = await mkTempDir("get-single-");
     runCliSync(["create", "sandbox"], tempDir);
     const sandboxDir = path.join(tempDir, "sandbox");
 
@@ -35,18 +35,18 @@ describe("revert command", () => {
     // Verify it was modified
     expect(await fs.readFile(tailwindPath, "utf-8")).toBe("/* modified */");
 
-    // Revert the file (--force to skip interactive prompt in non-TTY tests)
-    runCliSync(["revert", "--force", "src/tailwind.css"], sandboxDir);
+    // Get the file (--force to skip interactive prompt in non-TTY tests)
+    runCliSync(["get", "--force", "src/tailwind.css"], sandboxDir);
 
-    // Verify it was reverted to template content
-    const revertedContent = await fs.readFile(tailwindPath, "utf-8");
-    expect(revertedContent).toBe(originalContent);
+    // Verify it was restored to template content
+    const restoredContent = await fs.readFile(tailwindPath, "utf-8");
+    expect(restoredContent).toBe(originalContent);
 
     await rm(tempDir, { recursive: true, force: true });
   }, 60_000);
 
-  test("reverts all files in a directory", async () => {
-    const tempDir = await mkTempDir("revert-dir-");
+  test("gets all files in a directory", async () => {
+    const tempDir = await mkTempDir("get-dir-");
     runCliSync(["create", "sandbox"], tempDir);
     const sandboxDir = path.join(tempDir, "sandbox");
 
@@ -60,10 +60,10 @@ describe("revert command", () => {
     await fs.writeFile(tailwindPath, "/* modified tailwind */");
     await fs.writeFile(pageWrapperPath, "// modified wrapper");
 
-    // Revert the entire src/ directory (--force to skip interactive prompt)
-    runCliSync(["revert", "--force", "src"], sandboxDir);
+    // Get the entire src/ directory (--force to skip interactive prompt)
+    runCliSync(["get", "--force", "src"], sandboxDir);
 
-    // Verify both files were reverted
+    // Verify both files were restored
     expect(await fs.readFile(tailwindPath, "utf-8")).toBe(originalTailwind);
     expect(await fs.readFile(pageWrapperPath, "utf-8")).toBe(originalPageWrapper);
 
@@ -71,11 +71,11 @@ describe("revert command", () => {
   }, 60_000);
 
   test("lists available template files with --list", async () => {
-    const tempDir = await mkTempDir("revert-list-");
+    const tempDir = await mkTempDir("get-list-");
     runCliSync(["create", "sandbox"], tempDir);
     const sandboxDir = path.join(tempDir, "sandbox");
 
-    const result = runCliCapture(["revert", "--list"], sandboxDir);
+    const result = runCliCapture(["get", "--list"], sandboxDir);
 
     expect(result.status).toBe(0);
     // Should include common template files
@@ -88,11 +88,11 @@ describe("revert command", () => {
   }, 60_000);
 
   test("exits with error for non-existent template", async () => {
-    const tempDir = await mkTempDir("revert-notfound-");
+    const tempDir = await mkTempDir("get-notfound-");
     runCliSync(["create", "sandbox"], tempDir);
     const sandboxDir = path.join(tempDir, "sandbox");
 
-    const result = runCliCapture(["revert", "nonexistent.txt"], sandboxDir);
+    const result = runCliCapture(["get", "nonexistent.txt"], sandboxDir);
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("No template found for: nonexistent.txt");
@@ -102,7 +102,7 @@ describe("revert command", () => {
   }, 60_000);
 
   test("normalizes paths with leading ./ and trailing /", async () => {
-    const tempDir = await mkTempDir("revert-normalize-");
+    const tempDir = await mkTempDir("get-normalize-");
     runCliSync(["create", "sandbox"], tempDir);
     const sandboxDir = path.join(tempDir, "sandbox");
 
@@ -111,24 +111,24 @@ describe("revert command", () => {
     const originalContent = await fs.readFile(tailwindPath, "utf-8");
     await fs.writeFile(tailwindPath, "/* modified */");
 
-    // Revert with leading ./ (--force to skip interactive prompt)
-    runCliSync(["revert", "--force", "./src/tailwind.css"], sandboxDir);
+    // Get with leading ./ (--force to skip interactive prompt)
+    runCliSync(["get", "--force", "./src/tailwind.css"], sandboxDir);
     expect(await fs.readFile(tailwindPath, "utf-8")).toBe(originalContent);
 
-    // Modify again and revert directory with trailing /
+    // Modify again and get directory with trailing /
     await fs.writeFile(tailwindPath, "/* modified again */");
-    runCliSync(["revert", "--force", "src/"], sandboxDir);
+    runCliSync(["get", "--force", "src/"], sandboxDir);
     expect(await fs.readFile(tailwindPath, "utf-8")).toBe(originalContent);
 
     await rm(tempDir, { recursive: true, force: true });
   }, 60_000);
 
   test("exits with error when no path provided", async () => {
-    const tempDir = await mkTempDir("revert-nopath-");
+    const tempDir = await mkTempDir("get-nopath-");
     runCliSync(["create", "sandbox"], tempDir);
     const sandboxDir = path.join(tempDir, "sandbox");
 
-    const result = runCliCapture(["revert"], sandboxDir);
+    const result = runCliCapture(["get"], sandboxDir);
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("Please provide a file or directory path");
