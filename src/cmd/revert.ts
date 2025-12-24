@@ -12,8 +12,14 @@ interface RevertOptions {
 
 /**
  * Prompt user for yes/no confirmation.
+ * Auto-confirms with default value when not running in a TTY (non-interactive).
  */
 async function confirm(question: string, defaultValue: boolean): Promise<boolean> {
+  // Auto-confirm when not in a TTY (scripts, tests, piped input)
+  if (!process.stdin.isTTY) {
+    return defaultValue;
+  }
+
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,

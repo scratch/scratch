@@ -35,8 +35,8 @@ describe("revert command", () => {
     // Verify it was modified
     expect(await fs.readFile(tailwindPath, "utf-8")).toBe("/* modified */");
 
-    // Revert the file
-    runCliSync(["revert", "src/tailwind.css"], sandboxDir);
+    // Revert the file (--force to skip interactive prompt in non-TTY tests)
+    runCliSync(["revert", "--force", "src/tailwind.css"], sandboxDir);
 
     // Verify it was reverted to template content
     const revertedContent = await fs.readFile(tailwindPath, "utf-8");
@@ -60,8 +60,8 @@ describe("revert command", () => {
     await fs.writeFile(tailwindPath, "/* modified tailwind */");
     await fs.writeFile(pageWrapperPath, "// modified wrapper");
 
-    // Revert the entire src/ directory
-    runCliSync(["revert", "src"], sandboxDir);
+    // Revert the entire src/ directory (--force to skip interactive prompt)
+    runCliSync(["revert", "--force", "src"], sandboxDir);
 
     // Verify both files were reverted
     expect(await fs.readFile(tailwindPath, "utf-8")).toBe(originalTailwind);
@@ -111,13 +111,13 @@ describe("revert command", () => {
     const originalContent = await fs.readFile(tailwindPath, "utf-8");
     await fs.writeFile(tailwindPath, "/* modified */");
 
-    // Revert with leading ./
-    runCliSync(["revert", "./src/tailwind.css"], sandboxDir);
+    // Revert with leading ./ (--force to skip interactive prompt)
+    runCliSync(["revert", "--force", "./src/tailwind.css"], sandboxDir);
     expect(await fs.readFile(tailwindPath, "utf-8")).toBe(originalContent);
 
     // Modify again and revert directory with trailing /
     await fs.writeFile(tailwindPath, "/* modified again */");
-    runCliSync(["revert", "src/"], sandboxDir);
+    runCliSync(["revert", "--force", "src/"], sandboxDir);
     expect(await fs.readFile(tailwindPath, "utf-8")).toBe(originalContent);
 
     await rm(tempDir, { recursive: true, force: true });
