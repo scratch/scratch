@@ -104,28 +104,56 @@ export class BuildContext {
 
   /**
    * Returns the node_modules directory to use for build dependencies.
-   * Prefers user's node_modules if it exists, otherwise uses cache.
+   * If user has package.json, uses project root. Otherwise uses cache.
    */
   async nodeModulesDir(): Promise<string> {
-    const userNodeModules = _path.resolve(this.rootDir, 'node_modules');
-    if (await fs.exists(userNodeModules)) {
-      return userNodeModules;
+    const userPackageJson = _path.resolve(this.rootDir, 'package.json');
+    if (await fs.exists(userPackageJson)) {
+      return _path.resolve(this.rootDir, 'node_modules');
     }
     return _path.resolve(this.tempDir, 'node_modules');
   }
 
   /**
-   * Ensures build dependencies are installed. If the user has their own
-   * node_modules, assumes they manage deps. Otherwise, installs required
-   * packages to .scratch-build-cache/node_modules.
+   * Ensures build dependencies are installed.
+   * - If user has package.json: runs bun install in project root
+   * - Otherwise: installs required packages to .scratch-build-cache/node_modules
    */
   async ensureBuildDependencies(): Promise<void> {
+    const userPackageJson = _path.resolve(this.rootDir, 'package.json');
     const userNodeModules = _path.resolve(this.rootDir, 'node_modules');
-    if (await fs.exists(userNodeModules)) {
-      log.debug('Using user node_modules for build dependencies');
+
+    // If user has package.json, install deps in project root
+    if (await fs.exists(userPackageJson)) {
+      if (await fs.exists(userNodeModules)) {
+        log.debug('Using existing project node_modules');
+        return;
+      }
+
+      log.info('Installing dependencies...');
+      const proc = Bun.spawn(['bun', 'install'], {
+        cwd: this.rootDir,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      });
+
+      const exitCode = await proc.exited;
+      if (exitCode !== 0) {
+        const stderr = await new Response(proc.stderr).text();
+        throw new Error(
+          `Failed to install dependencies.\n\n` +
+          `This can happen if:\n` +
+          `  - No network connection\n` +
+          `  - Bun is not installed correctly\n` +
+          `  - Disk space is low\n\n` +
+          `Details: ${stderr}`
+        );
+      }
+      log.info('Dependencies installed');
       return;
     }
 
+    // No package.json - use build cache
     const cacheNodeModules = _path.resolve(this.tempDir, 'node_modules');
 
     // Check if all required packages exist
