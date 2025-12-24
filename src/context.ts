@@ -8,6 +8,23 @@ import log from './logger';
 export const BUILD_DEPENDENCIES = ['react', 'react-dom', '@mdx-js/react', 'tailwindcss', '@tailwindcss/cli', '@tailwindcss/typography'];
 
 /**
+ * Spawn bun commands using the current executable with BUN_BE_BUN=1.
+ * This allows scratch to run bun commands without requiring bun to be installed separately.
+ */
+export function spawnBun(
+  args: string[],
+  options: { cwd?: string; stdout?: 'pipe' | 'inherit'; stderr?: 'pipe' | 'inherit' } = {}
+) {
+  return Bun.spawn([process.execPath, ...args], {
+    ...options,
+    env: {
+      ...process.env,
+      BUN_BE_BUN: '1',
+    },
+  });
+}
+
+/**
  * Remove a file or directory with retry logic for transient errors (EACCES, EBUSY).
  * This handles cases where files are temporarily locked by other processes.
  */
@@ -131,7 +148,7 @@ export class BuildContext {
       }
 
       log.info('Installing dependencies...');
-      const proc = Bun.spawn(['bun', 'install'], {
+      const proc = spawnBun(['install'], {
         cwd: this.rootDir,
         stdout: 'pipe',
         stderr: 'pipe',
@@ -186,7 +203,7 @@ export class BuildContext {
       );
 
       // Run bun install
-      const proc = Bun.spawn(['bun', 'install'], {
+      const proc = spawnBun(['install'], {
         cwd: this.tempDir,
         stdout: 'pipe',
         stderr: 'pipe',
