@@ -6,6 +6,7 @@ import {
 } from './util';
 import path from 'path';
 import fs from 'fs/promises';
+import { spawnSync } from 'child_process';
 import { globSync } from 'fast-glob';
 import { templates, materializeTemplate, hasTemplate } from './template';
 import log from './logger';
@@ -117,16 +118,52 @@ export class BuildContext {
    * Ensures build dependencies are installed.
    * - If user has package.json: runs bun install in project root
    * - Otherwise: installs required packages to .scratch-build-cache/node_modules
+   *
+   * Note: After installing dependencies, we must restart the build in a fresh
+   * subprocess due to a Bun runtime bug where Bun.build() fails after spawning
+   * a child bun process in the same execution.
    */
   async ensureBuildDependencies(): Promise<void> {
     const userPackageJson = path.resolve(this.rootDir, 'package.json');
 
     if (await fs.exists(userPackageJson)) {
-      bunInstall(this.rootDir);
+      const userNodeModules = path.resolve(this.rootDir, 'node_modules');
+      const needsInstall = !(await fs.exists(userNodeModules));
+
+      if (needsInstall) {
+        log.info('Installing dependencies...');
+        bunInstall(this.rootDir);
+        log.info('Dependencies installed');
+        this.restartBuildInSubprocess();
+      }
     } else {
+      const cacheNodeModules = path.resolve(this.tempDir, 'node_modules');
+      const needsInstall = !(await fs.exists(cacheNodeModules));
+
       await this.ensureCachePackageJson();
-      bunInstall(this.tempDir);
+
+      if (needsInstall) {
+        log.info('Installing build dependencies...');
+        bunInstall(this.tempDir);
+        log.info('Build dependencies installed');
+        this.restartBuildInSubprocess();
+      }
     }
+  }
+
+  /**
+   * Re-run the build in a fresh subprocess to work around Bun runtime issue.
+   * Bun.build() fails after spawning a child bun process in the same execution.
+   */
+  private restartBuildInSubprocess(): never {
+    log.debug('Re-running build in subprocess to work around Bun runtime issue');
+    const args = process.argv.slice(2);
+    const result = spawnSync(process.execPath, args, {
+      cwd: process.cwd(),
+      stdio: 'inherit',
+      env: process.env,
+    });
+    process.exit(result.status ?? 1);
   }
 
   /**
