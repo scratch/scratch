@@ -1,41 +1,19 @@
-import { buildFileMap, type FileMapResult } from './util';
+import { buildFileMap, bunInstall, type FileMapResult } from './util';
 import _path from 'path';
 import fs from 'fs/promises';
-import { spawnSync, execSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import { globSync } from 'fast-glob';
 import { templates, materializeTemplate, hasTemplate } from './template';
 import log from './logger';
 
-export const BUILD_DEPENDENCIES = ['react', 'react-dom', '@mdx-js/react', 'tailwindcss', '@tailwindcss/cli', '@tailwindcss/typography'];
-
-/**
- * Spawn bun commands synchronously using Node's child_process.
- * Uses the current executable with BUN_BE_BUN=1 so scratch can run bun commands
- * without requiring bun to be installed separately.
- *
- * Note: We use Node's spawnSync instead of Bun.spawn to avoid a Bun runtime issue
- * where Bun.build() fails after spawning a child bun process in the same execution.
- */
-export function spawnBunSync(
-  args: string[],
-  options: { cwd?: string; stdio?: 'pipe' | 'inherit' } = {}
-): { exitCode: number; stdout: string; stderr: string } {
-  const result = spawnSync(process.execPath, args, {
-    cwd: options.cwd,
-    encoding: 'utf-8',
-    stdio: options.stdio === 'inherit' ? 'inherit' : 'pipe',
-    env: {
-      ...process.env,
-      BUN_BE_BUN: '1',
-    },
-  });
-
-  return {
-    exitCode: result.status ?? 1,
-    stdout: result.stdout || '',
-    stderr: result.stderr || '',
-  };
-}
+export const BUILD_DEPENDENCIES = [
+  'react',
+  'react-dom',
+  '@mdx-js/react',
+  'tailwindcss',
+  '@tailwindcss/cli',
+  '@tailwindcss/typography',
+];
 
 /**
  * Remove a file or directory with retry logic for transient errors (EACCES, EBUSY).
@@ -54,8 +32,10 @@ async function rmWithRetry(
     } catch (error: any) {
       const isRetryable = error?.code === 'EACCES' || error?.code === 'EBUSY';
       if (isRetryable && attempt < maxRetries) {
-        log.debug(`Retry ${attempt}/${maxRetries} for rm ${path}: ${error.code}`);
-        await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
+        log.debug(
+          `Retry ${attempt}/${maxRetries} for rm ${path}: ${error.code}`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
       } else {
         throw error;
       }
@@ -112,14 +92,17 @@ export class BuildContext {
   constructor(opts: BuildContextInitOptions) {
     this.options = opts;
     this.rootDir = _path.resolve(opts.path || opts.rootDirName || '.');
-    this.tempDir = _path.resolve(this.rootDir, opts.tempDirName || '.scratch-build-cache');
-    this.buildDir = _path.resolve(this.rootDir, opts.buildDirName || 'dist');
-    this.srcDir = _path.resolve(
+    this.tempDir = _path.resolve(
       this.rootDir,
-      opts.srcDirName || 'src'
+      opts.tempDirName || '.scratch-build-cache'
     );
+    this.buildDir = _path.resolve(this.rootDir, opts.buildDirName || 'dist');
+    this.srcDir = _path.resolve(this.rootDir, opts.srcDirName || 'src');
     this.pagesDir = _path.resolve(this.rootDir, opts.pagesDirName || 'pages');
-    this.staticDir = _path.resolve(this.rootDir, opts.staticDirName || 'public');
+    this.staticDir = _path.resolve(
+      this.rootDir,
+      opts.staticDirName || 'public'
+    );
   }
 
   clientSrcDir = () => _path.resolve(this.tempDir, 'client-src');
@@ -130,7 +113,8 @@ export class BuildContext {
   /**
    * Directory where embedded templates are materialized
    */
-  embeddedTemplatesDir = () => _path.resolve(this.tempDir, 'embedded-templates');
+  embeddedTemplatesDir = () =>
+    _path.resolve(this.tempDir, 'embedded-templates');
 
   /**
    * Returns the node_modules directory to use for build dependencies.
@@ -161,28 +145,15 @@ export class BuildContext {
       }
 
       log.info('Installing dependencies...');
-      try {
-        execSync(`"${process.execPath}" install`, {
-          cwd: this.rootDir,
-          stdio: 'pipe',
-          env: { ...process.env, BUN_BE_BUN: '1' },
-        });
-      } catch (error: any) {
-        throw new Error(
-          `Failed to install dependencies.\n\n` +
-          `This can happen if:\n` +
-          `  - No network connection\n` +
-          `  - Bun is not installed correctly\n` +
-          `  - Disk space is low\n\n` +
-          `Details: ${error.stderr?.toString() || error.message}`
-        );
-      }
+      bunInstall(this.rootDir);
       log.info('Dependencies installed');
 
       // Work around a Bun runtime issue: Bun.build() with target='bun' fails
       // after spawning a child bun process in the same execution.
       // Re-run the build in a fresh subprocess.
-      log.debug('Re-running build in subprocess to work around Bun runtime issue');
+      log.debug(
+        'Re-running build in subprocess to work around Bun runtime issue'
+      );
       // In compiled Bun binaries, argv is ["bun", "/$bunfs/root/...", ...args]
       // so we skip the first two elements and use execPath as the executable
       const args = process.argv.slice(2);
@@ -218,7 +189,7 @@ export class BuildContext {
         name: 'scratch-build-cache',
         private: true,
         dependencies: Object.fromEntries(
-          BUILD_DEPENDENCIES.map(pkg => [pkg, 'latest'])
+          BUILD_DEPENDENCIES.map((pkg) => [pkg, 'latest'])
         ),
       };
       await fs.writeFile(
@@ -226,30 +197,15 @@ export class BuildContext {
         JSON.stringify(packageJson, null, 2)
       );
 
-      // Run bun install
-      try {
-        execSync(`"${process.execPath}" install`, {
-          cwd: this.tempDir,
-          stdio: 'pipe',
-          env: { ...process.env, BUN_BE_BUN: '1' },
-        });
-      } catch (error: any) {
-        throw new Error(
-          `Failed to install build dependencies.\n\n` +
-          `This can happen if:\n` +
-          `  - No network connection\n` +
-          `  - Bun is not installed correctly\n` +
-          `  - Disk space is low\n\n` +
-          `Details: ${error.stderr?.toString() || error.message}`
-        );
-      }
-
+      bunInstall(this.tempDir);
       log.info('Build dependencies installed');
 
       // Work around a Bun runtime issue: Bun.build() with target='bun' fails
       // after spawning a child bun process in the same execution.
       // Re-run the build in a fresh subprocess.
-      log.debug('Re-running build in subprocess to work around Bun runtime issue');
+      log.debug(
+        'Re-running build in subprocess to work around Bun runtime issue'
+      );
       const args = process.argv.slice(2);
       const buildResult = spawnSync(process.execPath, args, {
         cwd: process.cwd(),
@@ -281,7 +237,10 @@ export class BuildContext {
       const entries = await fs.readdir(this.tempDir);
       for (const entry of entries) {
         if (entry !== 'node_modules' && entry !== 'package.json') {
-          await rmWithRetry(_path.resolve(this.tempDir, entry), { recursive: true, force: true });
+          await rmWithRetry(_path.resolve(this.tempDir, entry), {
+            recursive: true,
+            force: true,
+          });
         }
       }
     } else {
@@ -343,7 +302,13 @@ export class BuildContext {
    */
   async clientTsxSrcPath(): Promise<string> {
     return this.resolvePathWithFallback(
-      ['entry-client.tsx', 'entry.tsx', 'client.tsx', 'build/entry-client.tsx', '_build/entry-client.tsx'],
+      [
+        'entry-client.tsx',
+        'entry.tsx',
+        'client.tsx',
+        'build/entry-client.tsx',
+        '_build/entry-client.tsx',
+      ],
       '_build/entry-client.tsx'
     );
   }
@@ -354,7 +319,13 @@ export class BuildContext {
    */
   async serverJsxSrcPath(): Promise<string> {
     return this.resolvePathWithFallback(
-      ['entry-server.jsx', 'index.jsx', 'server.jsx', 'build/entry-server.jsx', '_build/entry-server.jsx'],
+      [
+        'entry-server.jsx',
+        'index.jsx',
+        'server.jsx',
+        'build/entry-server.jsx',
+        '_build/entry-server.jsx',
+      ],
       '_build/entry-server.jsx'
     );
   }
@@ -476,7 +447,8 @@ export class BuildContext {
           // Check for .tsx variant first
           const templatePath = `src/markdown/${comp}.tsx`;
           if (hasTemplate(templatePath)) {
-            const componentPath = await this.materializeEmbeddedFile(templatePath);
+            const componentPath =
+              await this.materializeEmbeddedFile(templatePath);
             result.map[comp] = componentPath;
           }
         }

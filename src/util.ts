@@ -1,6 +1,51 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { glob } from 'fast-glob';
+import { spawnSync } from 'child_process';
+
+/**
+ * Spawn bun commands synchronously using Node's child_process.
+ * Uses the current executable with BUN_BE_BUN=1 so scratch can run bun commands
+ * without requiring bun to be installed separately.
+ */
+export function spawnBunSync(
+  args: string[],
+  options: { cwd?: string; stdio?: 'pipe' | 'inherit' } = {}
+): { exitCode: number; stdout: string; stderr: string } {
+  const result = spawnSync(process.execPath, args, {
+    cwd: options.cwd,
+    encoding: 'utf-8',
+    stdio: options.stdio === 'inherit' ? 'inherit' : 'pipe',
+    env: {
+      ...process.env,
+      BUN_BE_BUN: '1',
+    },
+  });
+
+  return {
+    exitCode: result.status ?? 1,
+    stdout: result.stdout || '',
+    stderr: result.stderr || '',
+  };
+}
+
+/**
+ * Run bun install in a directory.
+ * Throws an error with helpful message if install fails.
+ */
+export function bunInstall(cwd: string): void {
+  const result = spawnBunSync(['install'], { cwd, stdio: 'pipe' });
+  if (result.exitCode !== 0) {
+    throw new Error(
+      `Failed to install dependencies.\n\n` +
+        `This can happen if:\n` +
+        `  - No network connection\n` +
+        `  - Bun is not installed correctly\n` +
+        `  - Disk space is low\n\n` +
+        `Details: ${result.stderr || result.stdout || 'Unknown error'}`
+    );
+  }
+}
 
 /**
  * Simple template rendering function
