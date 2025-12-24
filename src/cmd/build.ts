@@ -3,7 +3,7 @@ import path from 'path';
 import { createHash } from 'crypto';
 import { getBuildContext } from '../context';
 import { getBunBuildConfig, getServerBunBuildConfig } from '../buncfg';
-import { render } from '../util';
+import { render, escapeHtml } from '../util';
 import { getPreprocessingErrors, resetPreprocessingState } from '../preprocess';
 import log from '../logger';
 
@@ -182,7 +182,7 @@ async function doBuild(options: BuildOptions = {}) {
   }
 
   if (!result.success) {
-    const errorMessages = result.logs.map(log => String(log)).join('\n');
+    const errorMessages = result.logs.map(msg => String(msg)).join('\n');
     throw new Error(`Client build failed:\n${errorMessages}`);
   }
 
@@ -392,7 +392,7 @@ async function buildAndRenderServerModules() {
   }
 
   if (!result.success) {
-    const errorMessages = result.logs.map(log => String(log)).join('\n');
+    const errorMessages = result.logs.map(msg => String(msg)).join('\n');
     throw new Error(`Server build failed:\n${errorMessages}`);
   }
 
@@ -551,44 +551,47 @@ async function injectFrontmatterMeta() {
 
     const metadata = entry.frontmatterData;
 
-    // Build meta tags
+    // Helper to safely escape metadata values
+    const e = (val: unknown): string => escapeHtml(String(val));
+
+    // Build meta tags (escape all user-provided values to prevent XSS)
     let metaTags = [
-      metadata.title && `<title>${metadata.title}</title>`,
+      metadata.title && `<title>${e(metadata.title)}</title>`,
       metadata.description &&
-        `<meta name="description" content="${metadata.description}">`,
+        `<meta name="description" content="${e(metadata.description)}">`,
       metadata.keywords &&
-        `<meta name="keywords" content="${Array.isArray(metadata.keywords) ? metadata.keywords.join(', ') : metadata.keywords}">`,
-      metadata.author && `<meta name="author" content="${metadata.author}">`,
-      metadata.robots && `<meta name="robots" content="${metadata.robots}">`,
+        `<meta name="keywords" content="${e(Array.isArray(metadata.keywords) ? metadata.keywords.join(', ') : metadata.keywords)}">`,
+      metadata.author && `<meta name="author" content="${e(metadata.author)}">`,
+      metadata.robots && `<meta name="robots" content="${e(metadata.robots)}">`,
 
       // Open Graph
       metadata.title &&
-        `<meta property="og:title" content="${metadata.title}">`,
+        `<meta property="og:title" content="${e(metadata.title)}">`,
       metadata.description &&
-        `<meta property="og:description" content="${metadata.description}">`,
+        `<meta property="og:description" content="${e(metadata.description)}">`,
       metadata.image &&
-        `<meta property="og:image" content="${metadata.image}">`,
-      metadata.url && `<meta property="og:url" content="${metadata.url}">`,
-      `<meta property="og:type" content="${metadata.type || 'article'}">`,
+        `<meta property="og:image" content="${e(metadata.image)}">`,
+      metadata.url && `<meta property="og:url" content="${e(metadata.url)}">`,
+      `<meta property="og:type" content="${e(metadata.type || 'article')}">`,
 
       // Twitter
       metadata.title &&
-        `<meta name="twitter:title" content="${metadata.title}">`,
+        `<meta name="twitter:title" content="${e(metadata.title)}">`,
       metadata.description &&
-        `<meta name="twitter:description" content="${metadata.description}">`,
+        `<meta name="twitter:description" content="${e(metadata.description)}">`,
       metadata.image &&
-        `<meta name="twitter:image" content="${metadata.image}">`,
-      `<meta name="twitter:card" content="${metadata.twitterCard || 'summary_large_image'}">`,
+        `<meta name="twitter:image" content="${e(metadata.image)}">`,
+      `<meta name="twitter:card" content="${e(metadata.twitterCard || 'summary_large_image')}">`,
 
       // Dates
       metadata.publishDate &&
-        `<meta property="article:published_time" content="${metadata.publishDate}">`,
+        `<meta property="article:published_time" content="${e(metadata.publishDate)}">`,
       metadata.modifiedDate &&
-        `<meta property="article:modified_time" content="${metadata.modifiedDate}">`,
+        `<meta property="article:modified_time" content="${e(metadata.modifiedDate)}">`,
 
       // Canonical
       metadata.canonical &&
-        `<link rel="canonical" href="${metadata.canonical}">`,
+        `<link rel="canonical" href="${e(metadata.canonical)}">`,
     ]
       .filter(Boolean)
       .join('\n    ');
@@ -598,7 +601,7 @@ async function injectFrontmatterMeta() {
       const tagMetas = (
         Array.isArray(metadata.tags) ? metadata.tags : [metadata.tags]
       )
-        .map((tag: string) => `<meta property="article:tag" content="${tag}">`)
+        .map((tag: string) => `<meta property="article:tag" content="${e(tag)}">`)
         .join('\n    ');
       metaTags += '\n    ' + tagMetas;
     }
@@ -608,7 +611,7 @@ async function injectFrontmatterMeta() {
 
     // Update lang attribute if specified
     if (metadata.lang) {
-      html = html.replace('<html lang="en">', `<html lang="${metadata.lang}">`);
+      html = html.replace('<html lang="en">', `<html lang="${e(metadata.lang)}">`);
     }
 
     await fs.writeFile(htmlPath, html);

@@ -155,7 +155,19 @@ export async function buildFileMap(
 }
 
 /**
- * Get content type for a file based on extension
+ * Escape HTML entities to prevent XSS when inserting user content into HTML.
+ */
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * Get content type for a file based on extension.
  */
 export function getContentType(filePath: string): string {
   const ext = path.extname(filePath).toLowerCase();
