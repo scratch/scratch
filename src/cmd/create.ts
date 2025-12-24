@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { materializeProjectTemplates } from '../template';
 import { BUILD_DEPENDENCIES } from '../context';
+import { formatFileTree } from '../util';
 import log from '../logger';
 
 interface CreateOptions {
@@ -57,8 +58,8 @@ export async function createCommand(targetPath: string, options: CreateOptions =
 
   if (created.length > 0) {
     log.info('Created:');
-    for (const file of created.sort()) {
-      log.info(`  ${file}`);
+    for (const line of formatFileTree(created)) {
+      log.info(`  ${line}`);
     }
     log.info('');
     log.info('Start the development server:');
