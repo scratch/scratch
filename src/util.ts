@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs/promises';
+import readline from 'readline';
 import { glob } from 'fast-glob';
 import { spawnSync } from 'child_process';
 import log from './logger';
@@ -188,4 +189,34 @@ export function getContentType(filePath: string): string {
     '.eot': 'application/vnd.ms-fontobject',
   };
   return types[ext] || 'application/octet-stream';
+}
+
+/**
+ * Prompt user for yes/no confirmation.
+ * Auto-confirms with default value when not running in a TTY (non-interactive).
+ */
+export async function confirm(question: string, defaultValue: boolean): Promise<boolean> {
+  // Auto-confirm when not in a TTY (scripts, tests, piped input)
+  if (!process.stdin.isTTY) {
+    return defaultValue;
+  }
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  const hint = defaultValue ? '[Y/n]' : '[y/N]';
+
+  return new Promise((resolve) => {
+    rl.question(`${question} ${hint} `, (answer) => {
+      rl.close();
+      const trimmed = answer.trim().toLowerCase();
+      if (trimmed === '') {
+        resolve(defaultValue);
+      } else {
+        resolve(trimmed === 'y' || trimmed === 'yes');
+      }
+    });
+  });
 }

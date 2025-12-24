@@ -1,8 +1,8 @@
 import path from 'path';
 import fs from 'fs/promises';
-import readline from 'readline';
-import { hasTemplate, materializeTemplate, listTemplateFiles } from '../template';
+import { hasTemplate, materializeTemplate, listUserFacingTemplateFiles } from '../template';
 import { generatePackageJson } from './create';
+import { confirm } from '../util';
 import log from '../logger';
 
 interface RevertOptions {
@@ -11,52 +11,20 @@ interface RevertOptions {
 }
 
 /**
- * Prompt user for yes/no confirmation.
- * Auto-confirms with default value when not running in a TTY (non-interactive).
- */
-async function confirm(question: string, defaultValue: boolean): Promise<boolean> {
-  // Auto-confirm when not in a TTY (scripts, tests, piped input)
-  if (!process.stdin.isTTY) {
-    return defaultValue;
-  }
-
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  const hint = defaultValue ? '[Y/n]' : '[y/N]';
-
-  return new Promise((resolve) => {
-    rl.question(`${question} ${hint} `, (answer) => {
-      rl.close();
-      const trimmed = answer.trim().toLowerCase();
-      if (trimmed === '') {
-        resolve(defaultValue);
-      } else {
-        resolve(trimmed === 'y' || trimmed === 'yes');
-      }
-    });
-  });
-}
-
-/**
  * Revert a file or directory to its template version.
  * Creates new files immediately. For existing files, prompts for confirmation (unless --force).
  */
 export async function revertCommand(filePath: string | undefined, options: RevertOptions = {}): Promise<void> {
-  const allFiles = listTemplateFiles();
+  const allFiles = listUserFacingTemplateFiles();
 
   // List available templates if --list flag is provided
   if (options.list) {
     log.info('Available template files:');
     for (const file of allFiles.sort()) {
-      // Skip internal build infrastructure
-      if (file.startsWith('_build/')) continue;
-      console.log(`  ${file}`);
+      log.info(`  ${file}`);
     }
     // package.json is generated, not templated, but can be reverted
-    console.log(`  package.json`);
+    log.info(`  package.json`);
     return;
   }
 
@@ -75,7 +43,7 @@ export async function revertCommand(filePath: string | undefined, options: Rever
 
     if (exists && !options.force) {
       log.info('The following files will be overwritten:');
-      console.log('  package.json');
+      log.info('  package.json');
       const shouldOverwrite = await confirm('Overwrite these files?', true);
       if (!shouldOverwrite) {
         log.info('Skipped 1 existing file.');
@@ -103,8 +71,8 @@ export async function revertCommand(filePath: string | undefined, options: Rever
 
   if (filesToRevert.length === 0) {
     log.error(`No template found for: ${templatePath}`);
-    console.log(`\nThis command should be run from the project root.`);
-    console.log(`Use 'scratch revert --list' to see all available templates.`);
+    log.info(`This command should be run from the project root.`);
+    log.info(`Use 'scratch revert --list' to see all available templates.`);
     process.exit(1);
   }
 
@@ -136,7 +104,7 @@ export async function revertCommand(filePath: string | undefined, options: Rever
       log.info('');
       log.info('The following files will be overwritten:');
       for (const file of existingFiles) {
-        console.log(`  ${file}`);
+        log.info(`  ${file}`);
       }
       shouldOverwrite = await confirm('Overwrite these files?', true);
     }

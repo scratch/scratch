@@ -173,3 +173,10 @@ export function hasTemplate(templatePath: string): boolean {
 export function listTemplateFiles(): string[] {
   return Object.keys(templates);
 }
+
+/**
+ * List user-facing template files (excludes internal _build/ files).
+ */
+export function listUserFacingTemplateFiles(): string[] {
+  return Object.keys(templates).filter(f => !f.startsWith('_build/'));
+}
