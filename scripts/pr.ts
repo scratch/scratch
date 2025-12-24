@@ -118,11 +118,11 @@ const rl = createInterface({
 });
 
 const answer = await new Promise<string>((resolve) => {
-  rl.question('\nCreate pull request? (y/n): ', resolve);
+  rl.question('\nCreate pull request? (Y/n): ', resolve);
 });
 rl.close();
 
-if (answer.toLowerCase() !== 'y') {
+if (answer.toLowerCase() === 'n') {
   console.log('\nPR creation paused. Edit PULL_REQUEST.md as needed, then run:');
   console.log('  bun run pr');
   process.exit(0);

@@ -168,11 +168,11 @@ const rl = createInterface({
 });
 
 const answer = await new Promise<string>((resolve) => {
-  rl.question('\nContinue with release? (y/n): ', resolve);
+  rl.question('\nContinue with release? (Y/n): ', resolve);
 });
 rl.close();
 
-if (answer.toLowerCase() !== 'y') {
+if (answer.toLowerCase() === 'n') {
   console.log('\nRelease paused. Edit CHANGELOG.md as needed, then run:');
   console.log(`  bun run release:${bumpType}`);
   process.exit(0);
