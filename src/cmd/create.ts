@@ -58,11 +58,14 @@ export async function createCommand(
     includeExamples,
   });
 
-  // Generate package.json if requested
+  // Generate package.json if requested (skip if it already exists)
   if (includePackage) {
-    const projectName = path.basename(path.resolve(targetPath));
-    await generatePackageJson(targetPath, projectName);
-    created.push('package.json');
+    const packageJsonPath = path.join(targetPath, 'package.json');
+    if (!(await fs.exists(packageJsonPath))) {
+      const projectName = path.basename(path.resolve(targetPath));
+      await generatePackageJson(targetPath, projectName);
+      created.push('package.json');
+    }
   }
 
   if (created.length > 0) {
