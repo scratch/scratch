@@ -6,13 +6,13 @@
 
 ## Architectural Overview
 
-The codebase is ~3000 lines across 14 TypeScript files.
+The codebase is ~2800 lines across 14 TypeScript files (reduced from ~3000 after refactoring).
 
 ### Dependency Hierarchy
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     src/index.ts (156 lines)                │
+│                     src/index.ts (140 lines)                │
 │                     CLI Entry Point (Commander.js)          │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -26,7 +26,7 @@ The codebase is ~3000 lines across 14 TypeScript files.
         │                     │
         ▼                     ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                  src/context.ts (537 lines)                 │
+│                  src/context.ts (~420 lines)                │
 │                  BuildContext - Core orchestrator           │
 │   Paths, entries, components, dependencies, templates       │
 └─────────────────────────────────────────────────────────────┘
@@ -41,7 +41,7 @@ The codebase is ~3000 lines across 14 TypeScript files.
 Supporting files:
 ┌───────────────┐   ┌───────────────┐   ┌───────────────┐
 │   util.ts     │   │  logger.ts    │   │  version.ts   │
-│  (105 lines)  │   │  (36 lines)   │   │  (7 lines)    │
+│  (~175 lines) │   │  (36 lines)   │   │  (7 lines)    │
 └───────────────┘   └───────────────┘   └───────────────┘
 ```
 
@@ -57,20 +57,20 @@ Supporting files:
 
 ## File Review Progress
 
-| File | Lines | Status | Key Recommendations |
-|------|-------|--------|---------------------|
-| `src/index.ts` | 156 | ✅ Done | Extract try/catch wrapper; simplify `--ssg` to `--no-ssg`; fix unused `path` param confusion |
-| `src/context.ts` | 537 | ⏳ Pending | |
+| File | Lines | Status | Key Changes Made |
+|------|-------|--------|------------------|
+| `src/index.ts` | 140 | ✅ Done | Extracted `withErrorHandling` wrapper; simplified `--ssg` to `--no-ssg`; consistent logging |
+| `src/context.ts` | ~420 | ✅ Done | Moved utils to util.ts; simplified `ensureBuildDependencies`; converted to getters |
+| `src/util.ts` | ~175 | ✅ Done | Added `spawnBunSync`, `bunInstall`, `rmWithRetry` from context.ts |
 | `src/template.ts` | 175 | ⏳ Pending | |
 | `src/buncfg.ts` | 237 | ⏳ Pending | |
-| `src/cmd/build.ts` | 623 | ⏳ Pending | |
+| `src/cmd/build.ts` | 623 | ⏳ Pending | Updated getter call sites |
 | `src/cmd/dev.ts` | 224 | ⏳ Pending | |
 | `src/cmd/create.ts` | 71 | ⏳ Pending | |
 | `src/cmd/preview.ts` | 110 | ⏳ Pending | |
 | `src/cmd/update.ts` | 185 | ⏳ Pending | |
 | `src/cmd/revert.ts` | 154 | ⏳ Pending | |
 | `src/preprocess.ts` | 367 | ⏳ Pending | |
-| `src/util.ts` | 105 | ⏳ Pending | |
 | `src/logger.ts` | 36 | ⏳ Pending | |
 | `src/version.ts` | 7 | ⏳ Pending | |
 
@@ -78,47 +78,77 @@ Supporting files:
 
 ## Detailed File Reviews
 
-### src/index.ts (156 lines) ✅
+### src/index.ts ✅
 
-**Purpose:** CLI entry point using Commander.js. Defines all available commands and their options, sets up global hooks for logging and context initialization.
+**Purpose:** CLI entry point using Commander.js. Defines all available commands and their options.
 
-**Structure:**
-- Lines 1-13: Imports
-- Lines 15-22: Program setup with global options (`-v`, `-q`)
-- Lines 24-38: `create` command
-- Lines 40-68: `build` command
-- Lines 70-85: `dev` command
-- Lines 87-100: `preview` command
-- Lines 102-115: `clean` command
-- Lines 117-127: `update` command
-- Lines 129-142: `revert` command
-- Lines 144-154: `preAction` hook (sets log level, initializes BuildContext)
-- Line 156: `program.parse()`
+**Changes Made:**
+1. Added `withErrorHandling(name, handler)` wrapper to eliminate duplicate try/catch blocks (~40 lines saved)
+2. Simplified `--ssg [value]` with complex parser to `--no-ssg` (Commander handles automatically)
+3. Changed `dev` and `preview` logging from `log.debug` to `log.info` for consistency
+4. Removed unused parameters from `clean` action
 
-**Recommendations:**
+---
 
-1. **Extract repetitive try/catch pattern (HIGH IMPACT)** - Every action has identical error handling. Create a wrapper:
+### src/context.ts ✅
+
+**Purpose:** Core orchestrator for the build system. Manages paths, discovers pages and components, handles dependency installation, resolves files with fallback to embedded templates.
+
+**Changes Made:**
+
+1. **Moved utility functions to `src/util.ts`:**
+   - `spawnBunSync()` - spawn bun commands with BUN_BE_BUN=1
+   - `bunInstall(cwd)` - run bun install with error handling
+   - `rmWithRetry()` - file deletion with retry logic for EACCES/EBUSY
+
+2. **Massively simplified `ensureBuildDependencies()`** (82 lines → 10 lines):
+   - Removed Bun runtime bug workaround (re-exec after install) - no longer needed
+   - Removed manual dependency checking loop
+   - Now just: check for package.json → bunInstall in appropriate directory
    ```typescript
-   function wrapAction(name: string, handler: Function) {
-     return async (...args: any[]) => {
-       try {
-         await handler(...args);
-       } catch (error) {
-         log.error(`${name} failed:`, error);
-         process.exit(1);
-       }
-     };
+   async ensureBuildDependencies(): Promise<void> {
+     const userPackageJson = path.resolve(this.rootDir, 'package.json');
+     if (await fs.exists(userPackageJson)) {
+       bunInstall(this.rootDir);
+     } else {
+       await this.ensureCachePackageJson();
+       bunInstall(this.tempDir);
+     }
    }
    ```
 
-2. **The `path` argument is captured but not used** - The `preAction` hook sets `options.path`, making the positional `path` param in actions redundant/confusing.
+3. **Converted arrow function properties to getters:**
+   ```typescript
+   // Before
+   clientSrcDir = () => _path.resolve(this.tempDir, 'client-src');
 
-3. **Simplify `--ssg` flag** - Replace complex parser with `--no-ssg` (Commander handles `--no-X` automatically).
+   // After
+   get clientSrcDir(): string {
+     return path.resolve(this.tempDir, 'client-src');
+   }
+   ```
+   - Updated all call sites in `context.ts`, `cmd/build.ts`, and tests
 
-4. **Inconsistent logging** - `build` logs timing, others don't. Standardize.
+4. **Renamed `_path` import to `path`** - conventional naming
+
+5. **Removed unused `packageJsonPath` variable** in `resetTempDir()`
+
+6. **Removed `spawnSync` import** - no longer needed after removing re-exec workaround
+
+---
+
+### src/util.ts ✅
+
+**Purpose:** Shared utility functions.
+
+**Changes Made:**
+- Added `spawnBunSync()` - spawns bun with BUN_BE_BUN=1 env var
+- Added `bunInstall(cwd)` - runs bun install with helpful error messages
+- Added `rmWithRetry()` - file deletion with retry for transient errors
+- Added `log` import for debug logging in rmWithRetry
 
 ---
 
 ## Next Up
 
-`src/context.ts` - The core BuildContext class (537 lines)
+`src/template.ts` - Template system (175 lines)
