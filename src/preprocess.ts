@@ -4,14 +4,15 @@ import type { Plugin } from "unified";
 import { visit } from "unist-util-visit";
 import { is } from "unist-util-is";
 import { parse } from "acorn";
-import type { Node, Root, Code } from "mdast";
+import type { Node, Root } from "mdast";
 import log from "./logger";
 
 // Cache for checking if files have default exports
 const defaultExportCache = new Map<string, boolean>();
 
 /**
- * Check if a file has a default export by reading and parsing it.
+ * Check if a file has a default export.
+ * Uses acorn parsing when possible, falls back to regex for JSX files.
  * Results are cached for performance.
  */
 function hasDefaultExport(filePath: string): boolean {
@@ -19,18 +20,52 @@ function hasDefaultExport(filePath: string): boolean {
     return defaultExportCache.get(filePath)!;
   }
 
+  let hasDefault = false;
+
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
-    // Simple heuristic: check for common default export patterns
-    const hasDefault = /export\s+default\s+/.test(content) ||
-                       /export\s*\{\s*\w+\s+as\s+default\s*\}/.test(content);
-    defaultExportCache.set(filePath, hasDefault);
-    return hasDefault;
+
+    try {
+      // Try parsing with acorn (works for plain JS/TS without JSX)
+      const ast = parse(content, {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      }) as any;
+
+      for (const node of ast.body) {
+        // export default ...
+        if (node.type === 'ExportDefaultDeclaration') {
+          hasDefault = true;
+          break;
+        }
+        // export { foo as default } or export { default } from '...'
+        if (node.type === 'ExportNamedDeclaration' && node.specifiers) {
+          for (const spec of node.specifiers) {
+            if (spec.exported?.name === 'default') {
+              hasDefault = true;
+              break;
+            }
+          }
+        }
+        if (hasDefault) break;
+      }
+    } catch {
+      // Parsing failed (likely JSX) - fall back to regex heuristic
+      // Strip single-line and multi-line comments first to avoid false positives
+      const stripped = content
+        .replace(/\/\/.*$/gm, '')           // Remove single-line comments
+        .replace(/\/\*[\s\S]*?\*\//g, '');  // Remove multi-line comments
+
+      hasDefault = /export\s+default\s+/.test(stripped) ||
+                   /export\s*\{[^}]*\bas\s+default\b/.test(stripped);
+    }
   } catch {
-    // If we can't read the file, assume named export
-    defaultExportCache.set(filePath, false);
-    return false;
+    // Can't read file - assume named export
+    hasDefault = false;
   }
+
+  defaultExportCache.set(filePath, hasDefault);
+  return hasDefault;
 }
 
 let PREPROCESSING_STARTED = false;
@@ -190,14 +225,11 @@ export const createPreprocessMdxPlugin = (
 export const createRehypeFootnotesPlugin = (): Plugin => {
   return () => {
     return (tree: any) => {
-      // Find the footnotes section and the PageWrapper div
+      if (!tree.children || !Array.isArray(tree.children)) return;
+
+      // Find the footnotes section (has data-footnotes attribute)
       let footnotesSection: any = null;
       let footnotesIndex = -1;
-      let pageWrapperDiv: any = null;
-
-      // The structure is: root > [PageWrapper div, footnotes section]
-      // We need to move footnotes inside the PageWrapper div
-      if (!tree.children || !Array.isArray(tree.children)) return;
 
       for (let i = 0; i < tree.children.length; i++) {
         const child = tree.children[i];
@@ -206,26 +238,26 @@ export const createRehypeFootnotesPlugin = (): Plugin => {
           if (props.dataFootnotes || props['data-footnotes']) {
             footnotesSection = child;
             footnotesIndex = i;
+            break;
           }
-        }
-        // PageWrapper renders as a div - find it by checking if it contains content
-        if (child.type === 'element' && child.tagName === 'div' && !pageWrapperDiv) {
-          pageWrapperDiv = child;
-        }
-        // Also check for mdxJsxFlowElement (JSX in hast)
-        if (child.type === 'mdxJsxFlowElement' && child.name === 'PageWrapper') {
-          pageWrapperDiv = child;
         }
       }
 
-      // If we found both, move footnotes inside PageWrapper
-      if (footnotesSection && pageWrapperDiv && footnotesIndex > -1) {
-        // Remove footnotes from root
-        tree.children.splice(footnotesIndex, 1);
-        // Add to end of PageWrapper's children
-        if (!pageWrapperDiv.children) pageWrapperDiv.children = [];
-        pageWrapperDiv.children.push(footnotesSection);
-      }
+      // No footnotes to move
+      if (!footnotesSection || footnotesIndex === -1) return;
+
+      // Find the PageWrapper JSX element
+      const pageWrapper = tree.children.find(
+        (child: any) => child.type === 'mdxJsxFlowElement' && child.name === 'PageWrapper'
+      );
+
+      // If no PageWrapper found, leave footnotes where they are
+      if (!pageWrapper) return;
+
+      // Move footnotes inside PageWrapper
+      tree.children.splice(footnotesIndex, 1);
+      if (!pageWrapper.children) pageWrapper.children = [];
+      pageWrapper.children.push(footnotesSection);
     };
   };
 };
