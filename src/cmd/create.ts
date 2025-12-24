@@ -33,13 +33,14 @@ export async function generatePackageJson(targetDir: string, projectName: string
 /**
  * Create a new Scratch project.
  *
- * Includes src/, examples, and package.json by default.
- * Use --no-src, --no-examples, or --no-package to exclude.
+ * Includes src/ and package.json by default.
+ * Use --no-src or --no-package to exclude.
+ * Use --examples to include example pages.
  */
 export async function createCommand(targetPath: string, options: CreateOptions = {}) {
-  // Defaults: include everything (--no-* flags set these to false)
+  // Defaults: include src and package, exclude examples
   const includeSrc = options.src !== false;
-  const includeExamples = options.examples !== false;
+  const includeExamples = options.examples === true;
   const includePackage = options.package !== false;
 
   const created = await materializeProjectTemplates(targetPath, {
