@@ -13,7 +13,7 @@ describe("clean command", () => {
     const sandboxDir = path.join(tempDir, "sandbox");
 
     // 2. Build the project to create dist/ and .scratch-build-cache/
-    runCliSync(["build", "sandbox"], tempDir);
+    runCliSync(["build", "sandbox", "--no-ssg"], tempDir);
 
     // 3. Verify both directories exist after build
     const distDir = path.join(sandboxDir, "dist");

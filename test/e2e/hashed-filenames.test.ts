@@ -10,8 +10,8 @@ describe("Hashed filenames for cache busting", () => {
     runCliSync(["create", "sandbox"], tempDir);
     const sandboxDir = path.join(tempDir, "sandbox");
 
-    // 2. Build the project (SSG is enabled by default)
-    runCliSync(["build", "sandbox"], tempDir);
+    // 2. Build the project without SSG (only testing filename hashing)
+    runCliSync(["build", "sandbox", "--no-ssg"], tempDir);
 
     // 3. Read the dist directory
     const distDir = path.join(sandboxDir, "dist");
@@ -51,7 +51,7 @@ describe("Hashed filenames for cache busting", () => {
     const tempDir1 = await mkTempDir("hash-diff-1-");
     runCliSync(["create", "sandbox"], tempDir1);
     const sandboxDir1 = path.join(tempDir1, "sandbox");
-    runCliSync(["build", "sandbox"], tempDir1);
+    runCliSync(["build", "sandbox", "--no-ssg"], tempDir1);
 
     // 2. Create second project with different content
     const tempDir2 = await mkTempDir("hash-diff-2-");
@@ -63,7 +63,7 @@ describe("Hashed filenames for cache busting", () => {
     const originalContent = await readFile(mdxPath, "utf-8");
     await Bun.write(mdxPath, originalContent + "\n\nExtra content to change the hash.");
 
-    runCliSync(["build", "sandbox"], tempDir2);
+    runCliSync(["build", "sandbox", "--no-ssg"], tempDir2);
 
     // 3. Get JS filenames from both builds
     const dist1Files = await readdir(path.join(sandboxDir1, "dist"));

@@ -19,13 +19,18 @@ describe("Tailwind integration", () => {
       `# Tailwind Test\n\n<div className=\"text-red-500\">Hello Tailwind</div>`
     );
 
-    // 3. Build the project (SSG is enabled by default) so that the component
-    //    gets pre-rendered into the HTML output. This allows us to assert on the markup.
-    runCliSync(["build", "sandbox", "--development"], tempDir);
+    // 3. Build the project without SSG
+    runCliSync(["build", "sandbox", "--development", "--no-ssg"], tempDir);
 
-    // 4. Read the generated HTML and assert it contains the expected class.
-    const html = await readFile(path.join(sandboxDir, "dist", "index.html"), "utf-8");
-    expect(html).toMatch(/text-red-500/);
+    // 4. Read the generated CSS and verify it contains the Tailwind class
+    const distDir = path.join(sandboxDir, "dist");
+    // Find the CSS file (has hash in name)
+    const { readdir } = await import("fs/promises");
+    const files = await readdir(distDir);
+    const cssFile = files.find((f) => f.endsWith(".css"));
+    expect(cssFile).toBeDefined();
+    const css = await readFile(path.join(distDir, cssFile!), "utf-8");
+    expect(css).toMatch(/text-red-500/);
 
     // Cleanup temporary files.
     await rm(tempDir, { recursive: true, force: true });

@@ -27,8 +27,8 @@ describe("Public assets", () => {
       `{"key": "value"}`
     );
 
-    // 3. Build the project
-    runCliSync(["build", "sandbox"], tempDir);
+    // 3. Build the project without SSG (only testing asset copying)
+    runCliSync(["build", "sandbox", "--no-ssg"], tempDir);
 
     const distDir = path.join(sandboxDir, "dist");
 

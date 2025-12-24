@@ -27,7 +27,7 @@ describe("Component error detection", () => {
 `
     );
 
-    // 3. Build should fail
+    // 3. Build should fail (SSG required to surface missing component error)
     const result = spawnSync(scratchPath, ["build", "sandbox"], {
       cwd: tempDir,
       encoding: "utf-8",
@@ -87,8 +87,8 @@ describe("Component conflict detection", () => {
 `
     );
 
-    // 4. Build should fail due to ambiguous component
-    const result = spawnSync(scratchPath, ["build", "sandbox"], {
+    // 4. Build should fail due to ambiguous component (--no-ssg for speed)
+    const result = spawnSync(scratchPath, ["build", "sandbox", "--no-ssg"], {
       cwd: tempDir,
       encoding: "utf-8",
       stdio: "pipe",
@@ -149,8 +149,8 @@ describe("Component conflict detection", () => {
 `
     );
 
-    // 4. Build should succeed because we explicitly imported (SSG is enabled by default)
-    const result = spawnSync(scratchPath, ["build", "sandbox", "--development"], {
+    // 4. Build should succeed because we explicitly imported (--no-ssg for speed)
+    const result = spawnSync(scratchPath, ["build", "sandbox", "--development", "--no-ssg"], {
       cwd: tempDir,
       encoding: "utf-8",
       stdio: "pipe",

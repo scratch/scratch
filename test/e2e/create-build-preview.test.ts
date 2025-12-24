@@ -21,11 +21,8 @@ describe("scratch create → build → preview", () => {
 
       const sandboxDir = path.join(tempDir, "sandbox");
 
-      // 2. Build the project. We intentionally avoid the `--ssg` flag here
-      //    because the Vite stub used during testing does not implement the
-      //    server-side rendering pipeline that the real build command relies
-      //    on when SSG is enabled.
-      runCliSync(["build", "sandbox"], tempDir);
+      // 2. Build the project without SSG (preview server test doesn't need pre-rendered content)
+      runCliSync(["build", "sandbox", "--no-ssg"], tempDir);
 
       // 3. Start the preview server on an unusual port to avoid clashes.
       const port = 51234;

@@ -28,8 +28,8 @@ This page has frontmatter metadata.
 `
     );
 
-    // 3. Build with SSG
-    runCliSync(["build", "sandbox", "--development"], tempDir);
+    // 3. Build without SSG (frontmatter meta tags are injected regardless of SSG)
+    runCliSync(["build", "sandbox", "--development", "--no-ssg"], tempDir);
 
     // 4. Read the generated HTML
     const html = await readFile(path.join(sandboxDir, "dist", "index.html"), "utf-8");
