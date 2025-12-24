@@ -62,7 +62,7 @@ Supporting files:
 | `src/index.ts` | 140 | ✅ Done | Extracted `withErrorHandling` wrapper; simplified `--ssg` to `--no-ssg`; consistent logging |
 | `src/context.ts` | ~420 | ✅ Done | Moved utils to util.ts; simplified `ensureBuildDependencies`; converted to getters |
 | `src/util.ts` | ~175 | ✅ Done | Added `spawnBunSync`, `bunInstall`, `rmWithRetry` from context.ts |
-| `src/template.ts` | 175 | ⏳ Pending | |
+| `src/template.ts` | 175 | ✅ Done | No changes; noted potential simplification |
 | `src/buncfg.ts` | 237 | ⏳ Pending | |
 | `src/cmd/build.ts` | 623 | ⏳ Pending | Updated getter call sites |
 | `src/cmd/dev.ts` | 224 | ⏳ Pending | |
@@ -149,6 +149,20 @@ Supporting files:
 
 ---
 
+### src/template.ts ✅
+
+**Purpose:** Template system runtime API. Manages embedded templates compiled into the executable.
+
+**Observations:**
+- Clean tier system (minimal, src, examples) with well-designed API
+- `isMinimalFile()` and `MINIMAL_FILES` constant are only used for a defensive "unknown tier" check
+- Could be simplified by removing the tier abstraction and just filtering by prefix (`_build/`, `src/`, `pages/examples/`)
+- Current approach is more defensive (whitelist) but adds ~30 lines for a "shouldn't happen" case
+
+**Decision:** No changes made. Code works correctly; simplification deferred.
+
+---
+
 ## Next Up
 
-`src/template.ts` - Template system (175 lines)
+`src/buncfg.ts` - Bun.build() configuration (237 lines)
