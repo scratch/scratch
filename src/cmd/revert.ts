@@ -34,7 +34,12 @@ export async function revertCommand(filePath: string | undefined, options: Rever
   }
 
   // Normalize the path (remove leading ./ and trailing /)
-  const templatePath = filePath.replace(/^\.\//, '').replace(/\/$/, '');
+  let templatePath = filePath.replace(/^\.\//, '').replace(/\/$/, '');
+
+  // Special case: "examples" is an alias for "pages/examples"
+  if (templatePath === 'examples') {
+    templatePath = 'pages/examples';
+  }
 
   // Special case: package.json is generated, not templated
   if (templatePath === 'package.json') {
