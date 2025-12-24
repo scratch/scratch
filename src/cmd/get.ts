@@ -2,7 +2,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { hasTemplate, materializeTemplate, listUserFacingTemplateFiles } from '../template';
 import { generatePackageJson } from './create';
-import { confirm } from '../util';
+import { confirm, formatFileTree } from '../util';
 import log from '../logger';
 
 interface GetOptions {
@@ -19,12 +19,11 @@ export async function getCommand(filePath: string | undefined, options: GetOptio
 
   // List available templates if --list flag is provided
   if (options.list) {
-    log.info('Available template files:');
-    for (const file of allFiles.sort()) {
-      log.info(`  ${file}`);
+    log.info('Available template files:\n');
+    const filesWithPackageJson = [...allFiles, 'package.json'];
+    for (const line of formatFileTree(filesWithPackageJson)) {
+      log.info(`  ${line}`);
     }
-    // package.json is generated, not templated, but can be reverted
-    log.info(`  package.json`);
     return;
   }
 
@@ -95,10 +94,15 @@ export async function getCommand(filePath: string | undefined, options: GetOptio
   }
 
   // Create new files immediately
-  for (const file of newFiles) {
-    const targetPath = path.resolve(process.cwd(), file);
-    await materializeTemplate(file, targetPath);
-    log.info(`Created ${file}`);
+  if (newFiles.length > 0) {
+    for (const file of newFiles) {
+      const targetPath = path.resolve(process.cwd(), file);
+      await materializeTemplate(file, targetPath);
+    }
+    log.info('Created:\n');
+    for (const line of formatFileTree(newFiles)) {
+      log.info(`  ${line}`);
+    }
   }
 
   // Handle existing files
@@ -106,11 +110,11 @@ export async function getCommand(filePath: string | undefined, options: GetOptio
     let shouldOverwrite = options.force === true;
 
     if (!shouldOverwrite) {
-      log.info('');
-      log.info('The following files will be overwritten:');
-      for (const file of existingFiles) {
-        log.info(`  ${file}`);
+      log.info('\nThe following files will be overwritten:\n');
+      for (const line of formatFileTree(existingFiles)) {
+        log.info(`  ${line}`);
       }
+      log.info('');
       shouldOverwrite = await confirm('Overwrite these files?', true);
     }
 
@@ -118,7 +122,10 @@ export async function getCommand(filePath: string | undefined, options: GetOptio
       for (const file of existingFiles) {
         const targetPath = path.resolve(process.cwd(), file);
         await materializeTemplate(file, targetPath);
-        log.info(`Reverted ${file}`);
+      }
+      log.info('Restored:\n');
+      for (const line of formatFileTree(existingFiles)) {
+        log.info(`  ${line}`);
       }
     } else {
       log.info(`Skipped ${existingFiles.length} existing file${existingFiles.length === 1 ? '' : 's'}.`);

@@ -78,9 +78,11 @@ describe("get command", () => {
     const result = runCliCapture(["get", "--list"], sandboxDir);
 
     expect(result.status).toBe(0);
-    // Should include common template files
-    expect(result.stdout).toContain("src/tailwind.css");
-    expect(result.stdout).toContain("pages/index.mdx");
+    // Should include common template files (shown in tree format)
+    expect(result.stdout).toContain("tailwind.css");
+    expect(result.stdout).toContain("index.mdx");
+    expect(result.stdout).toContain("src/");
+    expect(result.stdout).toContain("pages/");
     // Should NOT include _build/ files
     expect(result.stdout).not.toContain("_build/");
 
