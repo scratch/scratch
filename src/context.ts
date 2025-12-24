@@ -103,51 +103,49 @@ export class BuildContext {
   }
 
   /**
-   * Returns the node_modules directory to use for build dependencies.
-   * If user has package.json, uses project root. Otherwise uses cache.
+   * Returns the node_modules directory (always in project root).
    */
   async nodeModulesDir(): Promise<string> {
-    const userPackageJson = path.resolve(this.rootDir, 'package.json');
-    if (await fs.exists(userPackageJson)) {
-      return path.resolve(this.rootDir, 'node_modules');
-    }
-    return path.resolve(this.tempDir, 'node_modules');
+    return path.resolve(this.rootDir, 'node_modules');
   }
 
   /**
    * Ensures build dependencies are installed.
-   * - If user has package.json: runs bun install in project root
-   * - Otherwise: installs required packages to .scratch-build-cache/node_modules
+   * - Creates package.json in project root if missing
+   * - Runs bun install if node_modules doesn't exist
    *
    * Note: After installing dependencies, we must restart the build in a fresh
    * subprocess due to a Bun runtime bug where Bun.build() fails after spawning
    * a child bun process in the same execution.
    */
   async ensureBuildDependencies(): Promise<void> {
-    const userPackageJson = path.resolve(this.rootDir, 'package.json');
+    const packageJsonPath = path.resolve(this.rootDir, 'package.json');
+    const nodeModulesPath = path.resolve(this.rootDir, 'node_modules');
 
-    if (await fs.exists(userPackageJson)) {
-      const userNodeModules = path.resolve(this.rootDir, 'node_modules');
-      const needsInstall = !(await fs.exists(userNodeModules));
+    // Create package.json if it doesn't exist
+    if (!(await fs.exists(packageJsonPath))) {
+      const projectName = path.basename(this.rootDir);
+      const packageJson = {
+        name: projectName,
+        private: true,
+        scripts: {
+          dev: 'scratch dev',
+          build: 'scratch build',
+        },
+        dependencies: Object.fromEntries(
+          BUILD_DEPENDENCIES.map((pkg) => [pkg, 'latest'])
+        ),
+      };
+      await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
+      log.info('Created package.json');
+    }
 
-      if (needsInstall) {
-        log.info('Installing dependencies...');
-        bunInstall(this.rootDir);
-        log.info('Dependencies installed');
-        this.restartBuildInSubprocess();
-      }
-    } else {
-      const cacheNodeModules = path.resolve(this.tempDir, 'node_modules');
-      const needsInstall = !(await fs.exists(cacheNodeModules));
-
-      await this.ensureCachePackageJson();
-
-      if (needsInstall) {
-        log.info('Installing build dependencies...');
-        bunInstall(this.tempDir);
-        log.info('Build dependencies installed');
-        this.restartBuildInSubprocess();
-      }
+    // Install dependencies if node_modules doesn't exist
+    if (!(await fs.exists(nodeModulesPath))) {
+      log.info('Installing dependencies...');
+      bunInstall(this.rootDir);
+      log.info('Dependencies installed');
+      this.restartBuildInSubprocess();
     }
   }
 
@@ -166,26 +164,6 @@ export class BuildContext {
     process.exit(result.status ?? 1);
   }
 
-  /**
-   * Ensures a package.json exists in the build cache with required dependencies.
-   */
-  private async ensureCachePackageJson(): Promise<void> {
-    const cachePackageJson = path.resolve(this.tempDir, 'package.json');
-    if (await fs.exists(cachePackageJson)) {
-      return;
-    }
-
-    await fs.mkdir(this.tempDir, { recursive: true });
-    const packageJson = {
-      name: 'scratch-build-cache',
-      private: true,
-      dependencies: Object.fromEntries(
-        BUILD_DEPENDENCIES.map((pkg) => [pkg, 'latest'])
-      ),
-    };
-    await fs.writeFile(cachePackageJson, JSON.stringify(packageJson, null, 2));
-  }
-
   async reset() {
     await this.resetBuildDir();
     await this.resetTempDir();
@@ -197,25 +175,8 @@ export class BuildContext {
   }
 
   async resetTempDir() {
-    // Preserve node_modules if it exists to avoid reinstalling every build
-    const nodeModulesPath = path.resolve(this.tempDir, 'node_modules');
-    const hasNodeModules = await fs.exists(nodeModulesPath);
-
-    if (hasNodeModules) {
-      // Delete everything except node_modules and package.json
-      const entries = await fs.readdir(this.tempDir);
-      for (const entry of entries) {
-        if (entry !== 'node_modules' && entry !== 'package.json') {
-          await rmWithRetry(path.resolve(this.tempDir, entry), {
-            recursive: true,
-            force: true,
-          });
-        }
-      }
-    } else {
-      await rmWithRetry(this.tempDir, { recursive: true, force: true });
-      await fs.mkdir(this.tempDir, { recursive: true });
-    }
+    await rmWithRetry(this.tempDir, { recursive: true, force: true });
+    await fs.mkdir(this.tempDir, { recursive: true });
 
     // Clear materialized paths cache
     this.materializedPaths.clear();
