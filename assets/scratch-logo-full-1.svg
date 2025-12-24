@@ -215,7 +215,7 @@
   </g>
 
   <!-- Text -->
-  <text x="340" y="210" class="logo-text">Scratch</text>
+  <text x="340" y="204" class="logo-text">Scratch</text>
 
   <!-- Tagline -->
   <text x="350" y="267" class="tagline">Write in Markdown and React</text>
