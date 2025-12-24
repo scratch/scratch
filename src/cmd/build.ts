@@ -152,7 +152,7 @@ async function doBuild(options: BuildOptions = {}) {
         `Then run 'scratch build' again.`
     );
   }
-  const tsxEntryPts = await time('3. TSX entries', () => createEntries({
+  const tsxEntryPts = await time('3. TSX entries', async () => createEntries({
     extension: '.tsx',
     outDir: ctx.clientSrcDir,
     templatePath: await ctx.clientTsxSrcPath(),
