@@ -26,9 +26,6 @@ async function getShikiHighlighter(): Promise<Highlighter> {
   return cachedHighlighter;
 }
 
-// Store for frontmatter data (keyed by MDX file path)
-export const frontmatterStore = new Map<string, Record<string, any>>();
-
 /**
  * Create a plugin to resolve packages from a specified node_modules directory.
  * This allows user projects to use react etc. without having them installed locally.
@@ -90,7 +87,6 @@ export function createFrontmatterRemarkPlugin() {
           // Entry file might not exist, skip
         }
       }
-      frontmatterStore.set(realFilePath, extracted.data);
     };
   };
 }
@@ -102,28 +98,23 @@ export interface BunBuildConfigOptions {
 }
 
 /**
- * Get Bun.build() configuration for client build
+ * Create the MDX plugin with remark/rehype preprocessing.
  */
-export async function getBunBuildConfig(options: BunBuildConfigOptions): Promise<BuildConfig> {
+async function createMdxBuildPlugin(options: { extractFrontmatter?: boolean } = {}): Promise<BunPlugin> {
+  const { extractFrontmatter = false } = options;
   const ctx = getBuildContext();
   const componentMap = await ctx.getComponentMap();
   const componentConflicts = ctx.getComponentConflicts();
-  const nodeModulesDir = await ctx.nodeModulesDir();
 
   // Build remark plugins list
-  const remarkPlugins: any[] = [
-    // GitHub Flavored Markdown (autolinks, tables, strikethrough, task lists)
-    remarkGfm,
-    // Parse YAML frontmatter syntax
-    remarkFrontmatter,
-    // Extract frontmatter data for later HTML injection
-    createFrontmatterRemarkPlugin(),
-  ];
+  const remarkPlugins: any[] = [remarkGfm, remarkFrontmatter];
 
-  // Add preprocessing plugin unless in strict mode
+  if (extractFrontmatter) {
+    remarkPlugins.push(createFrontmatterRemarkPlugin());
+  }
+
   if (!ctx.options.strict) {
     remarkPlugins.push(createPreprocessMdxPlugin(componentMap, componentConflicts));
-    // Add not-prose class to self-closing components
     remarkPlugins.push(createNotProsePlugin());
   }
 
@@ -136,12 +127,20 @@ export async function getBunBuildConfig(options: BunBuildConfigOptions): Promise
     rehypePlugins.push(createRehypeFootnotesPlugin());
   }
 
-  // Create MDX plugin with remark preprocessing
-  const mdxPlugin = mdx({
+  return mdx({
     providerImportSource: '@mdx-js/react',
     remarkPlugins,
     rehypePlugins,
   });
+}
+
+/**
+ * Get Bun.build() configuration for client build
+ */
+export async function getBunBuildConfig(options: BunBuildConfigOptions): Promise<BuildConfig> {
+  const ctx = getBuildContext();
+  const nodeModulesDir = await ctx.nodeModulesDir();
+  const mdxPlugin = await createMdxBuildPlugin({ extractFrontmatter: true });
 
   return {
     entrypoints: options.entryPts,
@@ -176,47 +175,18 @@ export async function getBunBuildConfig(options: BunBuildConfigOptions): Promise
  */
 export async function getServerBunBuildConfig(options: BunBuildConfigOptions): Promise<BuildConfig> {
   const ctx = getBuildContext();
-  const componentMap = await ctx.getComponentMap();
-  const componentConflicts = ctx.getComponentConflicts();
   const nodeModulesDir = await ctx.nodeModulesDir();
-
-  // Build remark plugins list (same as client, but no frontmatter extraction needed)
-  const remarkPlugins: any[] = [
-    // GitHub Flavored Markdown (autolinks, tables, strikethrough, task lists)
-    remarkGfm,
-    remarkFrontmatter,
-  ];
-
-  if (!ctx.options.strict) {
-    remarkPlugins.push(createPreprocessMdxPlugin(componentMap, componentConflicts));
-    // Add not-prose class to self-closing components
-    remarkPlugins.push(createNotProsePlugin());
-  }
-
-  // Build rehype plugins list
-  const highlighter = await getShikiHighlighter();
-  const rehypePlugins: any[] = [
-    [rehypeShikiFromHighlighter, highlighter, { theme: 'github-light' }],
-  ];
-  if (!ctx.options.strict) {
-    rehypePlugins.push(createRehypeFootnotesPlugin());
-  }
-
-  const mdxPlugin = mdx({
-    providerImportSource: '@mdx-js/react',
-    remarkPlugins,
-    rehypePlugins,
-  });
+  const mdxPlugin = await createMdxBuildPlugin();
 
   return {
     entrypoints: options.entryPts,
     outdir: options.outDir,
     root: options.root,
 
-    target: 'bun',  // Server-side target
+    target: 'bun',
     format: 'esm',
-    splitting: false,  // No code splitting for server modules
-    minify: false,     // No minification needed for server
+    splitting: false,
+    minify: false,
     sourcemap: 'none',
 
     naming: {

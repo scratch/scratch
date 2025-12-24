@@ -63,7 +63,7 @@ Supporting files:
 | `src/context.ts` | ~420 | ✅ Done | Moved utils to util.ts; simplified `ensureBuildDependencies`; converted to getters |
 | `src/util.ts` | ~175 | ✅ Done | Added `spawnBunSync`, `bunInstall`, `rmWithRetry` from context.ts |
 | `src/template.ts` | 175 | ✅ Done | No changes; noted potential simplification |
-| `src/buncfg.ts` | 237 | ⏳ Pending | |
+| `src/buncfg.ts` | 207 | ✅ Done | Removed dead `frontmatterStore`; extracted `createMdxBuildPlugin()` |
 | `src/cmd/build.ts` | 623 | ⏳ Pending | Updated getter call sites |
 | `src/cmd/dev.ts` | 224 | ⏳ Pending | |
 | `src/cmd/create.ts` | 71 | ⏳ Pending | |
@@ -163,6 +163,19 @@ Supporting files:
 
 ---
 
+### src/buncfg.ts ✅
+
+**Purpose:** Bun.build() configuration and plugins for client and server builds.
+
+**Changes Made:**
+1. **Removed dead `frontmatterStore`** - exported Map was populated but never read anywhere
+2. **Extracted `createMdxBuildPlugin()`** - consolidated duplicate remark/rehype plugin building from both `getBunBuildConfig` and `getServerBunBuildConfig`
+   - Takes `{ extractFrontmatter?: boolean }` option
+   - Client build passes `{ extractFrontmatter: true }`, server uses default (false)
+   - Reduced file from 237 → 207 lines
+
+---
+
 ## Next Up
 
-`src/buncfg.ts` - Bun.build() configuration (237 lines)
+`src/cmd/build.ts` - Main build logic (623 lines)
