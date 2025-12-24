@@ -1,18 +1,8 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { materializeProjectTemplates } from '../template';
-import { BUILD_DEPENDENCIES, spawnBunSync } from '../context';
+import { BUILD_DEPENDENCIES } from '../context';
 import log from '../logger';
-
-/**
- * Install dependencies in the target directory.
- */
-function installDependencies(targetDir: string): void {
-  const result = spawnBunSync(['install'], { cwd: targetDir });
-  if (result.exitCode !== 0) {
-    throw new Error(`Failed to install dependencies: ${result.stderr}`);
-  }
-}
 
 interface CreateOptions {
   src?: boolean;
@@ -62,12 +52,6 @@ export async function createCommand(targetPath: string, options: CreateOptions =
     const projectName = path.basename(path.resolve(targetPath));
     await generatePackageJson(targetPath, projectName);
     created.push('package.json');
-
-    // Install dependencies so they're ready for build/dev
-    log.info('');
-    log.info('Installing dependencies...');
-    await installDependencies(targetPath);
-    log.info('Dependencies installed');
   }
 
   if (created.length > 0) {
