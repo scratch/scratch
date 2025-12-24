@@ -14,6 +14,20 @@ import { VERSION } from './version';
 
 const program = new Command();
 
+function withErrorHandling(
+  name: string,
+  handler: (...args: any[]) => Promise<void>
+) {
+  return async (...args: any[]) => {
+    try {
+      await handler(...args);
+    } catch (error) {
+      log.error(`${name} failed:`, error);
+      process.exit(1);
+    }
+  };
+}
+
 program
   .name('scratch')
   .description('Scratch, implemented with bun')
@@ -28,44 +42,28 @@ program
   .option('--no-src', 'Exclude src/ directory')
   .option('--no-examples', 'Exclude example pages')
   .option('--no-package', 'Exclude package.json')
-  .action(async (path, options) => {
-    try {
+  .action(
+    withErrorHandling('Create', async (path, options) => {
       await createCommand(path, options);
-    } catch (error) {
-      log.error('Failed to create project:', error);
-      process.exit(1);
-    }
-  });
+    })
+  );
 
 program
   .command('build')
   .argument('[path]', 'Path to project directory', '.')
   .option('-b, --build <path>', 'Build directory')
   .option('-d, --development', 'Development mode')
-  .option(
-    '-s, --ssg [value]',
-    'Static site generation',
-    (value) => {
-      if (value === undefined) return true; // --flag with no value
-      if (value === 'true') return true;
-      if (value === 'false') return false;
-      throw new Error('SSG flag must be true or false');
-    },
-    true
-  )
+  .option('--no-ssg', 'Disable static site generation')
   .option('--strict', 'Do not inject PageWrapper component or missing imports')
-  .action(async (path, options) => {
-    try {
+  .action(
+    withErrorHandling('Build', async (path, options) => {
       log.info('Building Scratch project in', path);
       const startTime = Date.now();
       log.debug('Options:', options);
       await buildCommand(options);
       log.info(`Build completed in ${Date.now() - startTime}ms`);
-    } catch (error) {
-      log.error('Build failed:', error);
-      process.exit(1);
-    }
-  });
+    })
+  );
 
 program
   .command('dev')
@@ -74,57 +72,45 @@ program
   .option('-n, --no-open', 'Do not open dev server endpoint automatically')
   .option('-p, --port <port>', 'Port for dev server', '5173')
   .option('--strict', 'Do not inject PageWrapper component or missing imports')
-  .action(async (path, options) => {
-    try {
-      log.debug('Starting dev server', path);
+  .action(
+    withErrorHandling('Dev server', async (path, options) => {
+      log.info('Starting dev server in', path);
       await devCommand(options);
-    } catch (error) {
-      log.error('Dev server failed:', error);
-      process.exit(1);
-    }
-  });
+    })
+  );
 
 program
   .command('preview')
   .argument('[path]', 'Path to project directory', '.')
   .option('-n, --no-open', 'Do not open preview server endpoint automatically')
   .option('-p, --port <port>', 'Port for preview server', '4173')
-  .action(async (path, options) => {
-    try {
-      log.debug('Starting preview server', path);
+  .action(
+    withErrorHandling('Preview server', async (path, options) => {
+      log.info('Starting preview server in', path);
       await previewCommand(options);
-    } catch (error) {
-      log.error('Preview server failed:', error);
-      process.exit(1);
-    }
-  });
+    })
+  );
 
 program
   .command('clean')
   .argument('[path]', 'Path to project directory', '.')
-  .action(async (path, options) => {
-    try {
+  .action(
+    withErrorHandling('Clean', async () => {
       const ctx = getBuildContext();
       await fs.rm(ctx.buildDir, { recursive: true, force: true });
       await fs.rm(ctx.tempDir, { recursive: true, force: true });
       log.info('Cleaned dist/ and .scratch-build-cache/');
-    } catch (error) {
-      log.error('Clean failed:', error);
-      process.exit(1);
-    }
-  });
+    })
+  );
 
 program
   .command('update')
   .description('Update scratch to the latest version')
-  .action(async () => {
-    try {
+  .action(
+    withErrorHandling('Update', async () => {
       await updateCommand();
-    } catch (error) {
-      log.error('Update failed:', error);
-      process.exit(1);
-    }
-  });
+    })
+  );
 
 program
   .command('revert')
@@ -132,14 +118,11 @@ program
   .argument('[file]', 'File to revert')
   .option('-l, --list', 'List available template files')
   .option('-f, --force', 'Overwrite existing files without confirmation')
-  .action(async (file, options) => {
-    try {
+  .action(
+    withErrorHandling('Revert', async (file, options) => {
       await revertCommand(file, options);
-    } catch (error) {
-      log.error('Revert failed:', error);
-      process.exit(1);
-    }
-  });
+    })
+  );
 
 program.hook('preAction', (thisCommand, actionCommand) => {
   const globalOpts = program.opts();
