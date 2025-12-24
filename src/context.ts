@@ -302,13 +302,7 @@ export class BuildContext {
    */
   async clientTsxSrcPath(): Promise<string> {
     return this.resolvePathWithFallback(
-      [
-        'entry-client.tsx',
-        'entry.tsx',
-        'client.tsx',
-        'build/entry-client.tsx',
-        '_build/entry-client.tsx',
-      ],
+      ['_build/entry-client.tsx'],
       '_build/entry-client.tsx'
     );
   }
@@ -319,13 +313,7 @@ export class BuildContext {
    */
   async serverJsxSrcPath(): Promise<string> {
     return this.resolvePathWithFallback(
-      [
-        'entry-server.jsx',
-        'index.jsx',
-        'server.jsx',
-        'build/entry-server.jsx',
-        '_build/entry-server.jsx',
-      ],
+      ['_build/entry-server.jsx'],
       '_build/entry-server.jsx'
     );
   }
