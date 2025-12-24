@@ -32,17 +32,19 @@ describe("Development mode", () => {
     expect(jsFiles.length).toBeGreaterThan(0);
 
     const jsContent = await readFile(path.join(distDir, jsFiles[0]), "utf-8");
-    // Unminified code has multiple lines
-    const lineCount = jsContent.split("\n").length;
-    expect(lineCount).toBeGreaterThan(10);
+    // Unminified code has shorter average line length due to formatting
+    const lines = jsContent.split("\n").filter(l => l.length > 0);
+    const avgLineLength = jsContent.length / lines.length;
+    expect(avgLineLength).toBeLessThan(200);
 
-    // 6. Check that CSS is not minified (contains newlines)
+    // 6. Check that CSS is not minified (shorter average line length)
     const cssFiles = distFiles.filter((f) => f.endsWith(".css"));
     expect(cssFiles.length).toBeGreaterThan(0);
 
     const cssContent = await readFile(path.join(distDir, cssFiles[0]), "utf-8");
-    const cssLineCount = cssContent.split("\n").length;
-    expect(cssLineCount).toBeGreaterThan(10);
+    const cssLines = cssContent.split("\n").filter(l => l.length > 0);
+    const avgCssLineLength = cssContent.length / cssLines.length;
+    expect(avgCssLineLength).toBeLessThan(200);
 
     // Cleanup
     await rm(tempDir, { recursive: true, force: true });
@@ -76,17 +78,19 @@ describe("Development mode", () => {
     expect(jsFiles.length).toBeGreaterThan(0);
 
     const jsContent = await readFile(path.join(distDir, jsFiles[0]), "utf-8");
-    // Minified code typically has very few lines
-    const lineCount = jsContent.split("\n").length;
-    expect(lineCount).toBeLessThan(10);
+    // Minified code has longer average line length due to whitespace removal
+    const lines = jsContent.split("\n").filter(l => l.length > 0);
+    const avgLineLength = jsContent.length / lines.length;
+    expect(avgLineLength).toBeGreaterThan(200);
 
-    // 6. Check that CSS is minified (fewer lines)
+    // 6. Check that CSS is minified (longer average line length)
     const cssFiles = distFiles.filter((f) => f.endsWith(".css"));
     expect(cssFiles.length).toBeGreaterThan(0);
 
     const cssContent = await readFile(path.join(distDir, cssFiles[0]), "utf-8");
-    const cssLineCount = cssContent.split("\n").length;
-    expect(cssLineCount).toBeLessThan(10);
+    const cssLines = cssContent.split("\n").filter(l => l.length > 0);
+    const avgCssLineLength = cssContent.length / cssLines.length;
+    expect(avgCssLineLength).toBeGreaterThan(200);
 
     // Cleanup
     await rm(tempDir, { recursive: true, force: true });
