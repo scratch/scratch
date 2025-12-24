@@ -3,6 +3,7 @@ import fs from 'fs';
 import type { Plugin } from 'unified';
 import { visit } from 'unist-util-visit';
 import { is } from 'unist-util-is';
+import { parse } from 'acorn';
 import type { Node, Root } from 'mdast';
 import log from './logger';
 

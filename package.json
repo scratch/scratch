@@ -33,6 +33,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "acorn": "^8.14.0",
     "@mdx-js/esbuild": "^3.1.0",
     "@shikijs/rehype": "^3.20.0",
     "@types/mdast": "^4.0.4",
