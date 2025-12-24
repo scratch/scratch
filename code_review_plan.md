@@ -1,5 +1,11 @@
 # Code Review Plan: scratch CLI
 
+## Process
+
+**Important:** We review files one at a time. Do not move to the next file until the user explicitly approves. Read each file, present observations and recommendations, wait for user feedback, make any requested changes, then get approval before proceeding.
+
+---
+
 ## Project Overview
 
 **scratch** is a CLI tool for building static MDX-based websites using Bun. Users create `.md` and `.mdx` files in a `pages/` directory and custom React components in `components/`, and the CLI compiles them into a static site.
@@ -65,10 +71,10 @@ Supporting files:
 | `src/template.ts` | 175 | ✅ Done | No changes; noted potential simplification |
 | `src/buncfg.ts` | 207 | ✅ Done | Removed dead `frontmatterStore`; extracted `createMdxBuildPlugin()` |
 | `src/cmd/build.ts` | ~600 | ✅ Done | Consolidated `createEntries()`; clear `renderedContent` between builds |
-| `src/cmd/dev.ts` | 224 | ⏳ Pending | |
-| `src/cmd/create.ts` | 71 | ⏳ Pending | |
-| `src/cmd/preview.ts` | 110 | ⏳ Pending | |
-| `src/cmd/update.ts` | 185 | ⏳ Pending | |
+| `src/cmd/dev.ts` | 224 | ✅ Done | Added `public/` to watch directories |
+| `src/cmd/create.ts` | 71 | ✅ Done | No changes; noted package.json duplication is intentional |
+| `src/cmd/preview.ts` | 110 | ✅ Done | No changes; noted server code similarity with dev.ts |
+| `src/cmd/update.ts` | 185 | ✅ Done | No changes; good security practices |
 | `src/cmd/revert.ts` | 154 | ⏳ Pending | |
 | `src/preprocess.ts` | 367 | ⏳ Pending | |
 | `src/logger.ts` | 36 | ⏳ Pending | |
@@ -193,6 +199,43 @@ Supporting files:
 
 ---
 
+### src/cmd/dev.ts ✅
+
+**Purpose:** Development server with live reload via WebSocket.
+
+**Changes Made:**
+- Added `ctx.staticDir` (public/) to watch directories so static asset changes trigger rebuild
+
+**Observations:**
+- Good patterns: port fallback, 100ms debounce, graceful shutdown
+- Browser opens by default (opt-out via `--no-open`)
+
+---
+
+### src/cmd/create.ts ✅
+
+**Purpose:** Creates new Scratch projects by materializing templates.
+
+**No changes.** Clean 71-line file. Noted that `generatePackageJson()` here and `ensureCachePackageJson()` in context.ts serve different purposes (user project vs build cache).
+
+---
+
+### src/cmd/preview.ts ✅
+
+**Purpose:** Serves built static site for preview.
+
+**No changes.** Similar to dev.ts but simpler (no live reload, no cache headers). ~35 lines shared, ~35 lines distinct in dev.ts. Extraction not worth the complexity.
+
+---
+
+### src/cmd/update.ts ✅
+
+**Purpose:** Self-update - downloads latest release from GitHub, verifies checksum, replaces executable.
+
+**No changes.** Good security practices (SHA256 verification), robust file replacement (handles cross-device rename), exported helpers used in tests.
+
+---
+
 ## Next Up
 
-`src/cmd/dev.ts` - Development server (224 lines)
+`src/cmd/revert.ts` - Revert files to template (154 lines)
