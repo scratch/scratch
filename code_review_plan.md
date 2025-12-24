@@ -64,7 +64,7 @@ Supporting files:
 | `src/util.ts` | ~175 | ✅ Done | Added `spawnBunSync`, `bunInstall`, `rmWithRetry` from context.ts |
 | `src/template.ts` | 175 | ✅ Done | No changes; noted potential simplification |
 | `src/buncfg.ts` | 207 | ✅ Done | Removed dead `frontmatterStore`; extracted `createMdxBuildPlugin()` |
-| `src/cmd/build.ts` | 623 | ⏳ Pending | Updated getter call sites |
+| `src/cmd/build.ts` | ~600 | ✅ Done | Consolidated `createEntries()`; clear `renderedContent` between builds |
 | `src/cmd/dev.ts` | 224 | ⏳ Pending | |
 | `src/cmd/create.ts` | 71 | ⏳ Pending | |
 | `src/cmd/preview.ts` | 110 | ⏳ Pending | |
@@ -176,6 +176,23 @@ Supporting files:
 
 ---
 
+### src/cmd/build.ts ✅
+
+**Purpose:** Main build orchestration - dependencies, TSX entries, Tailwind, SSG, client build, HTML generation, frontmatter injection.
+
+**Changes Made:**
+1. **Consolidated `createTsxEntries()` and `createServerEntries()`** into single `createEntries()` function
+   - Takes `{ extension, outDir, templatePath }` options
+   - Removed ~25 lines of duplicate code
+2. **Fixed stale state bug** - Added `renderedContent.clear()` at start of `doBuild()` to prevent stale SSG content between builds
+
+**Observations:**
+- Good error patterns for user-friendly MDX error messages
+- XSS prevention with `escapeHtml()` for frontmatter metadata
+- Timing breakdown helpful for debugging
+
+---
+
 ## Next Up
 
-`src/cmd/build.ts` - Main build logic (623 lines)
+`src/cmd/dev.ts` - Development server (224 lines)

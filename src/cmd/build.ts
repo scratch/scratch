@@ -130,8 +130,9 @@ async function doBuild(options: BuildOptions = {}) {
     return result;
   };
 
-  // Reset preprocessing state from any previous builds
+  // Reset state from any previous builds
   resetPreprocessingState();
+  renderedContent.clear();
 
   // Step 1: Ensure build dependencies are installed
   await time('1. Dependencies', () => ctx.ensureBuildDependencies());
@@ -151,7 +152,11 @@ async function doBuild(options: BuildOptions = {}) {
         `Then run 'scratch build' again.`
     );
   }
-  const tsxEntryPts = await time('3. TSX entries', () => createTsxEntries());
+  const tsxEntryPts = await time('3. TSX entries', () => createEntries({
+    extension: '.tsx',
+    outDir: ctx.clientSrcDir,
+    templatePath: await ctx.clientTsxSrcPath(),
+  }));
 
   // Step 4: Build Tailwind CSS separately
   log.debug('=== TAILWIND CSS ===');
@@ -263,21 +268,27 @@ async function doBuild(options: BuildOptions = {}) {
   }
 }
 
+interface CreateEntriesOptions {
+  extension: '.tsx' | '.jsx';
+  outDir: string;
+  templatePath: string;
+}
+
 /**
- * Create TSX entry files from template for each MDX page
+ * Create entry files from a template for each MDX page.
+ * Used for both client (.tsx) and server (.jsx) entries.
  */
-async function createTsxEntries(): Promise<Record<string, string>> {
+async function createEntries(options: CreateEntriesOptions): Promise<Record<string, string>> {
+  const { extension, outDir, templatePath } = options;
   const ctx = getBuildContext();
   const entries = await ctx.getEntries();
-  const tsxEntryPts: Record<string, string> = {};
-
-  const tsxTemplatePath = await ctx.clientTsxSrcPath();
+  const entryPts: Record<string, string> = {};
 
   for (const [name, entry] of Object.entries(entries)) {
-    const artifactPath = entry.getArtifactPath('.tsx', ctx.clientSrcDir);
+    const artifactPath = entry.getArtifactPath(extension, outDir);
 
     await render(
-      tsxTemplatePath,
+      templatePath,
       artifactPath,
       {},
       {
@@ -286,11 +297,11 @@ async function createTsxEntries(): Promise<Record<string, string>> {
       }
     );
 
-    tsxEntryPts[name] = artifactPath;
+    entryPts[name] = artifactPath;
     log.debug(`  ${path.relative(ctx.rootDir, artifactPath)}`);
   }
 
-  return tsxEntryPts;
+  return entryPts;
 }
 
 /**
@@ -369,7 +380,11 @@ async function buildAndRenderServerModules() {
 
   // Create server entry files (JSX files that export render())
   log.debug('Creating server entry files:');
-  const serverEntryPts = await createServerEntries();
+  const serverEntryPts = await createEntries({
+    extension: '.jsx',
+    outDir: ctx.serverSrcDir,
+    templatePath: await ctx.serverJsxSrcPath(),
+  });
 
   // Build server modules with Bun (target: bun for server-side execution)
   const buildConfig = await getServerBunBuildConfig({
@@ -424,36 +439,6 @@ async function buildAndRenderServerModules() {
     renderedContent.set(name, html);
     log.debug(`  ${path.relative(ctx.rootDir, entry.absPath)}`);
   }
-}
-
-/**
- * Create server JSX entry files for SSG rendering
- */
-async function createServerEntries(): Promise<Record<string, string>> {
-  const ctx = getBuildContext();
-  const entries = await ctx.getEntries();
-  const serverEntryPts: Record<string, string> = {};
-
-  const serverTemplatePath = await ctx.serverJsxSrcPath();
-
-  for (const [name, entry] of Object.entries(entries)) {
-    const artifactPath = entry.getArtifactPath('.jsx', ctx.serverSrcDir);
-
-    await render(
-      serverTemplatePath,
-      artifactPath,
-      {},
-      {
-        entrySourceMdxImportPath: entry.absPath,
-        markdownComponentsPath: await ctx.markdownComponentsDir(),
-      }
-    );
-
-    serverEntryPts[name] = artifactPath;
-    log.debug(`  ${path.relative(ctx.rootDir, artifactPath)}`);
-  }
-
-  return serverEntryPts;
 }
 
 /**
