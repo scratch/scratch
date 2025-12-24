@@ -6,7 +6,6 @@ import {
 } from './util';
 import _path from 'path';
 import fs from 'fs/promises';
-import { spawnSync } from 'child_process';
 import { globSync } from 'fast-glob';
 import { templates, materializeTemplate, hasTemplate } from './template';
 import log from './logger';
@@ -112,85 +111,33 @@ export class BuildContext {
    */
   async ensureBuildDependencies(): Promise<void> {
     const userPackageJson = _path.resolve(this.rootDir, 'package.json');
-    const userNodeModules = _path.resolve(this.rootDir, 'node_modules');
 
-    // If user has package.json, install deps in project root
     if (await fs.exists(userPackageJson)) {
-      if (await fs.exists(userNodeModules)) {
-        log.debug('Using existing project node_modules');
-        return;
-      }
-
-      log.info('Installing dependencies...');
       bunInstall(this.rootDir);
-      log.info('Dependencies installed');
-
-      // Work around a Bun runtime issue: Bun.build() with target='bun' fails
-      // after spawning a child bun process in the same execution.
-      // Re-run the build in a fresh subprocess.
-      log.debug(
-        'Re-running build in subprocess to work around Bun runtime issue'
-      );
-      // In compiled Bun binaries, argv is ["bun", "/$bunfs/root/...", ...args]
-      // so we skip the first two elements and use execPath as the executable
-      const args = process.argv.slice(2);
-      const buildResult = spawnSync(process.execPath, args, {
-        cwd: process.cwd(),
-        stdio: 'inherit',
-        env: process.env,
-      });
-      process.exit(buildResult.status ?? 1);
-    }
-
-    // No package.json - use build cache
-    const cacheNodeModules = _path.resolve(this.tempDir, 'node_modules');
-
-    // Check if all required packages exist
-    let needsInstall = !(await fs.exists(cacheNodeModules));
-    if (!needsInstall) {
-      for (const pkg of BUILD_DEPENDENCIES) {
-        const pkgPath = _path.resolve(cacheNodeModules, pkg);
-        if (!(await fs.exists(pkgPath))) {
-          needsInstall = true;
-          break;
-        }
-      }
-    }
-
-    if (needsInstall) {
-      log.info('Installing build dependencies...');
-      await fs.mkdir(this.tempDir, { recursive: true });
-
-      // Create minimal package.json
-      const packageJson = {
-        name: 'scratch-build-cache',
-        private: true,
-        dependencies: Object.fromEntries(
-          BUILD_DEPENDENCIES.map((pkg) => [pkg, 'latest'])
-        ),
-      };
-      await fs.writeFile(
-        _path.resolve(this.tempDir, 'package.json'),
-        JSON.stringify(packageJson, null, 2)
-      );
-
+    } else {
+      await this.ensureCachePackageJson();
       bunInstall(this.tempDir);
-      log.info('Build dependencies installed');
-
-      // Work around a Bun runtime issue: Bun.build() with target='bun' fails
-      // after spawning a child bun process in the same execution.
-      // Re-run the build in a fresh subprocess.
-      log.debug(
-        'Re-running build in subprocess to work around Bun runtime issue'
-      );
-      const args = process.argv.slice(2);
-      const buildResult = spawnSync(process.execPath, args, {
-        cwd: process.cwd(),
-        stdio: 'inherit',
-        env: process.env,
-      });
-      process.exit(buildResult.status ?? 1);
     }
+  }
+
+  /**
+   * Ensures a package.json exists in the build cache with required dependencies.
+   */
+  private async ensureCachePackageJson(): Promise<void> {
+    const cachePackageJson = _path.resolve(this.tempDir, 'package.json');
+    if (await fs.exists(cachePackageJson)) {
+      return;
+    }
+
+    await fs.mkdir(this.tempDir, { recursive: true });
+    const packageJson = {
+      name: 'scratch-build-cache',
+      private: true,
+      dependencies: Object.fromEntries(
+        BUILD_DEPENDENCIES.map((pkg) => [pkg, 'latest'])
+      ),
+    };
+    await fs.writeFile(cachePackageJson, JSON.stringify(packageJson, null, 2));
   }
 
   async reset() {
