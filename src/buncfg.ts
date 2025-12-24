@@ -4,7 +4,7 @@ import matter from 'gray-matter';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 import rehypeShikiFromHighlighter from '@shikijs/rehype/core';
-import { createHighlighter, type Highlighter } from 'shiki';
+import { createHighlighter, bundledLanguages, type Highlighter } from 'shiki';
 import { realpathSync } from 'fs';
 import { getBuildContext } from './context';
 import { createPreprocessMdxPlugin, createRehypeFootnotesPlugin, createNotProsePlugin } from './preprocess';
@@ -14,13 +14,11 @@ import type { VFile } from 'vfile';
 // Cached highlighter instance for reuse across builds
 let cachedHighlighter: Highlighter | null = null;
 
-const SHIKI_LANGS = ['javascript', 'typescript', 'jsx', 'tsx', 'css', 'html', 'json', 'bash', 'shell', 'python', 'markdown', 'text'];
-
 async function getShikiHighlighter(): Promise<Highlighter> {
   if (!cachedHighlighter) {
     cachedHighlighter = await createHighlighter({
       themes: ['github-light'],
-      langs: SHIKI_LANGS,
+      langs: Object.keys(bundledLanguages),
     });
   }
   return cachedHighlighter;

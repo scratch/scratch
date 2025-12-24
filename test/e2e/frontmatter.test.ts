@@ -29,7 +29,7 @@ This page has frontmatter metadata.
     );
 
     // 3. Build with SSG
-    runCliSync(["build", "sandbox", "--ssg", "--development"], tempDir);
+    runCliSync(["build", "sandbox", "--development"], tempDir);
 
     // 4. Read the generated HTML
     const html = await readFile(path.join(sandboxDir, "dist", "index.html"), "utf-8");

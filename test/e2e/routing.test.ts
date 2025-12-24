@@ -36,8 +36,8 @@ describe("Page routing", () => {
       `# Hello Post\n\nThis is a blog post.`
     );
 
-    // 3. Build with SSG
-    runCliSync(["build", "sandbox", "--ssg", "--development"], tempDir);
+    // 3. Build (SSG is enabled by default)
+    runCliSync(["build", "sandbox", "--development"], tempDir);
 
     const distDir = path.join(sandboxDir, "dist");
 

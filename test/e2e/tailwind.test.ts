@@ -19,9 +19,9 @@ describe("Tailwind integration", () => {
       `# Tailwind Test\n\n<div className=\"text-red-500\">Hello Tailwind</div>`
     );
 
-    // 3. Build the project with SSG so that the component gets pre–rendered
-    //    into the HTML output. This allows us to assert on the markup.
-    runCliSync(["build", "sandbox", "--ssg", "--development"], tempDir);
+    // 3. Build the project (SSG is enabled by default) so that the component
+    //    gets pre-rendered into the HTML output. This allows us to assert on the markup.
+    runCliSync(["build", "sandbox", "--development"], tempDir);
 
     // 4. Read the generated HTML and assert it contains the expected class.
     const html = await readFile(path.join(sandboxDir, "dist", "index.html"), "utf-8");

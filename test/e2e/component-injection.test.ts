@@ -30,8 +30,8 @@ describe("Component auto-injection", () => {
 `
     );
 
-    // 4. Build with SSG to render the component
-    runCliSync(["build", "sandbox", "--ssg", "--development"], tempDir);
+    // 4. Build (SSG is enabled by default) to render the component
+    runCliSync(["build", "sandbox", "--development"], tempDir);
 
     // 5. Verify the component rendered in the output HTML
     const html = await readFile(path.join(sandboxDir, "dist", "index.html"), "utf-8");

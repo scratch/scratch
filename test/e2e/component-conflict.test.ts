@@ -108,8 +108,8 @@ describe("Component conflict detection", () => {
 `
     );
 
-    // 4. Build should succeed because we explicitly imported
-    const result = spawnSync(scratchPath, ["build", "sandbox", "--ssg", "--development"], {
+    // 4. Build should succeed because we explicitly imported (SSG is enabled by default)
+    const result = spawnSync(scratchPath, ["build", "sandbox", "--development"], {
       cwd: tempDir,
       encoding: "utf-8",
       stdio: "pipe",
