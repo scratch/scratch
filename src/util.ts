@@ -219,7 +219,14 @@ export function formatFileTree(files: string[]): string[] {
   // Render tree to lines
   const lines: string[] = [];
   function render(node: TreeNode, prefix: string) {
-    const entries = Object.entries(node);
+    // Sort: directories first, then files, alphabetically within each group
+    const entries = Object.entries(node).sort(([aName, aChildren], [bName, bChildren]) => {
+      const aIsDir = aChildren !== null;
+      const bIsDir = bChildren !== null;
+      if (aIsDir && !bIsDir) return -1;
+      if (!aIsDir && bIsDir) return 1;
+      return aName.localeCompare(bName);
+    });
     entries.forEach(([name, children], index) => {
       const isLast = index === entries.length - 1;
       const connector = prefix === '' ? '' : (isLast ? '└── ' : '├── ');

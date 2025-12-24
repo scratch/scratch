@@ -14,7 +14,10 @@ interface CreateOptions {
 /**
  * Generate a package.json file for the project.
  */
-export async function generatePackageJson(targetDir: string, projectName: string): Promise<void> {
+export async function generatePackageJson(
+  targetDir: string,
+  projectName: string
+): Promise<void> {
   const packageJson = {
     name: projectName,
     private: true,
@@ -23,12 +26,15 @@ export async function generatePackageJson(targetDir: string, projectName: string
       build: 'scratch build',
     },
     dependencies: Object.fromEntries(
-      BUILD_DEPENDENCIES.map(pkg => [pkg, 'latest'])
+      BUILD_DEPENDENCIES.map((pkg) => [pkg, 'latest'])
     ),
   };
 
   const packageJsonPath = path.join(targetDir, 'package.json');
-  await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
+  await fs.writeFile(
+    packageJsonPath,
+    JSON.stringify(packageJson, null, 2) + '\n'
+  );
 }
 
 /**
@@ -38,7 +44,10 @@ export async function generatePackageJson(targetDir: string, projectName: string
  * Use --no-src or --no-package to exclude.
  * Use --examples to include example pages.
  */
-export async function createCommand(targetPath: string, options: CreateOptions = {}) {
+export async function createCommand(
+  targetPath: string,
+  options: CreateOptions = {}
+) {
   // Defaults: include src and package, exclude examples
   const includeSrc = options.src !== false;
   const includeExamples = options.examples === true;
@@ -57,7 +66,7 @@ export async function createCommand(targetPath: string, options: CreateOptions =
   }
 
   if (created.length > 0) {
-    log.info('Created:');
+    log.info(`Created a new scratch project in ${targetPath}`);
     for (const line of formatFileTree(created)) {
       log.info(`  ${line}`);
     }
