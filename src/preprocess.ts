@@ -138,9 +138,10 @@ export const createPreprocessMdxPlugin = (
         );
         // Collect error since Bun.build() swallows thrown errors from remark plugins
         preprocessingErrors.push(err);
-        // Still remove ambiguous components from injection to avoid further errors
-        toInject.splice(0, toInject.length, ...toInject.filter((c) => !ambiguous.includes(c)));
       }
+
+      // Remove ambiguous components from injection to avoid further errors
+      const safeToInject = toInject.filter((c) => !ambiguous.includes(c));
 
       let mdxFileDir: string;
       if (file && typeof file.path === "string") {
@@ -150,7 +151,7 @@ export const createPreprocessMdxPlugin = (
       }
 
       // create import statements for missing components
-      const newImportNodes: MdxjsEsmNode[] = toInject.map((name) => {
+      const newImportNodes: MdxjsEsmNode[] = safeToInject.map((name) => {
         const absPath = componentMap[name]!; // non-null assertion – guarded above
         let relPath = path.relative(mdxFileDir, absPath).replace(/\\/g, "/");
         if (!relPath.startsWith(".")) {
@@ -175,7 +176,7 @@ export const createPreprocessMdxPlugin = (
       });
 
       // inject missing import statements
-      root.children! = [...newImportNodes, ...root.children];
+      root.children = [...newImportNodes, ...root.children];
     };
   };
 
@@ -310,7 +311,7 @@ export const createNotProsePlugin = (): Plugin => {
 
 /**
  * Find all JSX element names that look like React components
- * (theystart with an uppercase letter).
+ * (they start with an uppercase letter).
  * @param tree
  * @returns
  */
@@ -331,7 +332,7 @@ function findComponents(tree: Node) {
         if (!name) return;
 
         // Grab the first part before a dot (e.g. `Foo.Bar` -> `Foo`)
-        const primaryName = name.split(".")[0] as string; // Type assertion to assure TypeScript this is a string
+        const primaryName = name.split(".")[0] as string;
 
         if (/^[A-Z]/.test(primaryName)) {
           invoked.add(primaryName);
