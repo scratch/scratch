@@ -39,14 +39,21 @@ export function createPackageResolverPlugin(nodeModulesDir: string): BunPlugin {
     setup(build) {
       // Redirect common package imports to the specified node_modules
       const packages = ['react', 'react-dom', '@mdx-js/react'];
+      const resolveBase = path.dirname(nodeModulesDir);
 
       for (const pkg of packages) {
         // Match the package and any subpaths (e.g., react-dom/client, react/jsx-runtime)
         const regex = new RegExp(`^${pkg.replace('/', '\\/')}(\\/.*)?$`);
         build.onResolve({ filter: regex }, async (args) => {
-          // Use Bun.resolve to find the actual entry file from the node_modules parent dir
-          const resolved = await Bun.resolve(args.path, path.dirname(nodeModulesDir));
-          return { path: resolved };
+          try {
+            // Use Bun.resolve to find the actual entry file from the node_modules parent dir
+            const resolved = await Bun.resolve(args.path, resolveBase);
+            return { path: resolved };
+          } catch (error) {
+            // If resolution fails, let Bun try default resolution
+            // This can happen if the package isn't installed yet
+            return undefined;
+          }
         });
       }
     },

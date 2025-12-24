@@ -1,11 +1,41 @@
 import { buildFileMap, type FileMapResult } from './util';
 import _path from 'path';
 import fs from 'fs/promises';
+import { spawnSync, execSync } from 'child_process';
 import { globSync } from 'fast-glob';
 import { templates, materializeTemplate, hasTemplate } from './template';
 import log from './logger';
 
 export const BUILD_DEPENDENCIES = ['react', 'react-dom', '@mdx-js/react', 'tailwindcss', '@tailwindcss/cli', '@tailwindcss/typography'];
+
+/**
+ * Spawn bun commands synchronously using Node's child_process.
+ * Uses the current executable with BUN_BE_BUN=1 so scratch can run bun commands
+ * without requiring bun to be installed separately.
+ *
+ * Note: We use Node's spawnSync instead of Bun.spawn to avoid a Bun runtime issue
+ * where Bun.build() fails after spawning a child bun process in the same execution.
+ */
+export function spawnBunSync(
+  args: string[],
+  options: { cwd?: string; stdio?: 'pipe' | 'inherit' } = {}
+): { exitCode: number; stdout: string; stderr: string } {
+  const result = spawnSync(process.execPath, args, {
+    cwd: options.cwd,
+    encoding: 'utf-8',
+    stdio: options.stdio === 'inherit' ? 'inherit' : 'pipe',
+    env: {
+      ...process.env,
+      BUN_BE_BUN: '1',
+    },
+  });
+
+  return {
+    exitCode: result.status ?? 1,
+    stdout: result.stdout || '',
+    stderr: result.stderr || '',
+  };
+}
 
 /**
  * Remove a file or directory with retry logic for transient errors (EACCES, EBUSY).
@@ -104,28 +134,67 @@ export class BuildContext {
 
   /**
    * Returns the node_modules directory to use for build dependencies.
-   * Prefers user's node_modules if it exists, otherwise uses cache.
+   * If user has package.json, uses project root. Otherwise uses cache.
    */
   async nodeModulesDir(): Promise<string> {
-    const userNodeModules = _path.resolve(this.rootDir, 'node_modules');
-    if (await fs.exists(userNodeModules)) {
-      return userNodeModules;
+    const userPackageJson = _path.resolve(this.rootDir, 'package.json');
+    if (await fs.exists(userPackageJson)) {
+      return _path.resolve(this.rootDir, 'node_modules');
     }
     return _path.resolve(this.tempDir, 'node_modules');
   }
 
   /**
-   * Ensures build dependencies are installed. If the user has their own
-   * node_modules, assumes they manage deps. Otherwise, installs required
-   * packages to .scratch-build-cache/node_modules.
+   * Ensures build dependencies are installed.
+   * - If user has package.json: runs bun install in project root
+   * - Otherwise: installs required packages to .scratch-build-cache/node_modules
    */
   async ensureBuildDependencies(): Promise<void> {
+    const userPackageJson = _path.resolve(this.rootDir, 'package.json');
     const userNodeModules = _path.resolve(this.rootDir, 'node_modules');
-    if (await fs.exists(userNodeModules)) {
-      log.debug('Using user node_modules for build dependencies');
-      return;
+
+    // If user has package.json, install deps in project root
+    if (await fs.exists(userPackageJson)) {
+      if (await fs.exists(userNodeModules)) {
+        log.debug('Using existing project node_modules');
+        return;
+      }
+
+      log.info('Installing dependencies...');
+      try {
+        execSync(`"${process.execPath}" install`, {
+          cwd: this.rootDir,
+          stdio: 'pipe',
+          env: { ...process.env, BUN_BE_BUN: '1' },
+        });
+      } catch (error: any) {
+        throw new Error(
+          `Failed to install dependencies.\n\n` +
+          `This can happen if:\n` +
+          `  - No network connection\n` +
+          `  - Bun is not installed correctly\n` +
+          `  - Disk space is low\n\n` +
+          `Details: ${error.stderr?.toString() || error.message}`
+        );
+      }
+      log.info('Dependencies installed');
+
+      // Work around a Bun runtime issue: Bun.build() with target='bun' fails
+      // after spawning a child bun process in the same execution.
+      // Re-run the build in a fresh subprocess.
+      log.debug('Re-running build in subprocess to work around Bun runtime issue');
+      // In compiled Bun binaries, argv is ["bun", "/$bunfs/root/...", ...args]
+      // so we skip the first two elements and use execPath as the executable
+      const args = process.argv.slice(2);
+      const buildResult = spawnSync(process.execPath, args, {
+        cwd: process.cwd(),
+        stdio: 'inherit',
+        env: process.env,
+      });
+      process.exit(buildResult.status ?? 1);
     }
 
+    // No package.json - use build cache
     const cacheNodeModules = _path.resolve(this.tempDir, 'node_modules');
 
     // Check if all required packages exist
@@ -158,26 +227,36 @@ export class BuildContext {
       );
 
       // Run bun install
-      const proc = Bun.spawn(['bun', 'install'], {
-        cwd: this.tempDir,
-        stdout: 'pipe',
-        stderr: 'pipe',
-      });
-
-      const exitCode = await proc.exited;
-      if (exitCode !== 0) {
-        const stderr = await new Response(proc.stderr).text();
+      try {
+        execSync(`"${process.execPath}" install`, {
+          cwd: this.tempDir,
+          stdio: 'pipe',
+          env: { ...process.env, BUN_BE_BUN: '1' },
+        });
+      } catch (error: any) {
         throw new Error(
           `Failed to install build dependencies.\n\n` +
           `This can happen if:\n` +
           `  - No network connection\n` +
           `  - Bun is not installed correctly\n` +
           `  - Disk space is low\n\n` +
-          `Details: ${stderr}`
+          `Details: ${error.stderr?.toString() || error.message}`
         );
       }
 
       log.info('Build dependencies installed');
+
+      // Work around a Bun runtime issue: Bun.build() with target='bun' fails
+      // after spawning a child bun process in the same execution.
+      // Re-run the build in a fresh subprocess.
+      log.debug('Re-running build in subprocess to work around Bun runtime issue');
+      const args = process.argv.slice(2);
+      const buildResult = spawnSync(process.execPath, args, {
+        cwd: process.cwd(),
+        stdio: 'inherit',
+        env: process.env,
+      });
+      process.exit(buildResult.status ?? 1);
     }
   }
 

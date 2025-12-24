@@ -25,14 +25,9 @@ program
   .command('create')
   .description('Create a new Scratch project')
   .argument('[path]', 'Path to project directory', '.')
-  .option('--src', 'Include src/ directory (default)')
   .option('--no-src', 'Exclude src/ directory')
-  .option('--examples', 'Include example pages (default)')
   .option('--no-examples', 'Exclude example pages')
-  .option('--package', 'Include package.json with dependencies')
-  .option('--no-package', 'Exclude package.json (default)')
-  .option('--minimal', 'Shorthand for --no-src --no-examples --no-package')
-  .option('--full', 'Shorthand for --src --examples --package')
+  .option('--no-package', 'Exclude package.json')
   .action(async (path, options) => {
     try {
       await createCommand(path, options);
@@ -136,6 +131,7 @@ program
   .description('Revert a file to its template version')
   .argument('[file]', 'File to revert')
   .option('-l, --list', 'List available template files')
+  .option('-f, --force', 'Overwrite existing files without confirmation')
   .action(async (file, options) => {
     try {
       await revertCommand(file, options);

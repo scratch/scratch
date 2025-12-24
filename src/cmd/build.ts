@@ -172,14 +172,18 @@ async function doBuild(options: BuildOptions = {}) {
   });
 
   log.debug('=== CLIENT BUILD ===');
-  const result = await time('6. Client build', () => Bun.build(buildConfig));
+  let result: Awaited<ReturnType<typeof Bun.build>>;
+  try {
+    result = await time('6. Client build', () => Bun.build(buildConfig));
+  } catch (error) {
+    // Bun.build() can throw exceptions in addition to returning { success: false }
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Client bundle failed: ${errorMessage}`);
+  }
 
   if (!result.success) {
-    log.error('Build failed:');
-    for (const buildLog of result.logs) {
-      log.error(buildLog);
-    }
-    throw new Error('Bun build failed');
+    const errorMessages = result.logs.map(log => String(log)).join('\n');
+    throw new Error(`Client build failed:\n${errorMessages}`);
   }
 
   // Check for preprocessing errors (Bun.build swallows errors from remark plugins)
@@ -375,14 +379,21 @@ async function buildAndRenderServerModules() {
   });
 
   log.debug('Running Bun.build() for server...');
-  const result = await Bun.build(buildConfig);
+  let result: Awaited<ReturnType<typeof Bun.build>>;
+  try {
+    result = await Bun.build(buildConfig);
+  } catch (error) {
+    // Bun.build() can throw exceptions in addition to returning { success: false }
+    // Include entry points in error for debugging
+    const entryList = Object.values(serverEntryPts).join(', ');
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : '';
+    throw new Error(`Server bundle failed: ${errorMessage}\nEntry points: ${entryList}\n${stack}`);
+  }
 
   if (!result.success) {
-    log.error('Server build failed:');
-    for (const buildLog of result.logs) {
-      log.error(buildLog);
-    }
-    throw new Error('Bun server build failed');
+    const errorMessages = result.logs.map(log => String(log)).join('\n');
+    throw new Error(`Server build failed:\n${errorMessages}`);
   }
 
   // Check for preprocessing errors (Bun.build swallows errors from remark plugins)
