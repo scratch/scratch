@@ -110,7 +110,10 @@ export async function getCommand(filePath: string | undefined, options: GetOptio
     let shouldOverwrite = options.force === true;
 
     if (!shouldOverwrite) {
-      log.info('\nThe following files will be overwritten:\n');
+      if (newFiles.length > 0) {
+        log.info('');
+      }
+      log.info('The following files will be overwritten:\n');
       for (const line of formatFileTree(existingFiles)) {
         log.info(`  ${line}`);
       }
@@ -122,6 +125,9 @@ export async function getCommand(filePath: string | undefined, options: GetOptio
       for (const file of existingFiles) {
         const targetPath = path.resolve(process.cwd(), file);
         await materializeTemplate(file, targetPath);
+      }
+      if (newFiles.length > 0) {
+        log.info('');
       }
       log.info('Restored:\n');
       for (const line of formatFileTree(existingFiles)) {
