@@ -100,6 +100,7 @@ function formatBuildError(error: Error | string): string {
 
 interface BuildOptions {
   ssg?: boolean;
+  static?: 'public' | 'assets' | 'all';
 }
 
 /**
@@ -117,7 +118,7 @@ export async function buildCommand(options: BuildOptions = {}) {
 
 async function doBuild(options: BuildOptions = {}) {
   const ctx = getBuildContext();
-  const { ssg = false } = options;
+  const { ssg = false, static: staticMode = 'assets' } = options;
 
   log.debug(`Building with Bun${ssg ? ' (SSG)' : ''}...`);
 
@@ -244,13 +245,26 @@ async function doBuild(options: BuildOptions = {}) {
   log.debug('=== FRONTMATTER INJECTION ===');
   await time('8. Frontmatter', () => injectFrontmatterMeta());
 
-  // Step 9: Copy to build directory
-  await time('9. Copy to dist', () => fs.cp(ctx.clientCompiledDir, ctx.buildDir, { recursive: true }));
+  // Step 9: Copy pages/ as static assets (lowest priority - gets overwritten by public/ and compiled)
+  if (staticMode !== 'public') {
+    log.debug('=== PAGES STATIC ASSETS ===');
+    const buildFileExts = ['.md', '.mdx', '.tsx', '.jsx', '.ts', '.js'];
+    await time('9. Pages static', async () => {
+      await fs.cp(ctx.pagesDir, ctx.buildDir, {
+        recursive: true,
+        filter: (src) => {
+          if (staticMode === 'all') return true;
+          // 'assets' mode: skip build files
+          return !buildFileExts.some(ext => src.endsWith(ext));
+        }
+      });
+    });
+  }
 
-  // Step 10: Copy static assets from public directory
+  // Step 10: Copy static assets from public directory (middle priority)
   if (await fs.exists(ctx.staticDir)) {
-    log.debug('=== STATIC ASSETS ===');
-    await time('10. Static assets', async () => {
+    log.debug('=== PUBLIC STATIC ASSETS ===');
+    await time('10. Public static', async () => {
       await fs.cp(ctx.staticDir, ctx.buildDir, { recursive: true });
       const files = await fs.readdir(ctx.staticDir);
       for (const file of files) {
@@ -258,6 +272,9 @@ async function doBuild(options: BuildOptions = {}) {
       }
     });
   }
+
+  // Step 11: Copy compiled assets to build directory (highest priority)
+  await time('11. Copy compiled to dist', () => fs.cp(ctx.clientCompiledDir, ctx.buildDir, { recursive: true }));
 
   log.debug(`Output in: ${ctx.buildDir}`);
 

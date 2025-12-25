@@ -53,6 +53,7 @@ interface DevOptions {
   port?: number;
   open?: boolean;
   route?: string; // Route to open in browser, auto-detected if not specified
+  static?: 'public' | 'assets' | 'all';
 }
 
 // Store connected WebSocket clients for live reload
@@ -170,7 +171,7 @@ export async function devCommand(options: DevOptions = {}) {
   log.debug('Starting Bun dev server...');
 
   // Initial build
-  await buildCommand({ ssg: false });
+  await buildCommand({ ssg: false, static: options.static });
 
   // Start the HTTP server with port fallback
   const { server, port } = await startDevServerWithFallback(ctx.buildDir, preferredPort);
@@ -203,7 +204,7 @@ export async function devCommand(options: DevOptions = {}) {
       isRebuilding = true;
       log.info('File change detected, rebuilding...');
       try {
-        await buildCommand({ ssg: false });
+        await buildCommand({ ssg: false, static: options.static });
         // Notify all connected clients to reload
         for (const client of clients) {
           client.send('reload');

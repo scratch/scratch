@@ -55,6 +55,7 @@ program
   .option('-b, --build <path>', 'Build directory')
   .option('-d, --development', 'Development mode')
   .option('--no-ssg', 'Disable static site generation')
+  .option('--static <mode>', 'Static file mode: public, assets, all', 'assets')
   .option('--strict', 'Do not inject PageWrapper component or missing imports')
   .action(
     withErrorHandling('Build', async (path, options) => {
@@ -72,6 +73,7 @@ program
   .option('-d, --development', 'Development mode')
   .option('-n, --no-open', 'Do not open dev server endpoint automatically')
   .option('-p, --port <port>', 'Port for dev server', '5173')
+  .option('--static <mode>', 'Static file mode: public, assets, all', 'assets')
   .option('--strict', 'Do not inject PageWrapper component or missing imports')
   .action(
     withErrorHandling('Dev server', async (path, options) => {
