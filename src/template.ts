@@ -18,6 +18,10 @@ const MINIMAL_FILES = new Set([
   'AGENTS.md',
   'pages/index.mdx',
   'pages/Counter.tsx',
+  'pages/Fire.tsx',
+  'pages/TodoList.tsx',
+  'pages/Files.tsx',
+  'pages/BouncingDvdLogo.tsx',
   'public/scratch-logo.svg',
 ]);
 
