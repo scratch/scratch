@@ -5,7 +5,7 @@ import { generatePackageJson } from './create';
 import { confirm, formatFileTree } from '../util';
 import log from '../logger';
 
-interface GetOptions {
+interface CheckoutOptions {
   list?: boolean;
   force?: boolean;
 }
@@ -14,7 +14,7 @@ interface GetOptions {
  * Get a file or directory from the templates.
  * Creates new files immediately. For existing files, prompts for confirmation (unless --force).
  */
-export async function getCommand(filePath: string | undefined, options: GetOptions = {}): Promise<void> {
+export async function checkoutCommand(filePath: string | undefined, options: CheckoutOptions = {}): Promise<void> {
   const allFiles = listUserFacingTemplateFiles();
 
   // List available templates if --list flag is provided
@@ -71,7 +71,7 @@ export async function getCommand(filePath: string | undefined, options: GetOptio
   if (filesToRevert.length === 0) {
     log.error(`No template found for: ${templatePath}`);
     log.info(`This command should be run from the project root.`);
-    log.info(`Use 'scratch get --list' to see all available templates.`);
+    log.info(`Use 'scratch checkout --list' to see all available templates.`);
     process.exit(1);
   }
 

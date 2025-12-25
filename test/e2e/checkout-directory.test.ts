@@ -4,9 +4,9 @@ import fs from "fs/promises";
 import path from "path";
 import { runCliSync, mkTempDir } from "./util";
 
-describe("get command", () => {
+describe("checkout command", () => {
   test("gets all files in a directory", async () => {
-    const tempDir = await mkTempDir("get-dir-");
+    const tempDir = await mkTempDir("checkout-dir-");
     runCliSync(["create", "sandbox"], tempDir);
     const sandboxDir = path.join(tempDir, "sandbox");
 
@@ -21,7 +21,7 @@ describe("get command", () => {
     await fs.writeFile(pageWrapperPath, "// modified wrapper");
 
     // Get the entire src/ directory (--force to skip interactive prompt)
-    runCliSync(["get", "--force", "src"], sandboxDir);
+    runCliSync(["checkout", "--force", "src"], sandboxDir);
 
     // Verify both files were restored
     expect(await fs.readFile(tailwindPath, "utf-8")).toBe(originalTailwind);

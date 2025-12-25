@@ -20,13 +20,13 @@ function runCliCapture(args: string[], cwd: string) {
   };
 }
 
-describe("get command", () => {
+describe("checkout command", () => {
   test("exits with error for non-existent template", async () => {
-    const tempDir = await mkTempDir("get-notfound-");
+    const tempDir = await mkTempDir("checkout-notfound-");
     runCliSync(["create", "sandbox"], tempDir);
     const sandboxDir = path.join(tempDir, "sandbox");
 
-    const result = runCliCapture(["get", "nonexistent.txt"], sandboxDir);
+    const result = runCliCapture(["checkout", "nonexistent.txt"], sandboxDir);
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("No template found for: nonexistent.txt");

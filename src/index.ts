@@ -6,7 +6,7 @@ import { buildCommand } from './cmd/build';
 import { createCommand } from './cmd/create';
 import { devCommand } from './cmd/dev';
 import { previewCommand } from './cmd/preview';
-import { getCommand } from './cmd/get';
+import { checkoutCommand } from './cmd/checkout';
 import { updateCommand } from './cmd/update';
 import { getBuildContext, setBuildContext } from './context';
 import log, { setLogLevel } from './logger';
@@ -112,15 +112,15 @@ program
   );
 
 program
-  .command('get')
-  .aliases(['revert', 'eject'])
+  .command('checkout')
+  .aliases(['eject'])
   .description('Clone a file or directory from the built-in templates')
-  .argument('[file]', 'File or directory to get')
+  .argument('[file]', 'File or directory to checkout')
   .option('-l, --list', 'List available template files')
   .option('-f, --force', 'Overwrite existing files without confirmation')
   .action(
-    withErrorHandling('Get', async (file, options) => {
-      await getCommand(file, options);
+    withErrorHandling('Checkout', async (file, options) => {
+      await checkoutCommand(file, options);
     })
   );
 

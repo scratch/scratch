@@ -4,9 +4,9 @@ import fs from "fs/promises";
 import path from "path";
 import { runCliSync, mkTempDir } from "./util";
 
-describe("get command", () => {
+describe("checkout command", () => {
   test("gets a single file from templates", async () => {
-    const tempDir = await mkTempDir("get-single-");
+    const tempDir = await mkTempDir("checkout-single-");
     runCliSync(["create", "sandbox"], tempDir);
     const sandboxDir = path.join(tempDir, "sandbox");
 
@@ -19,7 +19,7 @@ describe("get command", () => {
     expect(await fs.readFile(tailwindPath, "utf-8")).toBe("/* modified */");
 
     // Get the file (--force to skip interactive prompt in non-TTY tests)
-    runCliSync(["get", "--force", "src/tailwind.css"], sandboxDir);
+    runCliSync(["checkout", "--force", "src/tailwind.css"], sandboxDir);
 
     // Verify it was restored to template content
     const restoredContent = await fs.readFile(tailwindPath, "utf-8");

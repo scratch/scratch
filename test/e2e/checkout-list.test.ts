@@ -20,16 +20,22 @@ function runCliCapture(args: string[], cwd: string) {
   };
 }
 
-describe("get command", () => {
-  test("exits with error when no path provided", async () => {
-    const tempDir = await mkTempDir("get-nopath-");
+describe("checkout command", () => {
+  test("lists available template files with --list", async () => {
+    const tempDir = await mkTempDir("checkout-list-");
     runCliSync(["create", "sandbox"], tempDir);
     const sandboxDir = path.join(tempDir, "sandbox");
 
-    const result = runCliCapture(["get"], sandboxDir);
+    const result = runCliCapture(["checkout", "--list"], sandboxDir);
 
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain("Please provide a file or directory path");
+    expect(result.status).toBe(0);
+    // Should include common template files (shown in tree format)
+    expect(result.stdout).toContain("tailwind.css");
+    expect(result.stdout).toContain("index.mdx");
+    expect(result.stdout).toContain("src/");
+    expect(result.stdout).toContain("pages/");
+    // Should NOT include _build/ files
+    expect(result.stdout).not.toContain("_build/");
 
     await rm(tempDir, { recursive: true, force: true });
   }, 60_000);
