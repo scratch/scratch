@@ -44,9 +44,9 @@
   @apply mr-2 align-middle ml-1;
 }
 
-/* Tables - add horizontal padding, prevent overflow */
+/* Tables - center by default, prevent overflow */
 .prose :where(table):not(:where([class~='not-prose'] *)) {
-  @apply mx-4 w-auto max-w-full;
+  @apply mx-auto w-auto max-w-full;
 }
 
 /*
