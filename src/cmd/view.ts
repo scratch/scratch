@@ -54,8 +54,8 @@ export async function viewCommand(
   process.on('SIGTERM', shutdown);
 
   try {
-    // 1. Create project in temp dir (quiet to suppress file tree output)
-    await createCommand(tempDir, { src: true, package: true, quiet: true });
+    // 1. Create project in temp dir (quiet, no example content)
+    await createCommand(tempDir, { src: true, package: true, example: false, quiet: true });
     log.info(`Created temp project in ${tempDir}`);
 
     // 2. Pre-install dependencies to avoid subprocess restart loop
@@ -64,7 +64,7 @@ export async function viewCommand(
     log.info('Dependencies installed');
 
     if (isDirectory) {
-      // Directory: symlink it as pages/
+      // Directory: replace empty pages/ with symlink to user's directory
       await fs.rm(tempPagesDir, { recursive: true, force: true });
       await fs.symlink(absolutePath, tempPagesDir);
     } else {
@@ -72,8 +72,6 @@ export async function viewCommand(
       const filename = path.basename(absolutePath);
       const targetFile = path.join(tempPagesDir, filename);
 
-      // Remove default index.mdx and copy user's file
-      await fs.rm(path.join(tempPagesDir, 'index.mdx'), { force: true });
       await fs.copyFile(absolutePath, targetFile);
 
       // Watch for changes to source file
