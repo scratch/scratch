@@ -202,16 +202,18 @@ export function formatFileTree(files: string[]): string[] {
   // Build tree structure
   const tree: TreeNode = {};
   for (const file of files.sort()) {
-    const parts = file.split('/');
+    const parts = file.split('/').filter((p) => p !== '');
     let node = tree;
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
-      const isFile = i === parts.length - 1;
-      if (isFile) {
-        node[part] = null;
-      } else {
+      const isLast = i === parts.length - 1;
+      // Treat as directory if path ended with '/' or if not the last part
+      const isDir = file.endsWith('/') ? true : !isLast;
+      if (isDir) {
         if (!node[part]) node[part] = {};
         node = node[part] as TreeNode;
+      } else {
+        node[part] = null;
       }
     }
   }

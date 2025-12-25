@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeAll } from "bun:test";
-import { render, buildFileMap } from "../../src/util";
+import { render, buildFileMap, formatFileTree } from "../../src/util";
 import fs from "fs/promises";
 import { mkTempDir } from "../test-util";
 import path from "path";
@@ -74,5 +74,49 @@ describe("util.buildFileMap", () => {
 
         expect(Object.keys(result.map).length).toBe(0);
         expect(result.conflicts.size).toBe(0);
+    });
+});
+
+describe("util.formatFileTree", () => {
+    test("formats files and directories", () => {
+        const files = ["src/index.ts", "src/util.ts", "README.md"];
+        const result = formatFileTree(files);
+
+        expect(result).toContain("src/");
+        expect(result.some(line => line.includes("index.ts"))).toBe(true);
+        expect(result.some(line => line.includes("util.ts"))).toBe(true);
+        expect(result.some(line => line.includes("README.md"))).toBe(true);
+    });
+
+    test("handles empty directories (paths ending with /)", () => {
+        const files = ["pages/", "public/", "src/index.ts"];
+        const result = formatFileTree(files);
+
+        // Empty directories should appear without children
+        expect(result).toContain("pages/");
+        expect(result).toContain("public/");
+        expect(result).toContain("src/");
+
+        // Should not have stray connectors for empty directories
+        const pagesIndex = result.indexOf("pages/");
+        const publicIndex = result.indexOf("public/");
+
+        // The line after pages/ should not be an empty connector
+        if (pagesIndex < result.length - 1) {
+            expect(result[pagesIndex + 1]).not.toMatch(/^\s*[└├]── $/);
+        }
+        if (publicIndex < result.length - 1) {
+            expect(result[publicIndex + 1]).not.toMatch(/^\s*[└├]── $/);
+        }
+    });
+
+    test("sorts directories before files", () => {
+        const files = ["zebra.txt", "alpha/file.ts"];
+        const result = formatFileTree(files);
+
+        const alphaIndex = result.findIndex(line => line.includes("alpha/"));
+        const zebraIndex = result.findIndex(line => line.includes("zebra.txt"));
+
+        expect(alphaIndex).toBeLessThan(zebraIndex);
     });
 });
