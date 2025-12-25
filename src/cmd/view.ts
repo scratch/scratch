@@ -51,8 +51,8 @@ export async function viewCommand(filePath: string, options: ViewOptions = {}): 
   process.on('SIGTERM', shutdown);
 
   try {
-    // 1. Create project in temp dir
-    await createCommand(tempDir, { src: true, package: true });
+    // 1. Create project in temp dir (quiet to suppress file tree output)
+    await createCommand(tempDir, { src: true, package: true, quiet: true });
 
     // 2. Pre-install dependencies to avoid subprocess restart loop
     // (BuildContext.restartBuildInSubprocess would re-run 'scratch view' and create infinite loop)

@@ -8,6 +8,7 @@ import log from '../logger';
 interface CreateOptions {
   src?: boolean;
   package?: boolean;
+  quiet?: boolean;
 }
 
 /**
@@ -63,22 +64,24 @@ export async function createCommand(
     }
   }
 
-  if (created.length > 0) {
-    if (targetPath == '.') {
-      log.info(`Created a new Scratch project:\n`);
+  if (!options.quiet) {
+    if (created.length > 0) {
+      if (targetPath == '.') {
+        log.info(`Created a new Scratch project:\n`);
+      } else {
+        log.info(`Created a new Scratch project in ${targetPath}:\n`);
+      }
+      for (const line of formatFileTree(created)) {
+        log.info(`  ${line}`);
+      }
+      log.info('');
+      log.info('Start the development server:');
+      if (targetPath !== '.') {
+        log.info(`  cd ${targetPath}`);
+      }
+      log.info('  scratch dev');
     } else {
-      log.info(`Created a new Scratch project in ${targetPath}:\n`);
+      log.info('No files created (project already exists)');
     }
-    for (const line of formatFileTree(created)) {
-      log.info(`  ${line}`);
-    }
-    log.info('');
-    log.info('Start the development server:');
-    if (targetPath !== '.') {
-      log.info(`  cd ${targetPath}`);
-    }
-    log.info('  scratch dev');
-  } else {
-    log.info('No files created (project already exists)');
   }
 }
