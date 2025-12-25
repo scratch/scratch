@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFile, rm, writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { runCliSync, mkTempDir, sleep, scratchPath } from "./util";
+import { runCliSync, mkTempDir, sleep, scratchPath, getAvailablePort } from "./util";
 import { spawn } from "child_process";
 
 
@@ -24,8 +24,8 @@ describe("scratch create → build → preview", () => {
       // 2. Build the project without SSG (preview server test doesn't need pre-rendered content)
       runCliSync(["build", "sandbox", "--no-ssg"], tempDir);
 
-      // 3. Start the preview server on an unusual port to avoid clashes.
-      const port = 51234;
+      // 3. Start the preview server on a dynamically allocated port to avoid clashes.
+      const port = await getAvailablePort();
       const previewProc = spawn(scratchPath, [
         "preview",
         "sandbox",

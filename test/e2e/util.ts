@@ -30,3 +30,19 @@ export function runCliSync(args: string[], cwd: string) {
     throw new Error(`scratch CLI ${args.join(" ")} exited with code ${result.status}\n${output}`);
   }
 }
+
+/**
+ * Helper that finds an available port by binding to port 0 and getting
+ * the assigned port from the OS. Useful for parallel test execution.
+ */
+export async function getAvailablePort(): Promise<number> {
+  const net = await import("net");
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.listen(0, () => {
+      const addr = server.address();
+      const port = typeof addr === "object" && addr ? addr.port : 0;
+      server.close(() => resolve(port));
+    });
+  });
+}
