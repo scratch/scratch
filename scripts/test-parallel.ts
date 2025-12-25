@@ -1,9 +1,28 @@
 import { spawn } from "child_process";
 import { cpus } from "os";
 import { glob } from "fast-glob";
+import { parseArgs } from "util";
+
+const { values } = parseArgs({
+  args: Bun.argv.slice(2),
+  options: {
+    concurrency: { type: "string", short: "j" },
+    help: { type: "boolean", short: "h" },
+  },
+  strict: false,
+});
+
+if (values.help) {
+  console.log(`Usage: bun scripts/test-parallel.ts [options]
+
+Options:
+  -j, --concurrency <n>  Max number of concurrent test processes (default: CPU count)
+  -h, --help             Show this help message`);
+  process.exit(0);
+}
 
 const maxConcurrency = parseInt(
-  process.env.TEST_CONCURRENCY || String(cpus().length)
+  values.concurrency || process.env.TEST_CONCURRENCY || String(cpus().length)
 );
 
 async function main() {
