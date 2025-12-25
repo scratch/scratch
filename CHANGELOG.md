@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.2] - 2025-12-25
+
+This release simplifies the template structure and improves documentation.
+
+### Improvements
+
+- Reorganized template structure: components now live in `pages/components/` for better organization
+- Added new example components (BouncingDvdLogo, Files) to showcase interactive React capabilities
+- Simplified `scratch create` by removing the `--examples` flag (examples are now integrated into the default template)
+- Updated README with clearer documentation on project structure and available commands
+- Improved AGENTS.md with updated command documentation
+
+### Removed
+
+- Removed `--examples` flag from `scratch create` command
+- Removed `examples` shortcut from `scratch get` command (use `scratch get pages/components` instead)
+
 ## [0.2.1] - 2025-12-25
 
 This release improves test execution speed by enabling parallel test runs.
