@@ -8,6 +8,7 @@ import { devCommand } from './cmd/dev';
 import { previewCommand } from './cmd/preview';
 import { checkoutCommand } from './cmd/checkout';
 import { updateCommand } from './cmd/update';
+import { viewCommand } from './cmd/view';
 import { getBuildContext, setBuildContext } from './context';
 import log, { setLogLevel } from './logger';
 import { VERSION } from './version';
@@ -121,6 +122,18 @@ program
   .action(
     withErrorHandling('Checkout', async (file, options) => {
       await checkoutCommand(file, options);
+    })
+  );
+
+program
+  .command('view')
+  .description('View a markdown file with live reload')
+  .argument('<file>', 'Markdown file to view')
+  .option('-p, --port <port>', 'Port for dev server', '5173')
+  .option('-n, --no-open', 'Do not open browser automatically')
+  .action(
+    withErrorHandling('View', async (file, options) => {
+      await viewCommand(file, options);
     })
   );
 

@@ -19,6 +19,9 @@ scratch is a CLI tool for building static MDX-based websites using Bun. Users cr
   - Alias: `eject`
   - `-l, --list` - List available template files
   - `-f, --force` - Overwrite existing files without confirmation
+- `view <file>` - View a markdown file with live reload
+  - `-p, --port <port>` - Port for dev server
+  - `-n, --no-open` - Don't auto-open browser
 
 ### Build Pipeline (`src/cmd/build.ts`)
 1. Ensure build dependencies are installed (react, react-dom, @mdx-js/react, tailwindcss, @tailwindcss/cli)
@@ -52,6 +55,7 @@ Components from both directories are auto-imported into MDX files by basename.
 - `src/cmd/create.ts` - Create command handler
 - `src/cmd/preview.ts` - Preview server for built sites
 - `src/cmd/checkout.ts` - Checkout/revert command handler
+- `src/cmd/view.ts` - View single file with live reload
 - `src/template.ts` - Template runtime API (materialize, getContent, list templates)
 - `src/template.generated.ts` - Compiled template content (generated, not checked in)
 - `scripts/compile-templates.ts` - Compiles template/ files into executable
