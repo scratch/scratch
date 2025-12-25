@@ -1,8 +1,8 @@
 <p align="center">
   <img src="./assets/scratch-logo.svg" alt="Scratch" height="120" />
-  <br />
-  Make beautiful websites with Markdown and React
 </p>
+
+Scratch compiles Markdown and React into beautiful static websites that can be hosted anywhere.
 
 ## Quick Start
 
@@ -17,74 +17,68 @@ scratch create
 scratch dev
 ```
 
-## Why Scratch?
+## What can you do with Scratch?
 
-Scratch was designed for **collaborative writing with coding agents** like [Claude Code](https://www.claude.com/product/claude-code). Use your favorite editor to write in [Markdown](https://daringfireball.net/projects/markdown/) and embed React components when it's easier to express yourself with code.
+Scratch lets you write in Markdown and embed interactive React components directly in your content.
 
-Scratch uses an opinionated project structure and requires **no boilerplate or configuration**: just create a project, run the dev server with `scratch dev`, and start writing.
+Scratch was designed for collaborative writing with coding agents like [Claude Code](https://www.claude.com/product/claude-code). Use your favorite editor to write in Markdown, and ask a coding agent for help when it's easier to express yourself with code.
 
-When you're ready, `scratch build` your project into a static website that can be hosted anywhere.
+Scratch uses [Tailwind Typography](https://github.com/tailwindlabs/tailwindcss-typography) to render your prose with a clean aesthetic. Code blocks use syntax highlighting by [Shiki](https://shiki.style/).
+
+Scratch also supports GitHub-flavored Markdown features like checklists and tables:
+
+| Feature | Supported? |
+|---------|-----------|
+| Compiles Markdown, TS, JS & CSS | ✅ |
+| Dev server with HMR | ✅ |
+| Tailwind CSS styling | ✅ |
+| Code syntax highlighting | ✅ |
+
+Collaborating with AI makes writing more fun. Scratch makes that easy.
 
 ## No Boilerplate
 
-Scratch uses an opinionated project structure to avoid the need for boilerplate and configuration. A simple Scratch project (created with `scratch create`) looks like this:
+Scratch uses an opinionated project structure and requires **no boilerplate or configuration**: just create a project, run the dev server with `scratch dev`, and start writing.
+
+A simple Scratch project (created with `scratch create`) looks like this:
 
 ```
-    mysite/
-    ├── pages/
-    │   ├── index.mdx
-    │   ├── Counter.tsx
-    │   └── examples/
-    │       ├── index.md
-    │       ├── markdown.md
-    │       ├── todolist-spec.mdx
-    │       └── TodoList.tsx
-    └── public/
-        ├── logo.png
-        └── favicon.svg
+my-scratch-project/
+├── pages/                    # put markdown and components here
+│   ├── index.mdx
+│   └── Counter.tsx
+├── public/                   # static assets
+│   └── favicon.svg
+├── src/                      # global components and css
+│   ├── PageWrapper.jsx
+│   ├── tailwind.css
+│   └── markdown/
+│       ├── index.ts
+│       ├── CodeBlock.tsx
+├── AGENTS.md
+├── package.json
+└── .gitignore
 ```
 
-Use `scratch build` to compile this project into a [static website](https://scratch.dev/template).
+Use `scratch build` to compile this project into a static website, like [scratch.dev](https://scratch.dev).
 
-Borrowing heavily from [Tailwind Typography](https://github.com/tailwindlabs/tailwindcss-typography), Scratch uses default styles and Markdown components to render your prose with a clean aesthetic. Code blocks use syntax highlighting by [Shiki](https://shiki.style/).
+Component files and libraries can live anywhere in `pages/` and `src/`. They are auto-detected by Scratch and don't need to be explicitly imported in your .mdx files as long as the filename matches the component name.
 
-You can change styles and customize the page wrapper component by including the `src/` directory when you run `scratch create`:
-
-```
-    mysite/
-    ├── pages/
-    ├── public/
-    └── src/
-        ├── markdown/
-        ├── PageWrapper.tsx
-        └── tailwind.css
-```
-
-Component files and js/ts libraries can live anywhere in `pages/` and `src/`. They are auto-detected by Scratch and don't need to be explicitly imported in your .mdx files as long as the filename matches the component name.
-
-Scratch installs build dependencies automatically. You can add additional third-party dependencies by including a `package.json` file in your project root.
-
-## Built on Bun
-
-Scratch is built on [Bun](https://bun.com/) for lightning-fast builds, development with HMR, and native typescript support. It uses the [Tailwind CSS](https://tailwindcss.com/) framework to make component styling easy. 
-
-Scratch compiles Javascript (.js), Typescript (.ts), JSX (.jsx), TSX (.tsx), Markdown (.md), and MDX (.mdx).
+Modify `src/tailwind.css` to change the styling of your document. Add headers, footers and other site-wide elements by modifying `src/PageWrapper.jsx`.
 
 ## Commands
 
 ```bash
 # Create a new project
-scratch create my-site    # interactive
-scratch create --minimal  # omit src/ and page examples
-scratch create --full     # include src/, examples, and package.json
+scratch create [path]         # create project at path (default: current directory)
 
 # Start dev server with hot module reloading
 scratch dev
 
 # Build for production
 scratch build
-scratch build --ssg false    # disable static site generation
-scratch build --development  # unminified, with source maps
+scratch build --no-ssg        # disable static site generation
+scratch build --development   # unminified, with source maps
 
 # Preview production build locally
 scratch preview
@@ -92,9 +86,26 @@ scratch preview
 # Remove build artifacts
 scratch clean
 
+# Revert a file to its template version
+scratch get [file]            # revert a file to its template version
+scratch get --force [file]    # overwrite without confirmation
+scratch get --list            # list available template files
+
 # Update scratch to latest version
 scratch update
 ```
+
+## Acknowledgements
+
+[Bun](https://bun.com/) for lightning-fast builds, development with HMR, native typescript support, and a portable executable.
+
+[React](https://react.dev/) and [MDX](https://mdxjs.com/) make it possible to write with Markdown and code. [Tailwind CSS](https://tailwindcss.com/) makes component styling easy.
+
+Content preprocessing relies on [unified](https://unifiedjs.com/), with [remark-gfm](https://github.com/remarkjs/remark-gfm) for GitHub Flavored Markdown and [remark-frontmatter](https://github.com/remarkjs/remark-frontmatter) plus [gray-matter](https://github.com/jonschlinkert/gray-matter) for parsing front matter.
+
+[Shiki](https://shiki.style/) provides beautiful, accurate syntax highlighting with VS Code's grammar engine.
+
+[Commander.js](https://github.com/tj/commander.js) scaffolds the CLI.
 
 ## License
 
