@@ -8,6 +8,7 @@ import log from '../logger';
 interface CreateOptions {
   src?: boolean;
   package?: boolean;
+  example?: boolean;
   quiet?: boolean;
 }
 
@@ -49,9 +50,11 @@ export async function createCommand(
 ) {
   const includeSrc = options.src !== false;
   const includePackage = options.package !== false;
+  const includeExample = options.example !== false;
 
   const created = await materializeProjectTemplates(targetPath, {
     includeSrc,
+    includeExample,
   });
 
   // Generate package.json if requested (skip if it already exists)

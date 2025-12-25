@@ -10,6 +10,7 @@ scratch is a CLI tool for building static MDX-based websites using Bun. Users cr
 - `create [path]` - Create a new Scratch project
   - `--no-src` - Exclude src/ directory
   - `--no-package` - Exclude package.json
+  - `--no-example` - Create empty pages/ and public/ directories
 - `build [path]` - Build the static site
 - `dev [path]` - Development server with hot reload
 - `preview [path]` - Preview the built site
@@ -19,7 +20,9 @@ scratch is a CLI tool for building static MDX-based websites using Bun. Users cr
   - Alias: `eject`
   - `-l, --list` - List available template files
   - `-f, --force` - Overwrite existing files without confirmation
-- `view <file>` - View a markdown file with live reload
+- `view <path>` - View markdown file(s) with live reload
+  - If path is a file: opens that file's route
+  - If path is a directory: opens first markdown file alphabetically
   - `-p, --port <port>` - Port for dev server
   - `-n, --no-open` - Don't auto-open browser
 

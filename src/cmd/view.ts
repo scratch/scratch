@@ -13,23 +13,26 @@ interface ViewOptions {
   open?: boolean;
 }
 
-export async function viewCommand(filePath: string, options: ViewOptions = {}): Promise<void> {
-  // Resolve absolute path to the file
-  const absoluteFilePath = path.resolve(filePath);
+export async function viewCommand(
+  filePath: string,
+  options: ViewOptions = {}
+): Promise<void> {
+  const absolutePath = path.resolve(filePath);
 
-  // Verify file exists
-  if (!await fs.exists(absoluteFilePath)) {
-    log.error(`File not found: ${filePath}`);
+  // Verify path exists
+  if (!(await fs.exists(absolutePath))) {
+    log.error(`Path not found: ${filePath}`);
     process.exit(1);
   }
 
-  // Determine target extension (.md or .mdx)
-  const ext = path.extname(absoluteFilePath);
-  const targetExt = ext === '.mdx' ? '.mdx' : '.md';
+  const stat = await fs.stat(absolutePath);
+  const isDirectory = stat.isDirectory();
+
+  log.info(`Rendering ${isDirectory ? 'directory' : 'file'} ${filePath}`);
 
   // Create temp directory
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'scratch-view-'));
-  const targetFile = path.join(tempDir, 'pages', `index${targetExt}`);
+  const tempPagesDir = path.join(tempDir, 'pages');
 
   // Cleanup function
   const cleanup = async () => {
@@ -53,42 +56,50 @@ export async function viewCommand(filePath: string, options: ViewOptions = {}): 
   try {
     // 1. Create project in temp dir (quiet to suppress file tree output)
     await createCommand(tempDir, { src: true, package: true, quiet: true });
+    log.info(`Created temp project in ${tempDir}`);
 
     // 2. Pre-install dependencies to avoid subprocess restart loop
-    // (BuildContext.restartBuildInSubprocess would re-run 'scratch view' and create infinite loop)
     log.info('Installing dependencies...');
     bunInstall(tempDir);
     log.info('Dependencies installed');
 
-    // 3. Copy file to pages/index.md(x)
-    await fs.copyFile(absoluteFilePath, targetFile);
+    if (isDirectory) {
+      // Directory: symlink it as pages/
+      await fs.rm(tempPagesDir, { recursive: true, force: true });
+      await fs.symlink(absolutePath, tempPagesDir);
+    } else {
+      // File: copy with original name, watch for changes
+      const filename = path.basename(absolutePath);
+      const targetFile = path.join(tempPagesDir, filename);
 
-    // 4. Watch for changes to source file
-    const watcher = watch(absoluteFilePath, async (event) => {
-      if (event === 'rename') {
-        // File was deleted or renamed
-        log.info('Source file deleted, shutting down...');
-        watcher.close();
-        await cleanup();
-        process.exit(0);
-      } else if (event === 'change') {
-        // File was modified, copy it
-        try {
-          await fs.copyFile(absoluteFilePath, targetFile);
-          log.debug('File updated');
-        } catch {
-          // File might be mid-write, ignore
+      // Remove default index.mdx and copy user's file
+      await fs.rm(path.join(tempPagesDir, 'index.mdx'), { force: true });
+      await fs.copyFile(absolutePath, targetFile);
+
+      // Watch for changes to source file
+      watch(absolutePath, async (event) => {
+        if (event === 'rename') {
+          log.info('Source file deleted, shutting down...');
+          await cleanup();
+          process.exit(0);
+        } else if (event === 'change') {
+          try {
+            await fs.copyFile(absolutePath, targetFile);
+            log.debug('File updated');
+          } catch {
+            // File might be mid-write, ignore
+          }
         }
-      }
-    });
+      });
+    }
 
-    // 5. Set build context to temp dir and run dev server
+    // 3. Set build context to temp dir and run dev server
+    // (dev server auto-detects the route to open)
     setBuildContext({ path: tempDir, port: options.port });
     await devCommand({
       port: options.port ? parseInt(options.port, 10) : undefined,
-      open: options.open
+      open: options.open,
     });
-
   } catch (error) {
     await cleanup();
     throw error;

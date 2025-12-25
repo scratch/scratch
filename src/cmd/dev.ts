@@ -1,4 +1,5 @@
 import { watch } from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
 import type { ServerWebSocket } from 'bun';
 import { getBuildContext } from '../context';
@@ -6,9 +7,52 @@ import { buildCommand } from './build';
 import { getContentType } from '../util';
 import log from '../logger';
 
+/**
+ * Find the initial route for a directory.
+ * Prefers index.md(x) if it exists, otherwise first markdown file alphabetically.
+ */
+export async function findRouteToOpen(dir: string): Promise<string> {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+
+  // Get all markdown files
+  const mdFiles = entries
+    .filter(
+      (e) => e.isFile() && (e.name.endsWith('.md') || e.name.endsWith('.mdx'))
+    )
+    .map((e) => e.name);
+
+  // Check for index file first
+  if (mdFiles.includes('index.mdx') || mdFiles.includes('index.md')) {
+    return '/';
+  }
+
+  // Sort and get first file
+  mdFiles.sort();
+
+  if (mdFiles.length === 0) {
+    // Check subdirectories
+    const subdirs = entries
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
+      .sort();
+    for (const subdir of subdirs) {
+      const route = await findRouteToOpen(path.join(dir, subdir));
+      if (route) {
+        return `/${subdir}${route}`;
+      }
+    }
+    return '/';
+  }
+
+  const firstFile = mdFiles[0];
+  const basename = path.basename(firstFile, path.extname(firstFile));
+  return `/${basename}`;
+}
+
 interface DevOptions {
   port?: number;
   open?: boolean;
+  route?: string; // Route to open in browser, auto-detected if not specified
 }
 
 // Store connected WebSocket clients for live reload
@@ -136,7 +180,8 @@ export async function devCommand(options: DevOptions = {}) {
   // Open browser if requested
   if (options.open !== false) {
     const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
-    Bun.spawn([opener, `http://localhost:${port}`]);
+    const route = options.route ?? await findRouteToOpen(ctx.pagesDir);
+    Bun.spawn([opener, `http://localhost:${port}${route}`]);
   }
 
   // Watch for file changes (pages, src, and public)

@@ -13,11 +13,7 @@ export { templates };
  * Files included in minimal tier (create command without --src)
  * All other project files are in the "src" tier (src/*)
  */
-const MINIMAL_FILES = new Set([
-  '.gitignore',
-  'AGENTS.md',
-  'pages/index.mdx',
-]);
+const MINIMAL_FILES = new Set(['.gitignore', 'AGENTS.md', 'pages/index.mdx']);
 
 /**
  * Check if a file belongs to the minimal tier
@@ -52,6 +48,8 @@ function isSrcFile(relativePath: string): boolean {
 export interface MaterializeOptions {
   /** Include src/ directory (default: true) */
   includeSrc?: boolean;
+  /** Include example pages/ and public/ content (default: true) */
+  includeExample?: boolean;
   /** Overwrite existing files (default: false) */
   overwrite?: boolean;
 }
@@ -70,10 +68,24 @@ export async function materializeProjectTemplates(
   targetDir: string,
   options: MaterializeOptions = {}
 ): Promise<string[]> {
-  const { includeSrc = true, overwrite = false } = options;
+  const {
+    includeSrc = true,
+    includeExample = true,
+    overwrite = false,
+  } = options;
   const created: string[] = [];
 
   await fs.mkdir(targetDir, { recursive: true });
+
+  // If not including example content, create empty pages/ and public/ directories
+  if (!includeExample) {
+    const pagesDir = path.join(targetDir, 'pages');
+    const publicDir = path.join(targetDir, 'public');
+    await fs.mkdir(pagesDir, { recursive: true });
+    await fs.mkdir(publicDir, { recursive: true });
+    created.push('pages/', 'public/');
+    log.debug('Created empty pages/ and public/ directories');
+  }
 
   for (const [relativePath, content] of Object.entries(templates)) {
     // Skip _build/ files (internal build infrastructure)
@@ -87,6 +99,14 @@ export async function materializeProjectTemplates(
 
     // Skip src tier files unless includeSrc is true
     if (isSrc && !includeSrc) {
+      continue;
+    }
+
+    // Skip pages/ and public/ content unless includeExample is true
+    if (
+      !includeExample &&
+      (relativePath.startsWith('pages/') || relativePath.startsWith('public/'))
+    ) {
       continue;
     }
 
@@ -164,5 +184,5 @@ export function listTemplateFiles(): string[] {
  * List user-facing template files (excludes internal _build/ files).
  */
 export function listUserFacingTemplateFiles(): string[] {
-  return Object.keys(templates).filter(f => !f.startsWith('_build/'));
+  return Object.keys(templates).filter((f) => !f.startsWith('_build/'));
 }

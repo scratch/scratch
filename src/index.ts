@@ -42,6 +42,7 @@ program
   .argument('[path]', 'Path to project directory', '.')
   .option('--no-src', 'Exclude src/ directory')
   .option('--no-package', 'Exclude package.json')
+  .option('--no-example', 'Create empty pages/ and public/ directories')
   .action(
     withErrorHandling('Create', async (path, options) => {
       await createCommand(path, options);
@@ -127,8 +128,8 @@ program
 
 program
   .command('view')
-  .description('View a markdown file with live reload')
-  .argument('<file>', 'Markdown file to view')
+  .description('View markdown file(s) with live reload')
+  .argument('<path>', 'Markdown file or directory to view')
   .option('-p, --port <port>', 'Port for dev server', '5173')
   .option('-n, --no-open', 'Do not open browser automatically')
   .action(
