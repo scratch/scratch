@@ -7,7 +7,6 @@ import log from '../logger';
 
 interface CreateOptions {
   src?: boolean;
-  examples?: boolean;
   package?: boolean;
 }
 
@@ -42,20 +41,16 @@ export async function generatePackageJson(
  *
  * Includes src/ and package.json by default.
  * Use --no-src or --no-package to exclude.
- * Use --examples to include example pages.
  */
 export async function createCommand(
   targetPath: string,
   options: CreateOptions = {}
 ) {
-  // Defaults: include src and package, exclude examples
   const includeSrc = options.src !== false;
-  const includeExamples = options.examples === true;
   const includePackage = options.package !== false;
 
   const created = await materializeProjectTemplates(targetPath, {
     includeSrc,
-    includeExamples,
   });
 
   // Generate package.json if requested (skip if it already exists)

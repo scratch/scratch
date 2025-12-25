@@ -10,19 +10,13 @@ export { templates };
 // ============================================================================
 
 /**
- * Files included in minimal tier (init command without --src)
+ * Files included in minimal tier (create command without --src)
  * All other project files are in the "src" tier (src/*)
  */
 const MINIMAL_FILES = new Set([
   '.gitignore',
   'AGENTS.md',
   'pages/index.mdx',
-  'pages/Counter.tsx',
-  'pages/Fire.tsx',
-  'pages/TodoList.tsx',
-  'pages/Files.tsx',
-  'pages/BouncingDvdLogo.tsx',
-  'public/scratch-logo.svg',
 ]);
 
 /**
@@ -33,18 +27,15 @@ function isMinimalFile(relativePath: string): boolean {
   if (MINIMAL_FILES.has(relativePath)) {
     return true;
   }
-  // public/ directory (for any future files)
+  // public/ directory
   if (relativePath.startsWith('public/')) {
     return true;
   }
+  // pages/components/ directory
+  if (relativePath.startsWith('pages/components/')) {
+    return true;
+  }
   return false;
-}
-
-/**
- * Check if a file belongs to the examples tier
- */
-function isExamplesFile(relativePath: string): boolean {
-  return relativePath.startsWith('pages/examples/');
 }
 
 /**
@@ -61,8 +52,6 @@ function isSrcFile(relativePath: string): boolean {
 export interface MaterializeOptions {
   /** Include src/ directory (default: true) */
   includeSrc?: boolean;
-  /** Include pages/examples/ (default: true) */
-  includeExamples?: boolean;
   /** Overwrite existing files (default: false) */
   overwrite?: boolean;
 }
@@ -72,9 +61,8 @@ export interface MaterializeOptions {
  * Excludes _build/ files (internal build infrastructure).
  *
  * Tiers:
- * - Minimal: pages/index.mdx, pages/Counter.tsx, public/, .gitignore, AGENTS.md
+ * - Minimal: pages/index.mdx, pages/components/, public/, .gitignore, AGENTS.md
  * - Src: src/* (controlled by includeSrc)
- * - Examples: pages/examples/* (controlled by includeExamples)
  *
  * Returns list of files that were created.
  */
@@ -82,7 +70,7 @@ export async function materializeProjectTemplates(
   targetDir: string,
   options: MaterializeOptions = {}
 ): Promise<string[]> {
-  const { includeSrc = true, includeExamples = true, overwrite = false } = options;
+  const { includeSrc = true, overwrite = false } = options;
   const created: string[] = [];
 
   await fs.mkdir(targetDir, { recursive: true });
@@ -96,20 +84,14 @@ export async function materializeProjectTemplates(
     // Determine if file should be included based on tier
     const isMinimal = isMinimalFile(relativePath);
     const isSrc = isSrcFile(relativePath);
-    const isExamples = isExamplesFile(relativePath);
 
     // Skip src tier files unless includeSrc is true
     if (isSrc && !includeSrc) {
       continue;
     }
 
-    // Skip examples unless includeExamples is true
-    if (isExamples && !includeExamples) {
-      continue;
-    }
-
     // Skip files that don't belong to any known tier (shouldn't happen)
-    if (!isMinimal && !isSrc && !isExamples) {
+    if (!isMinimal && !isSrc) {
       log.debug(`Skipping unknown tier file: ${relativePath}`);
       continue;
     }

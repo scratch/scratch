@@ -40,7 +40,6 @@ program
   .description('Create a new Scratch project')
   .argument('[path]', 'Path to project directory', '.')
   .option('--no-src', 'Exclude src/ directory')
-  .option('--examples', 'Include example pages')
   .option('--no-package', 'Exclude package.json')
   .action(
     withErrorHandling('Create', async (path, options) => {

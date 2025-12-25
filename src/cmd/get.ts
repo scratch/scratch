@@ -33,12 +33,7 @@ export async function getCommand(filePath: string | undefined, options: GetOptio
   }
 
   // Normalize the path (remove leading ./ and trailing /)
-  let templatePath = filePath.replace(/^\.\//, '').replace(/\/$/, '');
-
-  // Special case: "examples" is an alias for "pages/examples"
-  if (templatePath === 'examples') {
-    templatePath = 'pages/examples';
-  }
+  const templatePath = filePath.replace(/^\.\//, '').replace(/\/$/, '');
 
   // Special case: package.json is generated, not templated
   if (templatePath === 'package.json') {

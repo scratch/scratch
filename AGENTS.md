@@ -7,14 +7,14 @@ scratch is a CLI tool for building static MDX-based websites using Bun. Users cr
 ## Architecture
 
 ### CLI Commands (`src/index.ts`)
-- `init [path]` - Initialize a project (flag-based, no prompts)
-  - `--full` - Include src/ (tailwind.css, PageWrapper, markdown components)
-  - `--examples` - Include example pages
-- `create [path]` - Create a project (interactive prompts for components and examples)
+- `create [path]` - Create a new Scratch project
+  - `--no-src` - Exclude src/ directory
+  - `--no-package` - Exclude package.json
 - `build [path]` - Build the static site
 - `dev [path]` - Development server with hot reload
 - `preview [path]` - Preview the built site
 - `clean [path]` - Clean build artifacts
+- `update` - Update scratch to the latest version
 - `get [file]` - Clone file/directory from built-in templates
   - Aliases: `revert`, `eject`
   - `-l, --list` - List available template files
@@ -62,8 +62,7 @@ Templates are embedded directly into the compiled executable for portability.
 
 **Directory structure** (`template/`):
 - `_build/` - Internal build infrastructure (entry-client.tsx, entry-server.jsx) - never copied to user projects
-- `pages/examples/` - Example pages (TodoList, markdown examples) - optionally included via `--examples` flag
-- `pages/` - Default pages (index.mdx, Counter.tsx)
+- `pages/` - Default pages (index.mdx) and components (pages/components/)
 - `src/` - PageWrapper.jsx, tailwind.css, markdown component overrides (src/markdown/)
 - `public/` - Static assets (scratch-logo.svg, favicon.svg)
 - Root files: .gitignore, AGENTS.md
@@ -71,7 +70,7 @@ Templates are embedded directly into the compiled executable for portability.
 **Compilation**: `scripts/compile-templates.ts` reads all template files and generates `src/template.generated.ts` as a flat `{ path: content }` object. This runs automatically during `bun run build`.
 
 **Runtime API** (`src/template.ts`):
-- `materializeProjectTemplates(targetDir, options)` - Write project templates to disk (excludes `_build/`, optionally includes examples)
+- `materializeProjectTemplates(targetDir, options)` - Write project templates to disk (excludes `_build/`)
 - `materializeTemplate(templatePath, targetPath)` - Write a single template file
 - `getTemplateContent(templatePath)` - Get template content as string
 - `hasTemplate(templatePath)` - Check if template exists
@@ -142,5 +141,4 @@ bun run src/index.ts dev /tmp/test-scratch
 ### Adding template files
 1. Add to `template/` for user-facing files (copied to new projects)
 2. Add to `template/_build/` for internal build infrastructure (not copied to user projects)
-3. Add to `template/pages/examples/` for example pages (only copied when `--examples` flag is used)
-4. Run `bun run compile-templates` to regenerate `src/template.generated.ts`, or just run `bun run build` which does this automatically
+3. Run `bun run compile-templates` to regenerate `src/template.generated.ts`, or just run `bun run build` which does this automatically
