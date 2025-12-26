@@ -60,10 +60,9 @@ program
   .option('--strict', 'Do not inject PageWrapper component or missing imports')
   .action(
     withErrorHandling('Build', async (path, options) => {
-      log.info('Building Scratch project in', path);
       const startTime = Date.now();
       log.debug('Options:', options);
-      await buildCommand(options);
+      await buildCommand(options, path);
       log.info(`Build completed in ${Date.now() - startTime}ms`);
     })
   );

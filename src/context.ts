@@ -155,8 +155,18 @@ export class BuildContext {
    */
   private restartBuildInSubprocess(): never {
     log.debug('Re-running build in subprocess to work around Bun runtime issue');
-    const args = process.argv.slice(2);
-    const result = spawnSync(process.execPath, args, {
+
+    // Detect if running as compiled binary vs `bun run script.ts`
+    // Compiled binary: argv = ["bun", "/$bunfs/root/scratch", ...args]
+    //                  execPath = "/path/to/scratch" (actual binary)
+    // bun run:         argv = ["/path/to/bun", "/path/to/script.ts", ...args]
+    //                  execPath = "/path/to/bun"
+    const isCompiledBinary = process.argv[0] === 'bun' && process.argv[1]?.startsWith('/$bunfs/');
+
+    const executable = isCompiledBinary ? process.execPath : process.argv[0];
+    const args = isCompiledBinary ? process.argv.slice(2) : process.argv.slice(1);
+
+    const result = spawnSync(executable, args, {
       cwd: process.cwd(),
       stdio: 'inherit',
       env: process.env,

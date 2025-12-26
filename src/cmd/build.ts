@@ -106,9 +106,9 @@ interface BuildOptions {
 /**
  * Build the project using Bun.build()
  */
-export async function buildCommand(options: BuildOptions = {}) {
+export async function buildCommand(options: BuildOptions = {}, projectPath?: string) {
   try {
-    await doBuild(options);
+    await doBuild(options, projectPath);
   } catch (error) {
     // Format the error message to be more helpful
     const formatted = formatBuildError(error as Error);
@@ -116,11 +116,9 @@ export async function buildCommand(options: BuildOptions = {}) {
   }
 }
 
-async function doBuild(options: BuildOptions = {}) {
+async function doBuild(options: BuildOptions = {}, projectPath?: string) {
   const ctx = getBuildContext();
   const { ssg = false, static: staticMode = 'assets' } = options;
-
-  log.debug(`Building with Bun${ssg ? ' (SSG)' : ''}...`);
 
   // Timing helper
   const timings: Record<string, number> = {};
@@ -136,7 +134,12 @@ async function doBuild(options: BuildOptions = {}) {
   renderedContent.clear();
 
   // Step 1: Ensure build dependencies are installed
+  // Note: This may restart the build in a subprocess if deps need to be installed,
+  // so we print the "Building" message AFTER this step to avoid duplicate output.
   await time('1. Dependencies', () => ctx.ensureBuildDependencies());
+
+  log.info('Building Scratch project in', projectPath || '.');
+  log.debug(`Building with Bun${ssg ? ' (SSG)' : ''}...`);
 
   // Step 2: Reset directories (preserves node_modules)
   await time('2. Reset dirs', () => ctx.reset());
