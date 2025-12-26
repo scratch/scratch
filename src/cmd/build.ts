@@ -248,7 +248,7 @@ async function doBuild(options: BuildOptions = {}) {
   // Step 9: Copy pages/ as static assets (lowest priority - gets overwritten by public/ and compiled)
   if (staticMode !== 'public') {
     log.debug('=== PAGES STATIC ASSETS ===');
-    const buildFileExts = ['.md', '.mdx', '.tsx', '.jsx', '.ts', '.js'];
+    const buildFileExts = ['.md', '.mdx', '.tsx', '.jsx', '.ts', '.js', '.mjs', '.cjs'];
     await time('9. Pages static', async () => {
       await fs.cp(ctx.pagesDir, ctx.buildDir, {
         recursive: true,
