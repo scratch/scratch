@@ -12,7 +12,7 @@ import log from '../logger';
  * Prefers / if /index.md[x] exists, otherwise first markdown file
  * alphabetically. Returns null if no markdown files are found.
  */
-export async function findRouteToOpen(dir: string): Promise<string | null> {
+export async function findRoute(dir: string): Promise<string | null> {
   const entries = await fs.readdir(dir, { withFileTypes: true });
 
   // Get all markdown files
@@ -187,7 +187,7 @@ export async function devCommand(options: DevOptions = {}) {
         : process.platform === 'win32'
           ? 'start'
           : 'xdg-open';
-    const route = options.route ?? (await findRouteToOpen(ctx.pagesDir)) ?? '/';
+    const route = options.route ?? (await findRoute(ctx.pagesDir)) ?? '/';
     Bun.spawn([opener, `http://localhost:${port}${route}`]);
   }
 
