@@ -8,11 +8,11 @@ import { getContentType } from '../util';
 import log from '../logger';
 
 /**
- * Given a directory, find the best route to open in the dev server
+ * Given a directory, find the best route to open in the dev server.
  * Prefers / if /index.md[x] exists, otherwise first markdown file
- * alphabetically. Returns null if no markdown files are found.
+ * alphabetically. Returns / if no markdown files are found.
  */
-export async function findRoute(dir: string): Promise<string | null> {
+export async function findRoute(dir: string): Promise<string> {
   const entries = await fs.readdir(dir, { withFileTypes: true });
 
   // Get all markdown files
@@ -184,7 +184,7 @@ export async function devCommand(options: DevOptions = {}) {
         : process.platform === 'win32'
           ? 'start'
           : 'xdg-open';
-    const route = options.route ?? (await findRoute(ctx.pagesDir)) ?? '/';
+    const route = options.route ?? await findRoute(ctx.pagesDir);
     Bun.spawn([opener, `http://localhost:${port}${route}`]);
   }
 

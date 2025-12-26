@@ -59,6 +59,7 @@ export async function viewCommand(
     log.info(`Created temp project in ${tempDir}`);
 
     // 2. Pre-install dependencies to avoid subprocess restart loop
+    // TODO: This is slow. Consider caching a pre-installed template to skip this step.
     log.info('Installing dependencies...');
     bunInstall(tempDir);
     log.info('Dependencies installed');
