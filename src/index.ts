@@ -98,6 +98,21 @@ program
   );
 
 program
+  .command('view')
+  .description('Serve target file/directory on development server')
+  .argument('<path>', 'Markdown file or directory to view')
+  .option('-p, --port <port>', 'Port for dev server', '5173')
+  .option('-n, --no-open', "Don't open browser automatically")
+  .action(
+    withErrorHandling('View', async (file, options) => {
+      await viewCommand(file, {
+        ...options,
+        port: options.port ? parseInt(options.port, 10) : undefined,
+      });
+    })
+  );
+
+program
   .command('clean')
   .description('Remove build artifacts')
   .argument('[path]', 'Path to project directory', '.')
@@ -129,21 +144,6 @@ program
   .action(
     withErrorHandling('Checkout', async (file, options) => {
       await checkoutCommand(file, options);
-    })
-  );
-
-program
-  .command('view')
-  .description('View markdown file(s) with live reload')
-  .argument('<path>', 'Markdown file or directory to view')
-  .option('-p, --port <port>', 'Port for dev server', '5173')
-  .option('-n, --no-open', 'Do not open browser automatically')
-  .action(
-    withErrorHandling('View', async (file, options) => {
-      await viewCommand(file, {
-        ...options,
-        port: options.port ? parseInt(options.port, 10) : undefined,
-      });
     })
   );
 
