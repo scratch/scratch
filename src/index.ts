@@ -136,7 +136,10 @@ program
   .option('-n, --no-open', 'Do not open browser automatically')
   .action(
     withErrorHandling('View', async (file, options) => {
-      await viewCommand(file, options);
+      await viewCommand(file, {
+        ...options,
+        port: options.port ? parseInt(options.port, 10) : undefined,
+      });
     })
   );
 

@@ -9,7 +9,7 @@ import { bunInstall } from '../util';
 import log from '../logger';
 
 interface ViewOptions {
-  port?: string;
+  port?: number;
   open?: boolean;
 }
 
@@ -95,7 +95,7 @@ export async function viewCommand(
     // (dev server auto-detects the route to open)
     setBuildContext({ path: tempDir, port: options.port });
     await devCommand({
-      port: options.port ? parseInt(options.port, 10) : undefined,
+      port: options.port,
       open: options.open,
     });
   } catch (error) {
