@@ -1,21 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { readFile, rm, writeFile } from "fs/promises";
+import { readFile, rm, writeFile, readdir } from "fs/promises";
 import path from "path";
 import { runCliSync, mkTempDir } from "./util";
 
-describe("Syntax highlighting", () => {
-  test("code blocks are syntax highlighted with Shiki", async () => {
-    // 1. Create a fresh project
-    const tempDir = await mkTempDir("syntax-highlight-");
-    runCliSync(["create", "sandbox"], tempDir);
-
-    const sandboxDir = path.join(tempDir, "sandbox");
-
-    // 2. Create an MDX file with code blocks in several languages
-    const mdxPath = path.join(sandboxDir, "pages", "index.mdx");
-    await writeFile(
-      mdxPath,
-      `# Code Examples
+const CODE_BLOCK_MDX = `# Code Examples
 
 ## JavaScript
 
@@ -64,28 +52,160 @@ func main() {
     fmt.Println("Hello, World!")
 }
 \`\`\`
-`
-    );
+`;
 
-    // 3. Build without SSG (syntax highlighting is compiled into JS bundle)
+describe("Syntax highlighting", () => {
+  test("code blocks are syntax highlighted with Shiki (default: auto)", async () => {
+    const tempDir = await mkTempDir("syntax-highlight-");
+    runCliSync(["create", "sandbox"], tempDir);
+
+    const sandboxDir = path.join(tempDir, "sandbox");
+    const mdxPath = path.join(sandboxDir, "pages", "index.mdx");
+    await writeFile(mdxPath, CODE_BLOCK_MDX);
+
+    // Build without SSG (syntax highlighting is compiled into JS bundle)
     runCliSync(["build", "sandbox", "--development", "--no-ssg"], tempDir);
 
-    // 4. Read the generated JS bundle to verify Shiki syntax highlighting was applied
     const distDir = path.join(sandboxDir, "dist");
-    const { readdir } = await import("fs/promises");
     const files = await readdir(distDir);
     const jsFile = files.find((f) => f.startsWith("index-") && f.endsWith(".js"));
     expect(jsFile).toBeDefined();
     const js = await readFile(path.join(distDir, jsFile!), "utf-8");
 
-    // 5. Verify Shiki syntax highlighting is present in the JS bundle
-    // In JSX, it uses className="shiki" not class="shiki"
+    // Verify Shiki syntax highlighting is present
     expect(js).toContain('className: "shiki');
-
-    // Verify syntax highlighting styles are present (Shiki uses inline styles)
     expect(js).toContain('style:');
 
-    // Cleanup
+    await rm(tempDir, { recursive: true, force: true });
+  }, 180_000);
+
+  test("--highlight=auto detects languages from code fences", async () => {
+    const tempDir = await mkTempDir("syntax-highlight-auto-");
+    runCliSync(["create", "sandbox"], tempDir);
+
+    const sandboxDir = path.join(tempDir, "sandbox");
+    const mdxPath = path.join(sandboxDir, "pages", "index.mdx");
+    await writeFile(mdxPath, CODE_BLOCK_MDX);
+
+    runCliSync(["build", "sandbox", "--development", "--no-ssg", "--highlight=auto"], tempDir);
+
+    const distDir = path.join(sandboxDir, "dist");
+    const files = await readdir(distDir);
+    const jsFile = files.find((f) => f.startsWith("index-") && f.endsWith(".js"));
+    expect(jsFile).toBeDefined();
+    const js = await readFile(path.join(distDir, jsFile!), "utf-8");
+
+    // Verify Shiki highlighting is present
+    expect(js).toContain('className: "shiki');
+
+    await rm(tempDir, { recursive: true, force: true });
+  }, 180_000);
+
+  test("--highlight=popular loads popular languages", async () => {
+    const tempDir = await mkTempDir("syntax-highlight-popular-");
+    runCliSync(["create", "sandbox"], tempDir);
+
+    const sandboxDir = path.join(tempDir, "sandbox");
+    const mdxPath = path.join(sandboxDir, "pages", "index.mdx");
+    await writeFile(mdxPath, CODE_BLOCK_MDX);
+
+    runCliSync(["build", "sandbox", "--development", "--no-ssg", "--highlight=popular"], tempDir);
+
+    const distDir = path.join(sandboxDir, "dist");
+    const files = await readdir(distDir);
+    const jsFile = files.find((f) => f.startsWith("index-") && f.endsWith(".js"));
+    expect(jsFile).toBeDefined();
+    const js = await readFile(path.join(distDir, jsFile!), "utf-8");
+
+    // Verify Shiki highlighting is present
+    expect(js).toContain('className: "shiki');
+
+    await rm(tempDir, { recursive: true, force: true });
+  }, 180_000);
+
+  test("--highlight=all loads all bundled languages", async () => {
+    const tempDir = await mkTempDir("syntax-highlight-all-");
+    runCliSync(["create", "sandbox"], tempDir);
+
+    const sandboxDir = path.join(tempDir, "sandbox");
+    const mdxPath = path.join(sandboxDir, "pages", "index.mdx");
+    await writeFile(mdxPath, CODE_BLOCK_MDX);
+
+    runCliSync(["build", "sandbox", "--development", "--no-ssg", "--highlight=all"], tempDir);
+
+    const distDir = path.join(sandboxDir, "dist");
+    const files = await readdir(distDir);
+    const jsFile = files.find((f) => f.startsWith("index-") && f.endsWith(".js"));
+    expect(jsFile).toBeDefined();
+    const js = await readFile(path.join(distDir, jsFile!), "utf-8");
+
+    // Verify Shiki highlighting is present
+    expect(js).toContain('className: "shiki');
+
+    await rm(tempDir, { recursive: true, force: true });
+  }, 180_000);
+
+  test("--highlight=off disables syntax highlighting", async () => {
+    const tempDir = await mkTempDir("syntax-highlight-off-");
+    runCliSync(["create", "sandbox"], tempDir);
+
+    const sandboxDir = path.join(tempDir, "sandbox");
+    const mdxPath = path.join(sandboxDir, "pages", "index.mdx");
+    await writeFile(mdxPath, CODE_BLOCK_MDX);
+
+    runCliSync(["build", "sandbox", "--development", "--no-ssg", "--highlight=off"], tempDir);
+
+    const distDir = path.join(sandboxDir, "dist");
+    const files = await readdir(distDir);
+    const jsFile = files.find((f) => f.startsWith("index-") && f.endsWith(".js"));
+    expect(jsFile).toBeDefined();
+    const js = await readFile(path.join(distDir, jsFile!), "utf-8");
+
+    // Verify Shiki highlighting is NOT present when disabled
+    expect(js).not.toContain('className: "shiki');
+
+    await rm(tempDir, { recursive: true, force: true });
+  }, 180_000);
+
+  test("SSG build with --highlight=auto pre-renders highlighted code", async () => {
+    const tempDir = await mkTempDir("syntax-highlight-ssg-");
+    runCliSync(["create", "sandbox"], tempDir);
+
+    const sandboxDir = path.join(tempDir, "sandbox");
+    const mdxPath = path.join(sandboxDir, "pages", "index.mdx");
+    await writeFile(mdxPath, CODE_BLOCK_MDX);
+
+    // Build WITH SSG (default)
+    runCliSync(["build", "sandbox", "--highlight=auto"], tempDir);
+
+    const distDir = path.join(sandboxDir, "dist");
+    const htmlPath = path.join(distDir, "index.html");
+    const html = await readFile(htmlPath, "utf-8");
+
+    // Verify Shiki highlighting is present in pre-rendered HTML
+    expect(html).toContain('class="shiki');
+
+    await rm(tempDir, { recursive: true, force: true });
+  }, 180_000);
+
+  test("SSG build with --highlight=off does not include Shiki classes", async () => {
+    const tempDir = await mkTempDir("syntax-highlight-ssg-off-");
+    runCliSync(["create", "sandbox"], tempDir);
+
+    const sandboxDir = path.join(tempDir, "sandbox");
+    const mdxPath = path.join(sandboxDir, "pages", "index.mdx");
+    await writeFile(mdxPath, CODE_BLOCK_MDX);
+
+    // Build WITH SSG but highlighting disabled
+    runCliSync(["build", "sandbox", "--highlight=off"], tempDir);
+
+    const distDir = path.join(sandboxDir, "dist");
+    const htmlPath = path.join(distDir, "index.html");
+    const html = await readFile(htmlPath, "utf-8");
+
+    // Verify Shiki highlighting is NOT present
+    expect(html).not.toContain('class="shiki');
+
     await rm(tempDir, { recursive: true, force: true });
   }, 180_000);
 });

@@ -34,6 +34,8 @@ export function getBuildContext(): BuildContext {
   return CONTEXT;
 }
 
+export type HighlightMode = 'off' | 'popular' | 'auto' | 'all';
+
 export interface BuildContextInitOptions {
   path?: string;
   rootDirName?: string;
@@ -47,6 +49,7 @@ export interface BuildContextInitOptions {
   open?: boolean;
   port?: number;
   strict?: boolean;
+  highlight?: HighlightMode;
 }
 
 export class BuildContext {
@@ -163,7 +166,7 @@ export class BuildContext {
     //                  execPath = "/path/to/bun"
     const isCompiledBinary = process.argv[0] === 'bun' && process.argv[1]?.startsWith('/$bunfs/');
 
-    const executable = isCompiledBinary ? process.execPath : process.argv[0];
+    const executable = isCompiledBinary ? process.execPath : process.argv[0]!;
     const args = isCompiledBinary ? process.argv.slice(2) : process.argv.slice(1);
 
     const result = spawnSync(executable, args, {

@@ -58,6 +58,7 @@ program
   .option('--no-ssg', 'Disable static site generation')
   .option('--static <mode>', 'Static file mode: public, assets, all', 'assets')
   .option('--strict', 'Do not inject PageWrapper component or missing imports')
+  .option('--highlight <mode>', 'Syntax highlighting: off, popular, auto, all', 'auto')
   .action(
     withErrorHandling('Build', async (path, options) => {
       const startTime = Date.now();
@@ -76,6 +77,7 @@ program
   .option('-p, --port <port>', 'Port for dev server', '5173')
   .option('--static <mode>', 'Static file mode: public, assets, all', 'assets')
   .option('--strict', 'Do not inject PageWrapper component or missing imports')
+  .option('--highlight <mode>', 'Syntax highlighting: off, popular, auto, all', 'auto')
   .action(
     withErrorHandling('Dev server', async (path, options) => {
       log.info('Starting dev server in', path);
