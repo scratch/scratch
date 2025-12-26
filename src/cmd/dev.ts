@@ -10,8 +10,9 @@ import log from '../logger';
 /**
  * Find the initial route for a directory.
  * Prefers index.md(x) if it exists, otherwise first markdown file alphabetically.
+ * Returns null if no markdown content is found.
  */
-export async function findRouteToOpen(dir: string): Promise<string> {
+export async function findRouteToOpen(dir: string): Promise<string | null> {
   const entries = await fs.readdir(dir, { withFileTypes: true });
 
   // Get all markdown files
@@ -37,11 +38,11 @@ export async function findRouteToOpen(dir: string): Promise<string> {
       .sort();
     for (const subdir of subdirs) {
       const route = await findRouteToOpen(path.join(dir, subdir));
-      if (route) {
+      if (route !== null) {
         return `/${subdir}${route}`;
       }
     }
-    return '/';
+    return null;
   }
 
   const firstFile = mdFiles[0];
@@ -181,7 +182,7 @@ export async function devCommand(options: DevOptions = {}) {
   // Open browser if requested
   if (options.open !== false) {
     const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
-    const route = options.route ?? await findRouteToOpen(ctx.pagesDir);
+    const route = options.route ?? await findRouteToOpen(ctx.pagesDir) ?? '/';
     Bun.spawn([opener, `http://localhost:${port}${route}`]);
   }
 

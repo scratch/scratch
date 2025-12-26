@@ -52,11 +52,21 @@ describe("findRouteToOpen", () => {
     expect(await findRouteToOpen(dir)).toBe("/alpha");
   });
 
-  test("returns '/' for empty directory", async () => {
+  test("returns null for empty directory", async () => {
     const dir = path.join(tempDir, "empty");
     await fs.mkdir(dir, { recursive: true });
 
-    expect(await findRouteToOpen(dir)).toBe("/");
+    expect(await findRouteToOpen(dir)).toBe(null);
+  });
+
+  test("skips empty subdirectories to find content", async () => {
+    const dir = path.join(tempDir, "skip-empty");
+    await fs.mkdir(path.join(dir, "aaa-empty"), { recursive: true });
+    await fs.mkdir(path.join(dir, "bbb-content"), { recursive: true });
+    await fs.writeFile(path.join(dir, "bbb-content", "page.md"), "# Page");
+
+    // Should skip aaa-empty (alphabetically first) and find bbb-content/page.md
+    expect(await findRouteToOpen(dir)).toBe("/bbb-content/page");
   });
 
   test("searches subdirectories when no markdown in root", async () => {
