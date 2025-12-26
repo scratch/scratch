@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createHash } from 'crypto';
 import { getBuildContext } from '../context';
-import { getBunBuildConfig, getServerBunBuildConfig } from '../buncfg';
+import { getBunBuildConfig, getServerBunBuildConfig, resetLanguageCache } from '../buncfg';
 import { render, escapeHtml } from '../util';
 import { getPreprocessingErrors, resetPreprocessingState } from '../preprocess';
 import log from '../logger';
@@ -131,6 +131,7 @@ async function doBuild(options: BuildOptions = {}, projectPath?: string) {
 
   // Reset state from any previous builds
   resetPreprocessingState();
+  resetLanguageCache();
   renderedContent.clear();
 
   // Step 1: Ensure build dependencies are installed

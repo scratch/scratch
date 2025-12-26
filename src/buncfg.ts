@@ -4,42 +4,83 @@ import matter from 'gray-matter';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 import rehypeShikiFromHighlighter from '@shikijs/rehype/core';
-import { createHighlighter, type Highlighter, type BundledLanguage } from 'shiki';
+import { createHighlighter, bundledLanguages, type Highlighter, type BundledLanguage } from 'shiki';
 import { realpathSync } from 'fs';
+import { globSync } from 'fast-glob';
 import { getBuildContext } from './context';
 import { createPreprocessMdxPlugin, createRehypeFootnotesPlugin, createNotProsePlugin } from './preprocess';
 import path from 'path';
 import type { VFile } from 'vfile';
+import log from './logger';
 
-// Common languages to load by default (covers ~95% of use cases)
-// Loading all 316 bundled languages takes ~1.5s, this takes ~200ms
-const COMMON_LANGUAGES: BundledLanguage[] = [
-  'javascript', 'typescript', 'jsx', 'tsx',
-  'html', 'css', 'scss', 'json', 'jsonc',
-  'markdown', 'mdx', 'yaml',
-  'bash', 'shell', 'zsh',
-  'python', 'ruby', 'go', 'rust', 'java', 'c', 'cpp',
-  'sql', 'graphql',
-  'diff', 'dockerfile', 'xml', 'toml', 'ini',
-];
+// Set of all valid shiki language identifiers for validation
+const VALID_LANGUAGES = new Set(Object.keys(bundledLanguages));
+
+/**
+ * Scan MDX/MD files and extract code fence language identifiers.
+ * Returns only languages that are valid shiki languages.
+ */
+async function detectLanguagesFromFiles(pagesDir: string): Promise<BundledLanguage[]> {
+  const mdxFiles = globSync('**/*.{mdx,md}', { cwd: pagesDir, absolute: true });
+  const detectedLangs = new Set<string>();
+
+  // Regex to match code fence language identifiers: ```lang or ```lang{...}
+  const codeFenceRegex = /^```(\w+)/gm;
+
+  await Promise.all(mdxFiles.map(async (file) => {
+    const content = await Bun.file(file).text();
+    let match;
+    while ((match = codeFenceRegex.exec(content)) !== null) {
+      const lang = match[1].toLowerCase();
+      if (VALID_LANGUAGES.has(lang)) {
+        detectedLangs.add(lang);
+      }
+    }
+  }));
+
+  const langs = Array.from(detectedLangs) as BundledLanguage[];
+  if (langs.length > 0) {
+    log.debug(`Detected ${langs.length} code languages: ${langs.join(', ')}`);
+  }
+  return langs;
+}
 
 // Cached highlighter instance for reuse across builds
 let cachedHighlighter: Highlighter | null = null;
+let cachedHighlighterLangs: string | null = null;
 let highlighterPromise: Promise<Highlighter> | null = null;
 
-async function getShikiHighlighter(): Promise<Highlighter> {
-  if (cachedHighlighter) return cachedHighlighter;
+/**
+ * Get or create a shiki highlighter with the specified languages.
+ * Caches the highlighter for reuse, recreating if languages change.
+ */
+async function getShikiHighlighter(langs: BundledLanguage[]): Promise<Highlighter> {
+  const langsKey = [...langs].sort().join(',');
 
-  // Ensure we only create one highlighter even with concurrent calls
-  if (!highlighterPromise) {
-    highlighterPromise = createHighlighter({
-      themes: ['github-light'],
-      langs: COMMON_LANGUAGES,
-    }).then(h => {
-      cachedHighlighter = h;
-      return h;
-    });
+  // Return cached highlighter if languages haven't changed
+  if (cachedHighlighter && cachedHighlighterLangs === langsKey) {
+    return cachedHighlighter;
   }
+
+  // If creation is in progress with same languages, wait for it
+  if (highlighterPromise && cachedHighlighterLangs === langsKey) {
+    return highlighterPromise;
+  }
+
+  // Create new highlighter with detected languages
+  const t0 = performance.now();
+  const langsToLoad = langs.length > 0 ? langs : ['plaintext' as BundledLanguage];
+  cachedHighlighterLangs = langsKey;
+
+  highlighterPromise = createHighlighter({
+    themes: ['github-light'],
+    langs: langsToLoad,
+  }).then(h => {
+    cachedHighlighter = h;
+    log.debug(`Shiki highlighter created in ${(performance.now() - t0).toFixed(0)}ms (${langsToLoad.length} languages)`);
+    return h;
+  });
+
   return highlighterPromise;
 }
 
@@ -114,6 +155,10 @@ export interface BunBuildConfigOptions {
   root: string;
 }
 
+// Cache detected languages to avoid re-scanning files
+let detectedLanguagesCache: BundledLanguage[] | null = null;
+let detectedLanguagesPromise: Promise<BundledLanguage[]> | null = null;
+
 /**
  * Create the MDX plugin with remark/rehype preprocessing.
  */
@@ -135,8 +180,21 @@ async function createMdxBuildPlugin(options: { extractFrontmatter?: boolean } = 
     remarkPlugins.push(createNotProsePlugin());
   }
 
-  // Build rehype plugins list
-  const highlighter = await getShikiHighlighter();
+  // Auto-detect languages from code fences in MDX files (cached across builds)
+  // Use promise-based caching to handle concurrent calls
+  if (detectedLanguagesCache) {
+    // Already have cached result
+  } else if (detectedLanguagesPromise) {
+    // Detection in progress, wait for it
+    detectedLanguagesCache = await detectedLanguagesPromise;
+  } else {
+    // Start detection
+    detectedLanguagesPromise = detectLanguagesFromFiles(ctx.pagesDir);
+    detectedLanguagesCache = await detectedLanguagesPromise;
+  }
+
+  // Build rehype plugins list with detected languages
+  const highlighter = await getShikiHighlighter(detectedLanguagesCache);
   const rehypePlugins: any[] = [
     [rehypeShikiFromHighlighter, highlighter, { theme: 'github-light' }],
   ];
@@ -149,6 +207,17 @@ async function createMdxBuildPlugin(options: { extractFrontmatter?: boolean } = 
     remarkPlugins,
     rehypePlugins,
   });
+}
+
+/**
+ * Reset the detected languages cache (called when files change in dev mode)
+ */
+export function resetLanguageCache(): void {
+  detectedLanguagesCache = null;
+  detectedLanguagesPromise = null;
+  cachedHighlighter = null;
+  cachedHighlighterLangs = null;
+  highlighterPromise = null;
 }
 
 /**
