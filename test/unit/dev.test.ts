@@ -82,7 +82,7 @@ describe("findRouteToOpen", () => {
     await fs.mkdir(path.join(dir, "docs"), { recursive: true });
     await fs.writeFile(path.join(dir, "docs", "index.md"), "# Docs");
 
-    expect(await findRouteToOpen(dir)).toBe("/docs/");
+    expect(await findRouteToOpen(dir)).toBe("/docs");
   });
 
   test("ignores non-markdown files", async () => {

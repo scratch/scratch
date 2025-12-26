@@ -39,6 +39,10 @@ export async function findRouteToOpen(dir: string): Promise<string | null> {
     for (const subdir of subdirs) {
       const route = await findRouteToOpen(path.join(dir, subdir));
       if (route !== null) {
+        // If route is '/', the subdir has an index - return just the subdir path
+        if (route === '/') {
+          return `/${subdir}`;
+        }
         return `/${subdir}${route}`;
       }
     }
