@@ -1,0 +1,2 @@
+- [ ] shiki languages--does the count actually affect the project build speed?
+- [ ] why can't we parallelize client and server?

@@ -156,46 +156,96 @@ async function doBuild(options: BuildOptions = {}, projectPath?: string) {
         `Then run 'scratch build' again.`
     );
   }
+
+  // Create client TSX entry files
   const tsxEntryPts = await time('3. TSX entries', async () => createEntries({
     extension: '.tsx',
     outDir: ctx.clientSrcDir,
     templatePath: await ctx.clientTsxSrcPath(),
   }));
 
-  // Step 4: Build Tailwind CSS separately
-  log.debug('=== TAILWIND CSS ===');
-  const cssFilename = await time('4. Tailwind CSS', () => buildTailwindCss());
-
-  // Step 5 (SSG only): Build and render server modules
+  // Create server JSX entry files if SSG is enabled
+  let serverEntryPts: Record<string, string> | null = null;
   if (ssg) {
-    log.debug('=== SERVER BUILD (SSG) ===');
-    await time('5. Server build', () => buildAndRenderServerModules());
+    serverEntryPts = await time('3b. Server entries', async () => createEntries({
+      extension: '.jsx',
+      outDir: ctx.serverSrcDir,
+      templatePath: await ctx.serverJsxSrcPath(),
+    }));
   }
 
-  // Step 6: Run Bun.build() on the TSX entry points (client build)
-  const entryPaths = Object.values(tsxEntryPts);
-  const buildConfig = await getBunBuildConfig({
-    entryPts: entryPaths,
-    outDir: ctx.clientCompiledDir,
-    root: ctx.clientSrcDir,
+  // Step 4: Build Tailwind CSS (runs in parallel with Bun builds)
+  // Step 5-6: Run server and client Bun.build()
+  log.debug('=== BUILDS ===');
+
+  // Prepare build configs upfront (this initializes shiki highlighter once)
+  const [clientBuildConfig, serverBuildConfig] = await Promise.all([
+    getBunBuildConfig({
+      entryPts: Object.values(tsxEntryPts),
+      outDir: ctx.clientCompiledDir,
+      root: ctx.clientSrcDir,
+    }),
+    ssg && serverEntryPts
+      ? getServerBunBuildConfig({
+          entryPts: Object.values(serverEntryPts),
+          outDir: ctx.serverCompiledDir,
+          root: ctx.serverSrcDir,
+        })
+      : Promise.resolve(null),
+  ]);
+
+  // Run Tailwind in parallel with server build, then client build
+  // (Running all three in parallel causes resource contention and slows down client build)
+  const [cssFilename, serverBuildResult] = await Promise.all([
+    time('4. Tailwind CSS', () => buildTailwindCss()),
+    ssg && serverBuildConfig
+      ? time('5. Server Bun.build', async () => {
+          try {
+            return await Bun.build(serverBuildConfig);
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            throw new Error(`Server bundle failed: ${errorMessage}`);
+          }
+        })
+      : Promise.resolve(null),
+  ]);
+
+  // Client build runs after server to avoid resource contention
+  const clientBuildResult = await time('6. Client Bun.build', async () => {
+    try {
+      return await Bun.build(clientBuildConfig);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Client bundle failed: ${errorMessage}`);
+    }
   });
 
-  log.debug('=== CLIENT BUILD ===');
-  let result: Awaited<ReturnType<typeof Bun.build>>;
-  try {
-    result = await time('6. Client build', () => Bun.build(buildConfig));
-  } catch (error) {
-    // Bun.build() can throw exceptions in addition to returning { success: false }
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new Error(`Client bundle failed: ${errorMessage}`);
+  // Check server build result
+  if (ssg && serverBuildResult) {
+    if (!serverBuildResult.success) {
+      const errorMessages = serverBuildResult.logs.map(msg => String(msg)).join('\n');
+      throw new Error(`Server build failed:\n${errorMessages}`);
+    }
+    log.debug(`Built ${serverBuildResult.outputs.length} server modules`);
+
+    // Check for server preprocessing errors
+    const serverPreprocessErrors = getPreprocessingErrors();
+    if (serverPreprocessErrors.length > 0) {
+      for (const err of serverPreprocessErrors) {
+        log.error(err.message);
+      }
+      throw new Error('MDX preprocessing failed');
+    }
   }
 
+  // Check client build result
+  const result = clientBuildResult;
   if (!result.success) {
     const errorMessages = result.logs.map(msg => String(msg)).join('\n');
     throw new Error(`Client build failed:\n${errorMessages}`);
   }
 
-  // Check for preprocessing errors (Bun.build swallows errors from remark plugins)
+  // Check for client preprocessing errors
   const clientPreprocessErrors = getPreprocessingErrors();
   if (clientPreprocessErrors.length > 0) {
     for (const err of clientPreprocessErrors) {
@@ -204,7 +254,12 @@ async function doBuild(options: BuildOptions = {}, projectPath?: string) {
     throw new Error('MDX preprocessing failed');
   }
 
-  log.debug(`Built ${result.outputs.length} client bundles:`);
+  log.debug(`Built ${result.outputs.length} client bundles`);
+
+  // Step 5b: Render server modules (if SSG) - must happen after server build
+  if (ssg && serverBuildResult) {
+    await time('5b. Server render', () => renderServerModules());
+  }
 
   // Build map from entry name to hashed JS output path
   // Use the source TSX paths to match outputs to entries
@@ -393,72 +448,23 @@ async function buildTailwindCss() {
 const renderedContent = new Map<string, string>();
 
 /**
- * Build server modules and render each page to HTML for SSG
+ * Render server modules to HTML for SSG (called after server Bun.build completes)
  */
-async function buildAndRenderServerModules() {
+async function renderServerModules() {
   const ctx = getBuildContext();
-
-  // Create server entry files (JSX files that export render())
-  log.debug('Creating server entry files:');
-  const serverEntryPts = await createEntries({
-    extension: '.jsx',
-    outDir: ctx.serverSrcDir,
-    templatePath: await ctx.serverJsxSrcPath(),
-  });
-
-  // Build server modules with Bun (target: bun for server-side execution)
-  const buildConfig = await getServerBunBuildConfig({
-    entryPts: Object.values(serverEntryPts),
-    outDir: ctx.serverCompiledDir,
-    root: ctx.serverSrcDir,
-  });
-
-  log.debug('Running Bun.build() for server...');
-  let result: Awaited<ReturnType<typeof Bun.build>>;
-  try {
-    result = await Bun.build(buildConfig);
-  } catch (error) {
-    // Bun.build() can throw exceptions in addition to returning { success: false }
-    // Include entry points in error for debugging
-    const entryList = Object.values(serverEntryPts).join(', ');
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const stack = error instanceof Error ? error.stack : '';
-    throw new Error(`Server bundle failed: ${errorMessage}\nEntry points: ${entryList}\n${stack}`);
-  }
-
-  if (!result.success) {
-    const errorMessages = result.logs.map(msg => String(msg)).join('\n');
-    throw new Error(`Server build failed:\n${errorMessages}`);
-  }
-
-  // Check for preprocessing errors (Bun.build swallows errors from remark plugins)
-  const serverPreprocessErrors = getPreprocessingErrors();
-  if (serverPreprocessErrors.length > 0) {
-    for (const err of serverPreprocessErrors) {
-      log.error(err.message);
-    }
-    throw new Error('MDX preprocessing failed');
-  }
-
-  log.debug(`Built ${result.outputs.length} server modules:`);
-  for (const output of result.outputs) {
-    log.debug(`  ${path.relative(ctx.rootDir, output.path)}`);
-  }
-
-  // Import each server module and call render()
   const entries = await ctx.getEntries();
-  log.debug(`Rendering ${Object.keys(entries).length} pages:`);
-  for (const [name, entry] of Object.entries(entries)) {
-    const modulePath = entry.getArtifactPath('.js', ctx.serverCompiledDir);
 
-    // Import the compiled server module
+  log.debug(`Rendering ${Object.keys(entries).length} pages...`);
+
+  // Import each server module and call render() - in parallel for performance
+  const renderPromises = Object.entries(entries).map(async ([name, entry]) => {
+    const modulePath = entry.getArtifactPath('.js', ctx.serverCompiledDir);
     const serverModule = await import(modulePath);
     const html = await serverModule.render();
-
-    // Store rendered content for later HTML injection
     renderedContent.set(name, html);
-    log.debug(`  ${path.relative(ctx.rootDir, entry.absPath)}`);
-  }
+  });
+
+  await Promise.all(renderPromises);
 }
 
 /**

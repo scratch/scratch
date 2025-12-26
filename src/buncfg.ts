@@ -4,24 +4,43 @@ import matter from 'gray-matter';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 import rehypeShikiFromHighlighter from '@shikijs/rehype/core';
-import { createHighlighter, bundledLanguages, type Highlighter } from 'shiki';
+import { createHighlighter, type Highlighter, type BundledLanguage } from 'shiki';
 import { realpathSync } from 'fs';
 import { getBuildContext } from './context';
 import { createPreprocessMdxPlugin, createRehypeFootnotesPlugin, createNotProsePlugin } from './preprocess';
 import path from 'path';
 import type { VFile } from 'vfile';
 
+// Common languages to load by default (covers ~95% of use cases)
+// Loading all 316 bundled languages takes ~1.5s, this takes ~200ms
+const COMMON_LANGUAGES: BundledLanguage[] = [
+  'javascript', 'typescript', 'jsx', 'tsx',
+  'html', 'css', 'scss', 'json', 'jsonc',
+  'markdown', 'mdx', 'yaml',
+  'bash', 'shell', 'zsh',
+  'python', 'ruby', 'go', 'rust', 'java', 'c', 'cpp',
+  'sql', 'graphql',
+  'diff', 'dockerfile', 'xml', 'toml', 'ini',
+];
+
 // Cached highlighter instance for reuse across builds
 let cachedHighlighter: Highlighter | null = null;
+let highlighterPromise: Promise<Highlighter> | null = null;
 
 async function getShikiHighlighter(): Promise<Highlighter> {
-  if (!cachedHighlighter) {
-    cachedHighlighter = await createHighlighter({
+  if (cachedHighlighter) return cachedHighlighter;
+
+  // Ensure we only create one highlighter even with concurrent calls
+  if (!highlighterPromise) {
+    highlighterPromise = createHighlighter({
       themes: ['github-light'],
-      langs: Object.keys(bundledLanguages),
+      langs: COMMON_LANGUAGES,
+    }).then(h => {
+      cachedHighlighter = h;
+      return h;
     });
   }
-  return cachedHighlighter;
+  return highlighterPromise;
 }
 
 /**
@@ -183,12 +202,15 @@ export async function getServerBunBuildConfig(options: BunBuildConfigOptions): P
 
     target: 'bun',
     format: 'esm',
-    splitting: false,
+    // Enable splitting to share common code (React, etc.) across server modules
+    // This significantly reduces the size of each module and speeds up imports
+    splitting: true,
     minify: false,
     sourcemap: 'none',
 
     naming: {
       entry: '[dir]/[name].[ext]',
+      chunk: 'chunks/[name]-[hash].[ext]',
     },
 
     define: {
