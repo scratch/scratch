@@ -8,9 +8,9 @@ import { getContentType } from '../util';
 import log from '../logger';
 
 /**
- * Find the initial route for a directory.
- * Prefers index.md(x) if it exists, otherwise first markdown file alphabetically.
- * Returns null if no markdown content is found.
+ * Given a directory, find the best route to open in the dev server
+ * Prefers / if /index.md[x] exists, otherwise first markdown file
+ * alphabetically. Returns null if no markdown files are found.
  */
 export async function findRouteToOpen(dir: string): Promise<string | null> {
   const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -22,33 +22,18 @@ export async function findRouteToOpen(dir: string): Promise<string | null> {
     )
     .map((e) => e.name);
 
-  // Check for index file first
-  if (mdFiles.includes('index.mdx') || mdFiles.includes('index.md')) {
+  // Return the route if  the directory contains an index file, or if there
+  // are no markdown files
+  if (
+    mdFiles.includes('index.mdx') ||
+    mdFiles.includes('index.md') ||
+    mdFiles.length == 0
+  ) {
     return '/';
   }
 
-  // Sort and get first file
+  // Return the route corresponding to the first markdown file (alphabetically)
   mdFiles.sort();
-
-  if (mdFiles.length === 0) {
-    // Check subdirectories
-    const subdirs = entries
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name)
-      .sort();
-    for (const subdir of subdirs) {
-      const route = await findRouteToOpen(path.join(dir, subdir));
-      if (route !== null) {
-        // If route is '/', the subdir has an index - return just the subdir path
-        if (route === '/') {
-          return `/${subdir}`;
-        }
-        return `/${subdir}${route}`;
-      }
-    }
-    return null;
-  }
-
   const firstFile = mdFiles[0];
   const basename = path.basename(firstFile, path.extname(firstFile));
   return `/${basename}`;
@@ -147,7 +132,10 @@ async function startDevServerWithFallback(
     } catch (error) {
       // If port is in use, try the next one
       const err = error as NodeJS.ErrnoException;
-      if (err.code === 'EADDRINUSE' || (error instanceof Error && error.message.includes('port'))) {
+      if (
+        err.code === 'EADDRINUSE' ||
+        (error instanceof Error && error.message.includes('port'))
+      ) {
         log.debug(`Port ${port} in use, trying ${port + 1}`);
         continue;
       }
@@ -156,8 +144,8 @@ async function startDevServerWithFallback(
   }
   throw new Error(
     `Could not find an available port (tried ${preferredPort}-${preferredPort + maxAttempts - 1}).\n` +
-    `Check if other processes are using these ports:\n` +
-    `  lsof -i :${preferredPort}`
+      `Check if other processes are using these ports:\n` +
+      `  lsof -i :${preferredPort}`
   );
 }
 
@@ -166,11 +154,16 @@ async function startDevServerWithFallback(
  */
 export async function devCommand(options: DevOptions = {}) {
   const ctx = getBuildContext();
-  const preferredPort = typeof options.port === 'string' ? parseInt(options.port, 10) : (options.port || 5173);
+  const preferredPort =
+    typeof options.port === 'string'
+      ? parseInt(options.port, 10)
+      : options.port || 5173;
 
   // Validate port number
   if (isNaN(preferredPort) || preferredPort < 1 || preferredPort > 65535) {
-    throw new Error(`Invalid port number: "${options.port}". Port must be a number between 1 and 65535.`);
+    throw new Error(
+      `Invalid port number: "${options.port}". Port must be a number between 1 and 65535.`
+    );
   }
 
   log.debug('Starting Bun dev server...');
@@ -179,23 +172,27 @@ export async function devCommand(options: DevOptions = {}) {
   await buildCommand({ ssg: false, static: options.static });
 
   // Start the HTTP server with port fallback
-  const { server, port } = await startDevServerWithFallback(ctx.buildDir, preferredPort);
+  const { server, port } = await startDevServerWithFallback(
+    ctx.buildDir,
+    preferredPort
+  );
 
   log.info(`Dev server running at http://localhost:${port}/`);
 
   // Open browser if requested
   if (options.open !== false) {
-    const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
-    const route = options.route ?? await findRouteToOpen(ctx.pagesDir) ?? '/';
+    const opener =
+      process.platform === 'darwin'
+        ? 'open'
+        : process.platform === 'win32'
+          ? 'start'
+          : 'xdg-open';
+    const route = options.route ?? (await findRouteToOpen(ctx.pagesDir)) ?? '/';
     Bun.spawn([opener, `http://localhost:${port}${route}`]);
   }
 
   // Watch for file changes (pages, src, and public)
-  const watchDirs = [
-    ctx.pagesDir,
-    ctx.srcDir,
-    ctx.staticDir,
-  ];
+  const watchDirs = [ctx.pagesDir, ctx.srcDir, ctx.staticDir];
   const watchers: ReturnType<typeof watch>[] = [];
 
   let rebuildTimeout: Timer | null = null;
