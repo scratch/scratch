@@ -38,7 +38,7 @@ export interface BuildContextInitOptions {
   path?: string;
   rootDirName?: string;
   tempDirName?: string;
-  buildDirName?: string;
+  outDir?: string;
   srcDirName?: string;
   pagesDirName?: string;
   staticDirName?: string;
@@ -73,7 +73,7 @@ export class BuildContext {
       this.rootDir,
       opts.tempDirName || '.scratch-build-cache'
     );
-    this.buildDir = path.resolve(this.rootDir, opts.buildDirName || 'dist');
+    this.buildDir = path.resolve(this.rootDir, opts.outDir || 'dist');
     this.srcDir = path.resolve(this.rootDir, opts.srcDirName || 'src');
     this.pagesDir = path.resolve(this.rootDir, opts.pagesDirName || 'pages');
     this.staticDir = path.resolve(

@@ -31,7 +31,7 @@ function withErrorHandling(
 
 program
   .name('scratch')
-  .description('Scratch, implemented with bun')
+  .description('Build static websites with Markdown and React')
   .version(VERSION)
   .option('-v, --verbose', 'Verbose output')
   .option('-q, --quiet', 'Quiet mode (errors only)');
@@ -40,9 +40,9 @@ program
   .command('create')
   .description('Create a new Scratch project')
   .argument('[path]', 'Path to project directory', '.')
-  .option('--no-src', 'Exclude src/ directory')
-  .option('--no-package', 'Exclude package.json')
-  .option('--no-example', 'Create empty pages/ and public/ directories')
+  .option('--no-src', 'Skip src/ template directory')
+  .option('--no-package', 'Skip package.json template')
+  .option('--no-example', 'Skip example content files')
   .action(
     withErrorHandling('Create', async (path, options) => {
       await createCommand(path, options);
@@ -51,8 +51,9 @@ program
 
 program
   .command('build')
+  .description('Bundle your project into a static website')
   .argument('[path]', 'Path to project directory', '.')
-  .option('-b, --build <path>', 'Build directory')
+  .option('-o, --out-dir <path>', 'Output directory (default: dist)')
   .option('-d, --development', 'Development mode')
   .option('--no-ssg', 'Disable static site generation')
   .option('--static <mode>', 'Static file mode: public, assets, all', 'assets')
@@ -69,9 +70,10 @@ program
 
 program
   .command('dev')
+  .description('Start a local development server')
   .argument('[path]', 'Path to project directory', '.')
   .option('-d, --development', 'Development mode')
-  .option('-n, --no-open', 'Do not open dev server endpoint automatically')
+  .option('-n, --no-open', "Don't open browser automatically")
   .option('-p, --port <port>', 'Port for dev server', '5173')
   .option('--static <mode>', 'Static file mode: public, assets, all', 'assets')
   .option('--strict', 'Do not inject PageWrapper component or missing imports')
@@ -84,8 +86,9 @@ program
 
 program
   .command('preview')
+  .description('Preview production build locally')
   .argument('[path]', 'Path to project directory', '.')
-  .option('-n, --no-open', 'Do not open preview server endpoint automatically')
+  .option('-n, --no-open', "Don't open browser automatically")
   .option('-p, --port <port>', 'Port for preview server', '4173')
   .action(
     withErrorHandling('Preview server', async (path, options) => {
@@ -96,6 +99,7 @@ program
 
 program
   .command('clean')
+  .description('Remove build artifacts')
   .argument('[path]', 'Path to project directory', '.')
   .action(
     withErrorHandling('Clean', async () => {
