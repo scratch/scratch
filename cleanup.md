@@ -233,11 +233,137 @@ state.outputs.jsOutputMap = jsOutputMap;
 
 ---
 
-## 3.2 Make parallel execution declarative (optional)
+## 3.2 Make parallel execution declarative
 
-**What:** Hard-coded `if (step.name === '04-tailwind-css')` check.
+### Problem
 
-**Alternative:** Add `parallelWith?: string` to step interface.
+The orchestrator has hard-coded logic to run tailwind + server build in parallel:
+
+```typescript
+// Handle parallel execution for tailwind + server build
+if (step.name === '04-tailwind-css') {
+  const serverStep = BUILD_STEPS[i + 1]; // 05-server-build
+
+  if (serverStep && (!serverStep.shouldRun || serverStep.shouldRun(ctx, state))) {
+    // Run tailwind and server build in parallel
+    log.debug(`Running parallel: ${step.description} + ${serverStep.description}`);
+
+    try {
+      await Promise.all([
+        executeStep(step, ctx, state),
+        executeStep(serverStep, ctx, state),
+      ]);
+
+      // Skip the server build step in the main loop
+      i++;
+      continue;
+    } catch (error) {
+      // ... error handling
+    }
+  }
+}
+```
+
+**Issues:**
+1. Hard-coded step name check - breaks if step is renamed
+2. Assumes parallel step is next in array - fragile ordering assumption
+3. Logic embedded in main loop - hard to follow
+4. Can't easily add more parallel groups
+
+### Solution
+
+Use nested arrays in `BUILD_STEPS` to declare parallel groups:
+
+```typescript
+// Before
+const BUILD_STEPS: BuildStep[] = [
+  ensureDependenciesStep,
+  resetDirectoriesStep,
+  createTsxEntriesStep,
+  tailwindCssStep,      // Hard-coded parallel logic in orchestrator
+  serverBuildStep,      // Assumes this is next
+  renderServerStep,
+  // ...
+];
+
+// After - nested array means "run in parallel"
+const BUILD_STEPS: (BuildStep | BuildStep[])[] = [
+  ensureDependenciesStep,
+  resetDirectoriesStep,
+  createTsxEntriesStep,
+  [tailwindCssStep, serverBuildStep],  // Declarative: run these in parallel
+  renderServerStep,
+  // ...
+];
+```
+
+### Changes
+
+**1. Update orchestrator loop to handle nested arrays:**
+
+```typescript
+for (const stepOrGroup of BUILD_STEPS) {
+  // Handle parallel group
+  if (Array.isArray(stepOrGroup)) {
+    const runnableSteps = stepOrGroup.filter(
+      (s) => !s.shouldRun || s.shouldRun(ctx, state)
+    );
+
+    if (runnableSteps.length > 0) {
+      log.debug(`Running parallel: ${runnableSteps.map((s) => s.description).join(' + ')}`);
+
+      try {
+        await Promise.all(runnableSteps.map((s) => executeStep(s, ctx, state)));
+      } catch (error) {
+        // ... error handling
+      }
+    }
+    continue;
+  }
+
+  // Handle single step (existing logic)
+  const step = stepOrGroup;
+  // ...
+}
+```
+
+**2. Update BUILD_STEPS array:**
+
+```typescript
+const BUILD_STEPS: (BuildStep | BuildStep[])[] = [
+  ensureDependenciesStep,
+  resetDirectoriesStep,
+  createTsxEntriesStep,
+  [tailwindCssStep, serverBuildStep],
+  renderServerStep,
+  clientBuildStep,
+  generateHtmlStep,
+  injectFrontmatterStep,
+  copyStaticStep,
+  copyToDistStep,
+];
+```
+
+**3. Delete the hard-coded parallel check (~20 lines)**
+
+### Files to modify
+
+| File | Change |
+|------|--------|
+| `src/build/orchestrator.ts` | Update loop to handle arrays, update BUILD_STEPS type |
+
+### Benefits
+
+- **Declarative**: Parallel groups are visible in the step list
+- **Flexible**: Easy to add more parallel groups
+- **Safe refactoring**: No step name checks
+- **Self-documenting**: The array structure shows execution order
+
+### Net impact
+
+- ~20 lines removed (hard-coded parallel logic)
+- ~10 lines added (generic parallel handling)
+- **Net: ~10 lines removed**, cleaner code
 
 ---
 
