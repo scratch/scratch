@@ -78,9 +78,18 @@ export async function viewCommand(
       // Watch for changes to source file
       watch(absolutePath, async (event) => {
         if (event === 'rename') {
-          log.info('Source file deleted, shutting down...');
-          await cleanup();
-          process.exit(0);
+          // File was renamed or deleted - check if it still exists
+          if (await fs.exists(absolutePath)) {
+            // File was recreated or renamed back
+            try {
+              await fs.copyFile(absolutePath, targetFile);
+              log.info('Source file recreated, synced');
+            } catch {
+              // File might be mid-write, ignore
+            }
+          } else {
+            log.info('Source file deleted, waiting for it to be recreated...');
+          }
         } else if (event === 'change') {
           try {
             await fs.copyFile(absolutePath, targetFile);
