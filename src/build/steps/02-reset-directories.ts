@@ -1,4 +1,4 @@
-import type { BuildContext } from '../../context';
+import type { BuildContext } from '../context';
 import { BuildPhase, defineStep } from '../types';
 
 export const resetDirectoriesStep = defineStep({

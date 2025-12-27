@@ -9,7 +9,7 @@ import { previewCommand } from './cmd/preview';
 import { checkoutCommand } from './cmd/checkout';
 import { updateCommand } from './cmd/update';
 import { viewCommand } from './cmd/view';
-import { getBuildContext, setBuildContext } from './context';
+import { getBuildContext, setBuildContext } from './build/context';
 import log, { setLogLevel } from './logger';
 import { VERSION } from './version';
 

@@ -1,5 +1,5 @@
 import path from 'path';
-import type { BuildContext, Entry } from '../../context';
+import type { BuildContext, Entry } from '../context';
 import type { BuildPipelineState, TsxEntriesOutput } from '../types';
 import { BuildPhase, defineStep } from '../types';
 import { render } from '../../util';

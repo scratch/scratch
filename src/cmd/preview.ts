@@ -1,4 +1,4 @@
-import { getBuildContext } from "../context";
+import { getBuildContext } from "../build/context";
 import fs from "fs/promises";
 import path from "path";
 import log from "../logger";

@@ -1,24 +1,8 @@
-import {
-  buildFileMap,
-  bunInstall,
-  rmWithRetry,
-  type FileMapResult,
-} from './util';
+import { buildFileMap, rmWithRetry, type FileMapResult } from '../util';
 import path from 'path';
 import fs from 'fs/promises';
-import { spawnSync } from 'child_process';
 import { globSync } from 'fast-glob';
-import { templates, materializeTemplate, hasTemplate } from './template';
-import log from './logger';
-
-export const BUILD_DEPENDENCIES = [
-  'react',
-  'react-dom',
-  '@mdx-js/react',
-  'tailwindcss',
-  '@tailwindcss/cli',
-  '@tailwindcss/typography',
-];
+import { templates, materializeTemplate, hasTemplate } from '../template';
 
 let CONTEXT: BuildContext | undefined;
 
@@ -113,91 +97,39 @@ export class BuildContext {
   }
 
   /**
-   * Ensures build dependencies are installed.
-   * - Creates package.json in project root if missing
-   * - Runs bun install if node_modules doesn't exist
-   *
-   * Note: After installing dependencies, we must restart the build in a fresh
-   * subprocess due to a Bun runtime bug where Bun.build() fails after spawning
-   * a child bun process in the same execution.
+   * Clear caches so new files are detected on rebuild.
+   * Called by the reset directories step.
    */
-  async ensureBuildDependencies(): Promise<void> {
-    const packageJsonPath = path.resolve(this.rootDir, 'package.json');
-    const nodeModulesPath = path.resolve(this.rootDir, 'node_modules');
-
-    // Create package.json if it doesn't exist
-    if (!(await fs.exists(packageJsonPath))) {
-      const projectName = path.basename(this.rootDir);
-      const packageJson = {
-        name: projectName,
-        private: true,
-        scripts: {
-          dev: 'scratch dev',
-          build: 'scratch build',
-        },
-        dependencies: Object.fromEntries(
-          BUILD_DEPENDENCIES.map((pkg) => [pkg, 'latest'])
-        ),
-      };
-      await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
-      log.info('Created package.json');
-    }
-
-    // Install dependencies if node_modules doesn't exist
-    if (!(await fs.exists(nodeModulesPath))) {
-      log.info('Installing dependencies...');
-      bunInstall(this.rootDir);
-      log.info('Dependencies installed');
-      this.restartBuildInSubprocess();
-    }
+  clearCaches(): void {
+    this.materializedPaths.clear();
+    this.entries = undefined;
+    this.componentMap = undefined;
+    this.componentConflicts = undefined;
   }
 
   /**
-   * Re-run the build in a fresh subprocess to work around Bun runtime issue.
-   * Bun.build() fails after spawning a child bun process in the same execution.
+   * Reset both build and temp directories.
    */
-  private restartBuildInSubprocess(): never {
-    log.debug('Re-running build in subprocess to work around Bun runtime issue');
-
-    // Detect if running as compiled binary vs `bun run script.ts`
-    // Compiled binary: argv = ["bun", "/$bunfs/root/scratch", ...args]
-    //                  execPath = "/path/to/scratch" (actual binary)
-    // bun run:         argv = ["/path/to/bun", "/path/to/script.ts", ...args]
-    //                  execPath = "/path/to/bun"
-    const isCompiledBinary = process.argv[0] === 'bun' && process.argv[1]?.startsWith('/$bunfs/');
-
-    const executable = isCompiledBinary ? process.execPath : process.argv[0]!;
-    const args = isCompiledBinary ? process.argv.slice(2) : process.argv.slice(1);
-
-    const result = spawnSync(executable, args, {
-      cwd: process.cwd(),
-      stdio: 'inherit',
-      env: process.env,
-    });
-    process.exit(result.status ?? 1);
-  }
-
-  async reset() {
+  async reset(): Promise<void> {
     await this.resetBuildDir();
     await this.resetTempDir();
   }
 
-  async resetBuildDir() {
+  /**
+   * Reset the build directory.
+   */
+  async resetBuildDir(): Promise<void> {
     await rmWithRetry(this.buildDir, { recursive: true, force: true });
     await fs.mkdir(this.buildDir, { recursive: true });
   }
 
-  async resetTempDir() {
+  /**
+   * Reset the temp directory and clear caches.
+   */
+  async resetTempDir(): Promise<void> {
     await rmWithRetry(this.tempDir, { recursive: true, force: true });
     await fs.mkdir(this.tempDir, { recursive: true });
-
-    // Clear materialized paths cache
-    this.materializedPaths.clear();
-
-    // Clear component and entry caches so new files are detected on rebuild
-    this.entries = undefined;
-    this.componentMap = undefined;
-    this.componentConflicts = undefined;
+    this.clearCaches();
   }
 
   /**
@@ -276,7 +208,7 @@ export class BuildContext {
    * Materialize a single embedded template file to the temp directory.
    * Returns the path to the materialized file.
    */
-  private async materializeEmbeddedFile(templatePath: string): Promise<string> {
+  async materializeEmbeddedFile(templatePath: string): Promise<string> {
     if (this.materializedPaths.has(templatePath)) {
       return this.materializedPaths.get(templatePath)!;
     }
@@ -291,7 +223,7 @@ export class BuildContext {
    * Materialize all files in an embedded template subdirectory.
    * Returns the path to the materialized directory.
    */
-  private async materializeEmbeddedDir(dirname: string): Promise<string> {
+  async materializeEmbeddedDir(dirname: string): Promise<string> {
     const cacheKey = `${dirname}/`;
     if (this.materializedPaths.has(cacheKey)) {
       return this.materializedPaths.get(cacheKey)!;

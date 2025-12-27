@@ -1,5 +1,5 @@
 import path from 'path';
-import type { BuildContext } from '../../context';
+import type { BuildContext } from '../context';
 import type { BuildPipelineState, ClientBuildOutput } from '../types';
 import { BuildPhase, defineStep } from '../types';
 import { getBunBuildConfig } from '../../buncfg';

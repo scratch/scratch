@@ -1,4 +1,4 @@
-import type { BuildContext } from '../../context';
+import type { BuildContext } from '../context';
 import type { BuildPipelineState, ServerBuildOutput } from '../types';
 import { BuildPhase, defineStep } from '../types';
 import { getServerBunBuildConfig } from '../../buncfg';

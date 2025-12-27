@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
-import { BuildContext, Entry, setBuildContext, getBuildContext } from '../../src/context';
+import { BuildContext, Entry, setBuildContext, getBuildContext } from '../../src/build/context';
 import { mkTempDir } from '../test-util';
 import path from 'path';
 import { materializeProjectTemplates } from '../../src/template';

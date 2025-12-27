@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { createHash } from 'crypto';
-import type { BuildContext } from '../../context';
+import type { BuildContext } from '../context';
 import type { TailwindOutput } from '../types';
 import { BuildPhase, defineStep } from '../types';
 import log from '../../logger';

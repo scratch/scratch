@@ -1,4 +1,4 @@
-import type { BuildContext, Entry } from '../context';
+import type { BuildContext, Entry } from './context';
 
 /**
  * Enumeration of all build phases for progress tracking

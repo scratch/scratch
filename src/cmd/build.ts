@@ -1,4 +1,4 @@
-import { getBuildContext } from '../context';
+import { getBuildContext } from '../build/context';
 import { runBuildPipeline, formatBuildError } from '../build';
 import type { BuildOptions } from '../build';
 import log from '../logger';

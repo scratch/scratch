@@ -1,5 +1,5 @@
 import fs from 'fs/promises';
-import type { BuildContext } from '../../context';
+import type { BuildContext } from '../context';
 import type { BuildPipelineState } from '../types';
 import { BuildPhase, defineStep } from '../types';
 import { escapeHtml } from '../../util';
