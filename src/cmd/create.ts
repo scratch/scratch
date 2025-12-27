@@ -78,11 +78,11 @@ export async function createCommand(
         log.info(`  ${line}`);
       }
       log.info('');
-      log.info('Start the development server:');
+      log.info('Start the development server:\n');
       if (targetPath !== '.') {
         log.info(`  cd ${targetPath}`);
       }
-      log.info('  scratch dev');
+      log.info('  scratch dev\n');
     } else {
       log.info('No files created (project already exists)');
     }
