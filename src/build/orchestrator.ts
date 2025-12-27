@@ -1,14 +1,5 @@
 import type { BuildContext } from './context';
-import type {
-  BuildOptions,
-  BuildPipelineState,
-  BuildStep,
-  TsxEntriesOutput,
-  TailwindOutput,
-  ServerBuildOutput,
-  ClientBuildOutput,
-  RenderServerOutput,
-} from './types';
+import type { BuildOptions, BuildPipelineState, BuildStep } from './types';
 import { BuildPhase } from './types';
 import { formatBuildError } from './errors';
 import { resetPreprocessingState } from './preprocess';
@@ -96,34 +87,24 @@ function storeStepOutput(step: BuildStep<any>, data: any, state: BuildPipelineSt
   if (!data) return;
 
   switch (step.name) {
-    case '03-create-tsx-entries': {
-      const output = data as TsxEntriesOutput;
-      state.outputs.entries = output.entries;
-      state.outputs.clientEntryPts = output.clientEntryPts;
-      state.outputs.serverEntryPts = output.serverEntryPts;
+    case '03-create-tsx-entries':
+      state.outputs.entries = data.entries;
+      state.outputs.clientEntryPts = data.clientEntryPts;
+      state.outputs.serverEntryPts = data.serverEntryPts;
       break;
-    }
-    case '04-tailwind-css': {
-      const output = data as TailwindOutput;
-      state.outputs.cssFilename = output.cssFilename;
+    case '04-tailwind-css':
+      state.outputs.cssFilename = data.cssFilename;
       break;
-    }
-    case '05-server-build': {
-      const output = data as ServerBuildOutput;
-      state.outputs.serverBuildResult = output.buildResult;
+    case '05-server-build':
+      state.outputs.serverBuildResult = data.buildResult;
       break;
-    }
-    case '05b-render-server': {
-      const output = data as RenderServerOutput;
-      state.outputs.renderedContent = output.renderedContent;
+    case '05b-render-server':
+      state.outputs.renderedContent = data.renderedContent;
       break;
-    }
-    case '06-client-build': {
-      const output = data as ClientBuildOutput;
-      state.outputs.clientBuildResult = output.buildResult;
-      state.outputs.jsOutputMap = output.jsOutputMap;
+    case '06-client-build':
+      state.outputs.clientBuildResult = data.buildResult;
+      state.outputs.jsOutputMap = data.jsOutputMap;
       break;
-    }
   }
 }
 
