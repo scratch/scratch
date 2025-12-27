@@ -16,9 +16,6 @@ export const copyPublicStaticStep: BuildStep = {
 
     await fs.cp(ctx.staticDir, ctx.buildDir, { recursive: true });
 
-    const files = await fs.readdir(ctx.staticDir);
-    for (const file of files) {
-      log.debug(`  ${file}`);
-    }
+    log.debug('  Copied public/ static assets');
   },
 };
