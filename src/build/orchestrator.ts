@@ -11,8 +11,8 @@ import type {
 } from './types';
 import { BuildPhase } from './types';
 import { formatBuildError } from './errors';
-import { resetPreprocessingState } from '../preprocess';
-import { resetLanguageCache } from '../buncfg';
+import { resetPreprocessingState } from './preprocess';
+import { resetLanguageCache } from './buncfg';
 import log from '../logger';
 
 // Import all steps

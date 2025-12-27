@@ -5,7 +5,7 @@ import {
     createPreprocessMdxPlugin,
     checkDefaultExport,
     type ComponentMap,
-} from "../../src/preprocess";
+} from "../../src/build/preprocess";
 
 describe("preprocess error handling", () => {
     beforeEach(() => {

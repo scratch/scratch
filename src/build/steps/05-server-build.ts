@@ -1,8 +1,8 @@
 import type { BuildContext } from '../context';
 import type { BuildPipelineState, ServerBuildOutput } from '../types';
 import { BuildPhase, defineStep } from '../types';
-import { getServerBunBuildConfig } from '../../buncfg';
-import { getPreprocessingErrors } from '../../preprocess';
+import { getServerBunBuildConfig } from '../buncfg';
+import { getPreprocessingErrors } from '../preprocess';
 import log from '../../logger';
 
 export const serverBuildStep = defineStep<ServerBuildOutput>({

@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeAll, afterAll } from 'bun:test';
-import { detectLanguagesFromFiles, POPULAR_LANGUAGES } from '../../src/buncfg';
+import { detectLanguagesFromFiles, POPULAR_LANGUAGES } from '../../src/build/buncfg';
 import { mkTempDir } from '../test-util';
 import fs from 'fs/promises';
 import path from 'path';

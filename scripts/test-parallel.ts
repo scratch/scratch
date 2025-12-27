@@ -26,9 +26,13 @@ const maxConcurrency = parseInt(
 );
 
 async function main() {
-  const testFiles = await glob("test/e2e/*.test.ts");
+  const startTime = Date.now();
+
+  const unitTestFiles = await glob("test/unit/*.test.ts");
+  const e2eTestFiles = await glob("test/e2e/*.test.ts");
+  const testFiles = [...unitTestFiles, ...e2eTestFiles];
   console.log(
-    `Running ${testFiles.length} test files with ${maxConcurrency} concurrent processes\n`
+    `Running ${testFiles.length} test files (${unitTestFiles.length} unit, ${e2eTestFiles.length} e2e) with ${maxConcurrency} concurrent processes\n`
   );
 
   const results: { file: string; passed: boolean; duration: number }[] = [];
@@ -63,12 +67,13 @@ async function main() {
   }
 
   // Report results
+  const wallClockTime = Date.now() - startTime;
   const passed = results.filter((r) => r.passed).length;
   const failed = results.filter((r) => !r.passed).length;
-  const totalTime = results.reduce((sum, r) => sum + r.duration, 0);
+  const cumulativeTime = results.reduce((sum, r) => sum + r.duration, 0);
 
   console.log(
-    `\n${passed} passed, ${failed} failed (${(totalTime / 1000).toFixed(1)}s total)`
+    `\n${passed} passed, ${failed} failed in ${(wallClockTime / 1000).toFixed(1)}s (${(cumulativeTime / 1000).toFixed(1)}s cumulative)`
   );
   process.exit(failed > 0 ? 1 : 0);
 }

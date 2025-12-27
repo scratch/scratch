@@ -2,8 +2,8 @@ import path from 'path';
 import type { BuildContext } from '../context';
 import type { BuildPipelineState, ClientBuildOutput } from '../types';
 import { BuildPhase, defineStep } from '../types';
-import { getBunBuildConfig } from '../../buncfg';
-import { getPreprocessingErrors } from '../../preprocess';
+import { getBunBuildConfig } from '../buncfg';
+import { getPreprocessingErrors } from '../preprocess';
 import log from '../../logger';
 
 export const clientBuildStep = defineStep<ClientBuildOutput>({
