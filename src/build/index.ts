@@ -1,3 +1,3 @@
 export { runBuildPipeline } from './orchestrator';
 export { formatBuildError } from './errors';
-export * from './types';
+export type { BuildOptions } from './types';
