@@ -69,29 +69,6 @@ export const createTsxEntriesStep = defineStep<TsxEntriesOutput>({
       );
     }
 
-    // Check for required client entry template
-    const clientTemplatePath = await ctx.clientTsxSrcPath();
-    if (!clientTemplatePath) {
-      throw new Error(
-        `Missing required file: _build/entry-client.tsx\n\n` +
-          `This file is required for building your Scratch project.\n` +
-          `Run 'scratch checkout _build/entry-client.tsx' to create it from the default template.`
-      );
-    }
-
-    // Check for required server entry template if SSG enabled
-    let serverTemplatePath: string | null = null;
-    if (state.options.ssg) {
-      serverTemplatePath = await ctx.serverJsxSrcPath();
-      if (!serverTemplatePath) {
-        throw new Error(
-          `Missing required file: _build/entry-server.jsx\n\n` +
-            `This file is required for SSG (static site generation).\n` +
-            `Run 'scratch checkout _build/entry-server.jsx' to create it from the default template.`
-        );
-      }
-    }
-
     // Check for markdown components directory (optional)
     const markdownComponentsDir = await ctx.markdownComponentsDir();
     if (!markdownComponentsDir) {
@@ -104,20 +81,20 @@ export const createTsxEntriesStep = defineStep<TsxEntriesOutput>({
       markdownComponentsDir,
     };
 
-    // Create client TSX entry files
+    // Create client TSX entry files (template falls back to embedded if not in project)
     const clientEntryPts = await createEntries(createEntriesContext, {
       extension: '.tsx',
       outDir: ctx.clientSrcDir,
-      templatePath: clientTemplatePath,
+      templatePath: await ctx.clientTsxSrcPath(),
     });
 
     // Create server JSX entry files if SSG is enabled
     let serverEntryPts: Record<string, string> | null = null;
-    if (state.options.ssg && serverTemplatePath) {
+    if (state.options.ssg) {
       serverEntryPts = await createEntries(createEntriesContext, {
         extension: '.jsx',
         outDir: ctx.serverSrcDir,
-        templatePath: serverTemplatePath,
+        templatePath: await ctx.serverJsxSrcPath(),
       });
     }
 

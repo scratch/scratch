@@ -216,13 +216,14 @@ describe('BuildContext path finding methods', () => {
     expect(clientPath).toBe(path.join(projectDir, '_build', 'entry-client.tsx'));
   });
 
-  test('clientTsxSrcPath returns null when not found', async () => {
-    const projectDir = path.join(tempDir, 'client-tsx-missing');
+  test('clientTsxSrcPath falls back to embedded template when not found', async () => {
+    const projectDir = path.join(tempDir, 'client-tsx-fallback');
     await fs.mkdir(projectDir, { recursive: true });
     const context = new BuildContext({ path: projectDir });
 
     const clientPath = await context.clientTsxSrcPath();
-    expect(clientPath).toBeNull();
+    expect(clientPath).toContain('embedded-templates');
+    expect(clientPath).toContain('entry-client.tsx');
   });
 
   test('serverJsxSrcPath finds existing entry template', async () => {
@@ -235,13 +236,14 @@ describe('BuildContext path finding methods', () => {
     expect(serverPath).toBe(path.join(projectDir, '_build', 'entry-server.jsx'));
   });
 
-  test('serverJsxSrcPath returns null when not found', async () => {
-    const projectDir = path.join(tempDir, 'server-jsx-missing');
+  test('serverJsxSrcPath falls back to embedded template when not found', async () => {
+    const projectDir = path.join(tempDir, 'server-jsx-fallback');
     await fs.mkdir(projectDir, { recursive: true });
     const context = new BuildContext({ path: projectDir });
 
     const serverPath = await context.serverJsxSrcPath();
-    expect(serverPath).toBeNull();
+    expect(serverPath).toContain('embedded-templates');
+    expect(serverPath).toContain('entry-server.jsx');
   });
 
   test('pageWrapperPath finds PageWrapper.jsx', async () => {

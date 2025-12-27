@@ -2,6 +2,7 @@ import { buildFileMap, rmWithRetry, type FileMapResult } from '../util';
 import path from 'path';
 import fs from 'fs/promises';
 import { globSync } from 'fast-glob';
+import { materializeTemplate } from '../template';
 
 let CONTEXT: BuildContext | undefined;
 
@@ -21,12 +22,11 @@ export type HighlightMode = 'off' | 'popular' | 'auto' | 'all';
 
 export interface BuildContextInitOptions {
   path?: string;
-  rootDirName?: string;
-  tempDirName?: string;
+  tempDir?: string;
   outDir?: string;
-  srcDirName?: string;
-  pagesDirName?: string;
-  staticDirName?: string;
+  srcDir?: string;
+  pagesDir?: string;
+  staticDir?: string;
 
   development?: boolean;
   open?: boolean;
@@ -49,20 +49,17 @@ export class BuildContext {
   private componentMap: Record<string, string> | undefined;
   private componentConflicts: Set<string> | undefined;
 
+  // Cache for materialized template paths
+  private materializedPaths: Map<string, string> = new Map();
+
   constructor(opts: BuildContextInitOptions) {
     this.options = opts;
-    this.rootDir = path.resolve(opts.path || opts.rootDirName || '.');
-    this.tempDir = path.resolve(
-      this.rootDir,
-      opts.tempDirName || '.scratch-build-cache'
-    );
+    this.rootDir = path.resolve(opts.path || '.');
+    this.tempDir = path.resolve(this.rootDir, opts.tempDir || '.scratch-build-cache');
     this.buildDir = path.resolve(this.rootDir, opts.outDir || 'dist');
-    this.srcDir = path.resolve(this.rootDir, opts.srcDirName || 'src');
-    this.pagesDir = path.resolve(this.rootDir, opts.pagesDirName || 'pages');
-    this.staticDir = path.resolve(
-      this.rootDir,
-      opts.staticDirName || 'public'
-    );
+    this.srcDir = path.resolve(this.rootDir, opts.srcDir || 'src');
+    this.pagesDir = path.resolve(this.rootDir, opts.pagesDir || 'pages');
+    this.staticDir = path.resolve(this.rootDir, opts.staticDir || 'public');
   }
 
   get clientSrcDir(): string {
@@ -81,6 +78,10 @@ export class BuildContext {
     return path.resolve(this.tempDir, 'server-compiled');
   }
 
+  get embeddedTemplatesDir(): string {
+    return path.resolve(this.tempDir, 'embedded-templates');
+  }
+
   /**
    * Returns the node_modules directory (always in project root).
    */
@@ -93,6 +94,7 @@ export class BuildContext {
    * Called by the reset directories step.
    */
   clearCaches(): void {
+    this.materializedPaths.clear();
     this.entries = undefined;
     this.componentMap = undefined;
     this.componentConflicts = undefined;
@@ -148,20 +150,37 @@ export class BuildContext {
 
   /**
    * Get the path to the client entry template.
-   * Returns null if _build/entry-client.tsx not found.
+   * Falls back to embedded template if not in project.
    */
-  async clientTsxSrcPath(): Promise<string | null> {
-    const p = path.resolve(this.rootDir, '_build/entry-client.tsx');
-    return (await fs.exists(p)) ? p : null;
+  async clientTsxSrcPath(): Promise<string> {
+    const userPath = path.resolve(this.rootDir, '_build/entry-client.tsx');
+    if (await fs.exists(userPath)) return userPath;
+    return this.materializeEmbeddedFile('_build/entry-client.tsx');
   }
 
   /**
    * Get the path to the server entry template.
-   * Returns null if _build/entry-server.jsx not found.
+   * Falls back to embedded template if not in project.
    */
-  async serverJsxSrcPath(): Promise<string | null> {
-    const p = path.resolve(this.rootDir, '_build/entry-server.jsx');
-    return (await fs.exists(p)) ? p : null;
+  async serverJsxSrcPath(): Promise<string> {
+    const userPath = path.resolve(this.rootDir, '_build/entry-server.jsx');
+    if (await fs.exists(userPath)) return userPath;
+    return this.materializeEmbeddedFile('_build/entry-server.jsx');
+  }
+
+  /**
+   * Materialize an embedded template file to the temp directory.
+   * Used for internal build templates like entry-client.tsx.
+   */
+  private async materializeEmbeddedFile(templatePath: string): Promise<string> {
+    if (this.materializedPaths.has(templatePath)) {
+      return this.materializedPaths.get(templatePath)!;
+    }
+
+    const targetPath = path.resolve(this.embeddedTemplatesDir, templatePath);
+    await materializeTemplate(templatePath, targetPath);
+    this.materializedPaths.set(templatePath, targetPath);
+    return targetPath;
   }
 
   /**
