@@ -452,8 +452,100 @@ Remove the enum entirely since it provides no value.
 
 ---
 
-## 3.4 Remove global context pattern (optional)
+## 3.4 Remove global context pattern
 
-**What:** `setBuildContext()`/`getBuildContext()` global state pattern.
+### Problem
 
-**Alternative:** Pass context as parameter (steps already receive it).
+The build system uses a global `CONTEXT` variable with getter/setter:
+
+```typescript
+let CONTEXT: BuildContext | undefined;
+
+export function setBuildContext(opts) {
+  CONTEXT = new BuildContext(opts);
+}
+
+export function getBuildContext(): BuildContext {
+  if (CONTEXT === undefined) throw new Error('Build context not initialized');
+  return CONTEXT;
+}
+```
+
+**Issues:**
+1. Global state is hard to test
+2. Obscures data flow
+3. Runtime error if called before initialization
+4. Implicit coupling between modules
+
+### Solution
+
+Remove the global entirely. Create context at CLI entry point, pass it explicitly everywhere.
+
+### Changes
+
+**1. Update `context.ts`:**
+- Delete global `CONTEXT` variable
+- Delete `setBuildContext()` and `getBuildContext()` functions
+- Export `BuildContext` class directly (already exported)
+
+**2. Update `src/index.ts` (CLI entry point):**
+```typescript
+// Before
+setBuildContext(opts);
+// ... later
+const ctx = getBuildContext();
+
+// After
+const ctx = new BuildContext(opts);
+// Pass ctx to commands explicitly
+```
+
+**3. Update CLI commands to receive `ctx` as parameter:**
+
+`cmd/build.ts`:
+```typescript
+// Before
+export async function buildCommand(options, projectPath?) {
+  const ctx = getBuildContext();
+
+// After
+export async function buildCommand(ctx: BuildContext, options, projectPath?) {
+```
+
+`cmd/dev.ts`, `cmd/preview.ts`, `cmd/view.ts` - same pattern
+
+**4. Update `buncfg.ts`:**
+- Add `ctx: BuildContext` parameter to `getBunBuildConfig()` and `getServerBunBuildConfig()`
+- Pass `ctx` to plugin creator functions (closure capture)
+- Remove all `getBuildContext()` calls
+
+**5. Update build steps that call buncfg:**
+- `05-server-build.ts` - pass `ctx` to `getServerBunBuildConfig(ctx, opts)`
+- `06-client-build.ts` - pass `ctx` to `getBunBuildConfig(ctx, opts)`
+
+### Files to modify
+
+| File | Change |
+|------|--------|
+| `src/build/context.ts` | Delete global, delete getter/setter |
+| `src/index.ts` | Create `BuildContext` directly, pass to commands |
+| `src/cmd/build.ts` | Add `ctx` parameter |
+| `src/cmd/dev.ts` | Add `ctx` parameter |
+| `src/cmd/preview.ts` | Add `ctx` parameter |
+| `src/cmd/view.ts` | Create own context, pass to build |
+| `src/build/buncfg.ts` | Add `ctx` param to config functions |
+| `src/build/steps/05-server-build.ts` | Pass `ctx` to config function |
+| `src/build/steps/06-client-build.ts` | Pass `ctx` to config function |
+
+### Benefits
+
+- **No global state**: Context flows explicitly through the system
+- **Testable**: Easy to create isolated contexts
+- **Clear data flow**: Obvious where context comes from
+- **Type safe**: Can't call without context
+
+### Net impact
+
+- ~10 lines removed (global + getter/setter)
+- Explicit `ctx` parameter added to ~5 functions
+- Cleaner architecture
