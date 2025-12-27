@@ -1,11 +1,11 @@
 import type { BuildContext } from '../context';
 import type { BuildPipelineState, ServerBuildOutput } from '../types';
-import { BuildPhase, defineStep } from '../types';
+import { BuildPhase, type BuildStep } from '../types';
 import { getServerBunBuildConfig } from '../buncfg';
 import { getPreprocessingErrors } from '../preprocess';
 import log from '../../logger';
 
-export const serverBuildStep = defineStep<ServerBuildOutput>({
+export const serverBuildStep: BuildStep<ServerBuildOutput> = {
   name: '05-server-build',
   description: 'Server Bun.build for SSG',
   phase: BuildPhase.ServerBuild,
@@ -52,4 +52,4 @@ export const serverBuildStep = defineStep<ServerBuildOutput>({
 
     return { buildResult };
   },
-});
+};

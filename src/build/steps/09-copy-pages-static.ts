@@ -1,10 +1,10 @@
 import fs from 'fs/promises';
 import type { BuildContext } from '../context';
 import type { BuildPipelineState } from '../types';
-import { BuildPhase, defineStep } from '../types';
+import { BuildPhase, type BuildStep } from '../types';
 import log from '../../logger';
 
-export const copyPagesStaticStep = defineStep({
+export const copyPagesStaticStep: BuildStep = {
   name: '09-copy-pages-static',
   description: 'Copy pages/ as static assets',
   phase: BuildPhase.CopyPagesStatic,
@@ -31,4 +31,4 @@ export const copyPagesStaticStep = defineStep({
 
     log.debug(`  Copied pages/ static assets (mode: ${staticMode})`);
   },
-});
+};

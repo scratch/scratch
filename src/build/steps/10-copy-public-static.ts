@@ -1,9 +1,9 @@
 import fs from 'fs/promises';
 import type { BuildContext } from '../context';
-import { BuildPhase, defineStep } from '../types';
+import { BuildPhase, type BuildStep } from '../types';
 import log from '../../logger';
 
-export const copyPublicStaticStep = defineStep({
+export const copyPublicStaticStep: BuildStep = {
   name: '10-copy-public-static',
   description: 'Copy public/ static assets',
   phase: BuildPhase.CopyPublicStatic,
@@ -21,4 +21,4 @@ export const copyPublicStaticStep = defineStep({
       log.debug(`  ${file}`);
     }
   },
-});
+};

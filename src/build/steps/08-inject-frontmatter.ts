@@ -1,11 +1,11 @@
 import fs from 'fs/promises';
 import type { BuildContext } from '../context';
 import type { BuildPipelineState } from '../types';
-import { BuildPhase, defineStep } from '../types';
+import { BuildPhase, type BuildStep } from '../types';
 import { escapeHtml } from '../../util';
 import log from '../../logger';
 
-export const injectFrontmatterStep = defineStep({
+export const injectFrontmatterStep: BuildStep = {
   name: '08-inject-frontmatter',
   description: 'Inject frontmatter meta tags into HTML',
   phase: BuildPhase.InjectFrontmatter,
@@ -100,4 +100,4 @@ export const injectFrontmatterStep = defineStep({
       );
     }
   },
-});
+};

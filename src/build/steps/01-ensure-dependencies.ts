@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { spawnSync } from 'child_process';
 import type { BuildContext } from '../context';
-import { BuildPhase, defineStep } from '../types';
+import { BuildPhase, type BuildStep } from '../types';
 import { bunInstall } from '../../util';
 import log from '../../logger';
 
@@ -15,7 +15,7 @@ export const BUILD_DEPENDENCIES = [
   '@tailwindcss/typography',
 ];
 
-export const ensureDependenciesStep = defineStep({
+export const ensureDependenciesStep: BuildStep = {
   name: '01-ensure-dependencies',
   description: 'Ensure build dependencies installed',
   phase: BuildPhase.EnsureDependencies,
@@ -50,7 +50,7 @@ export const ensureDependenciesStep = defineStep({
       restartBuildInSubprocess();
     }
   },
-});
+};
 
 /**
  * Re-run the build in a fresh subprocess to work around Bun runtime issue.

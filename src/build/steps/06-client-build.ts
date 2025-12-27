@@ -1,12 +1,12 @@
 import path from 'path';
 import type { BuildContext } from '../context';
 import type { BuildPipelineState, ClientBuildOutput } from '../types';
-import { BuildPhase, defineStep } from '../types';
+import { BuildPhase, type BuildStep } from '../types';
 import { getBunBuildConfig } from '../buncfg';
 import { getPreprocessingErrors } from '../preprocess';
 import log from '../../logger';
 
-export const clientBuildStep = defineStep<ClientBuildOutput>({
+export const clientBuildStep: BuildStep<ClientBuildOutput> = {
   name: '06-client-build',
   description: 'Client Bun.build',
   phase: BuildPhase.ClientBuild,
@@ -52,7 +52,7 @@ export const clientBuildStep = defineStep<ClientBuildOutput>({
 
     return { buildResult, jsOutputMap };
   },
-});
+};
 
 /**
  * Build map from entry name to hashed JS output path

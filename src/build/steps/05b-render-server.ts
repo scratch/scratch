@@ -1,9 +1,9 @@
 import type { BuildContext } from '../context';
 import type { BuildPipelineState, RenderServerOutput } from '../types';
-import { BuildPhase, defineStep } from '../types';
+import { BuildPhase, type BuildStep } from '../types';
 import log from '../../logger';
 
-export const renderServerStep = defineStep<RenderServerOutput>({
+export const renderServerStep: BuildStep<RenderServerOutput> = {
   name: '05b-render-server',
   description: 'Render server modules to HTML for SSG',
   phase: BuildPhase.RenderServer,
@@ -30,4 +30,4 @@ export const renderServerStep = defineStep<RenderServerOutput>({
 
     return { renderedContent };
   },
-});
+};

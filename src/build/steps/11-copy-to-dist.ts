@@ -1,9 +1,9 @@
 import fs from 'fs/promises';
 import type { BuildContext } from '../context';
-import { BuildPhase, defineStep } from '../types';
+import { BuildPhase, type BuildStep } from '../types';
 import log from '../../logger';
 
-export const copyToDistStep = defineStep({
+export const copyToDistStep: BuildStep = {
   name: '11-copy-to-dist',
   description: 'Copy compiled assets to dist/',
   phase: BuildPhase.CopyToDist,
@@ -13,4 +13,4 @@ export const copyToDistStep = defineStep({
 
     log.debug(`  Output in: ${ctx.buildDir}`);
   },
-});
+};

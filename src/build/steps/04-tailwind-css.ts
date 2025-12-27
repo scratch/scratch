@@ -3,10 +3,10 @@ import path from 'path';
 import { createHash } from 'crypto';
 import type { BuildContext } from '../context';
 import type { TailwindOutput } from '../types';
-import { BuildPhase, defineStep } from '../types';
+import { BuildPhase, type BuildStep } from '../types';
 import log from '../../logger';
 
-export const tailwindCssStep = defineStep<TailwindOutput>({
+export const tailwindCssStep: BuildStep<TailwindOutput> = {
   name: '04-tailwind-css',
   description: 'Build Tailwind CSS',
   phase: BuildPhase.TailwindCss,
@@ -59,4 +59,4 @@ export const tailwindCssStep = defineStep<TailwindOutput>({
 
     return { cssFilename: hashedFilename };
   },
-});
+};

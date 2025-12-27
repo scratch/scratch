@@ -1,7 +1,7 @@
 import path from 'path';
 import type { BuildContext, Entry } from '../context';
 import type { BuildPipelineState, TsxEntriesOutput } from '../types';
-import { BuildPhase, defineStep } from '../types';
+import { BuildPhase, type BuildStep } from '../types';
 import { render } from '../../util';
 import log from '../../logger';
 
@@ -40,7 +40,7 @@ async function createEntries(
   return entryPts;
 }
 
-export const createTsxEntriesStep = defineStep<TsxEntriesOutput>({
+export const createTsxEntriesStep: BuildStep<TsxEntriesOutput> = {
   name: '03-create-tsx-entries',
   description: 'Create TSX/JSX entry files from MDX pages',
   phase: BuildPhase.CreateTsxEntries,
@@ -98,4 +98,4 @@ export const createTsxEntriesStep = defineStep<TsxEntriesOutput>({
 
     return { entries, clientEntryPts, serverEntryPts };
   },
-});
+};

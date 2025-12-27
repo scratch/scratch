@@ -100,15 +100,6 @@ export interface BuildStep<TOutput = void> {
 }
 
 /**
- * Helper to define a step with proper typing
- */
-export function defineStep<TOutput = void>(
-  step: BuildStep<TOutput>
-): BuildStep<TOutput> {
-  return step;
-}
-
-/**
  * Step-specific output types
  */
 export interface TsxEntriesOutput {
