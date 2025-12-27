@@ -15,9 +15,25 @@ export async function runBunBuild(
   let buildResult: BunBuildResult;
   try {
     buildResult = await Bun.build(config);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new Error(`${type} bundle failed: ${errorMessage}`);
+  } catch (error: any) {
+    // Bun.build() throws an AggregateError with individual errors in the 'errors' array.
+    // Each error has position info we need to format nicely.
+    let details = error.message || 'Unknown error';
+    if (error.errors && Array.isArray(error.errors)) {
+      details = error.errors
+        .map((e: any) => {
+          // BuildMessage/ResolveMessage have: message, position (file, line, column, lineText)
+          if (e.position) {
+            const pos = e.position;
+            const location = pos.file ? `${pos.file}:${pos.line}:${pos.column}` : '';
+            const linePreview = pos.lineText ? `\n  ${pos.line} | ${pos.lineText}` : '';
+            return `${e.message}${location ? `\n  at ${location}` : ''}${linePreview}`;
+          }
+          return String(e);
+        })
+        .join('\n\n');
+    }
+    throw new Error(`${type} bundle failed:\n${details}`);
   }
 
   // Check build result

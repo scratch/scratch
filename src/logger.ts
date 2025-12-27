@@ -2,6 +2,7 @@ export type LogLevel = 'quiet' | 'normal' | 'verbose';
 
 // 0 = quiet (errors only), 1 = normal (info + errors), 2 = verbose (all)
 let currentLevel = 1;
+let showBunErrors = false;
 
 export function setLogLevel(level: LogLevel) {
   switch (level) {
@@ -15,6 +16,14 @@ export function setLogLevel(level: LogLevel) {
       currentLevel = 2;
       break;
   }
+}
+
+export function setShowBunErrors(show: boolean) {
+  showBunErrors = show;
+}
+
+export function shouldShowBunErrors(): boolean {
+  return showBunErrors;
 }
 
 const log = {
