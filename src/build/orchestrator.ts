@@ -17,8 +17,7 @@ import {
   clientBuildStep,
   generateHtmlStep,
   injectFrontmatterStep,
-  copyPagesStaticStep,
-  copyPublicStaticStep,
+  copyStaticStep,
   copyToDistStep,
 } from './steps';
 
@@ -36,8 +35,7 @@ const BUILD_STEPS: BuildStep<any>[] = [
   clientBuildStep,
   generateHtmlStep,
   injectFrontmatterStep,
-  copyPagesStaticStep,
-  copyPublicStaticStep,
+  copyStaticStep,
   copyToDistStep,
 ];
 

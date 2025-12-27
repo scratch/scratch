@@ -4,7 +4,7 @@ import { BuildPhase, type BuildStep } from '../types';
 import log from '../../logger';
 
 export const copyToDistStep: BuildStep = {
-  name: '11-copy-to-dist',
+  name: '10-copy-to-dist',
   description: 'Copy compiled assets to dist/',
   phase: BuildPhase.CopyToDist,
 

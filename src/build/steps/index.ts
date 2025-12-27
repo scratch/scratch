@@ -7,6 +7,5 @@ export { renderServerStep } from './05b-render-server';
 export { clientBuildStep } from './06-client-build';
 export { generateHtmlStep } from './07-generate-html';
 export { injectFrontmatterStep } from './08-inject-frontmatter';
-export { copyPagesStaticStep } from './09-copy-pages-static';
-export { copyPublicStaticStep } from './10-copy-public-static';
-export { copyToDistStep } from './11-copy-to-dist';
+export { copyStaticStep } from './09-copy-static';
+export { copyToDistStep } from './10-copy-to-dist';
