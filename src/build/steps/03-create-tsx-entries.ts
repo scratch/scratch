@@ -14,29 +14,24 @@ interface CreateEntriesOptions {
 interface CreateEntriesContext {
   ctx: BuildContext;
   entries: Record<string, Entry>;
-  markdownComponentsDir: string | null;
+  markdownComponentsPath: string;
 }
 
 async function createEntries(
   context: CreateEntriesContext,
   options: CreateEntriesOptions
 ): Promise<Record<string, string>> {
-  const { ctx, entries, markdownComponentsDir } = context;
+  const { ctx, entries, markdownComponentsPath } = context;
   const { extension, outDir, templatePath } = options;
   const entryPts: Record<string, string> = {};
 
   for (const [name, entry] of Object.entries(entries)) {
     const artifactPath = entry.getArtifactPath(extension, outDir);
 
-    await render(
-      templatePath,
-      artifactPath,
-      {},
-      {
-        entrySourceMdxImportPath: entry.absPath,
-        markdownComponentsPath: markdownComponentsDir,
-      }
-    );
+    await render(templatePath, artifactPath, {}, {
+      entrySourceMdxImportPath: entry.absPath,
+      markdownComponentsPath: markdownComponentsPath,
+    });
 
     entryPts[name] = artifactPath;
     log.debug(`  ${path.relative(ctx.rootDir, artifactPath)}`);
@@ -67,16 +62,25 @@ export const createTsxEntriesStep = defineStep<TsxEntriesOutput>({
       );
     }
 
-    // Check for markdown components directory (optional)
-    const markdownComponentsDir = await ctx.markdownComponentsDir();
-    if (!markdownComponentsDir) {
-      log.warn('No src/markdown/ directory found. Markdown components will not be available.');
+    // Check for markdown components directory, fall back to empty components
+    let markdownComponentsPath = await ctx.markdownComponentsDir();
+    if (!markdownComponentsPath) {
+      log.info('No markdown components found in src/. Using defaults.');
+      log.info('Run `scratch checkout src/markdown` to create custom components.');
+      markdownComponentsPath = await ctx.emptyMdxComponentsPath();
+    }
+
+    // Check for PageWrapper component
+    const pageWrapperPath = await ctx.pageWrapperPath();
+    if (!pageWrapperPath) {
+      log.info('No PageWrapper component found in src/. Pages will not be wrapped.');
+      log.info('Run `scratch checkout src/PageWrapper.jsx` to create one.');
     }
 
     const createEntriesContext: CreateEntriesContext = {
       ctx,
       entries,
-      markdownComponentsDir,
+      markdownComponentsPath,
     };
 
     // Create client TSX entry files (template falls back to embedded if not in project)

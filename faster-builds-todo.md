@@ -1,4 +1,0 @@
-- [x] shiki languages--does the count actually affect the project build speed?
-- [ ] can we auto-detect languages and load shiki configs that way?
-- [ ] why can't we parallelize client and server?
-- [ ] can we cache the dependencies?

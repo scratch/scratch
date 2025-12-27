@@ -20,8 +20,8 @@ export const tailwindCssStep = defineStep<TailwindOutput>({
 
     // If no CSS file found, skip Tailwind build
     if (!inputCss) {
-      log.warn('No Tailwind CSS file found (src/tailwind.css, src/index.css, or src/globals.css).');
-      log.warn('Skipping CSS build. Run `scratch checkout src/tailwind.css` to create one.');
+      log.info('No Tailwind CSS file found (src/tailwind.css, src/index.css, or src/globals.css).');
+      log.info('Skipping CSS build. Run `scratch checkout src/tailwind.css` to create one.');
       return { cssFilename: null };
     }
 
