@@ -4,6 +4,7 @@ import matter from 'gray-matter';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 import rehypeShikiFromHighlighter from '@shikijs/rehype/core';
+import rehypeRaw from 'rehype-raw';
 import { createHighlighter, bundledLanguages, type Highlighter, type BundledLanguage } from 'shiki';
 import { realpathSync } from 'fs';
 import { BuildContext, type HighlightMode } from './context';
@@ -220,7 +221,9 @@ async function createMdxBuildPlugin(ctx: BuildContext, options: { extractFrontma
   }
 
   // Build rehype plugins list
-  const rehypePlugins: any[] = [];
+  // rehype-raw processes raw HTML in markdown, with passThrough to preserve MDX nodes
+  const mdxNodeTypes = ['mdxjsEsm', 'mdxFlowExpression', 'mdxJsxFlowElement', 'mdxJsxTextElement', 'mdxTextExpression'];
+  const rehypePlugins: any[] = [[rehypeRaw, { passThrough: mdxNodeTypes }]];
 
   // Add shiki syntax highlighting unless disabled
   if (highlightMode !== 'off') {
@@ -237,6 +240,9 @@ async function createMdxBuildPlugin(ctx: BuildContext, options: { extractFrontma
     providerImportSource: '@mdx-js/react',
     remarkPlugins,
     rehypePlugins,
+    remarkRehypeOptions: {
+      passThrough: mdxNodeTypes,
+    },
   });
 }
 
