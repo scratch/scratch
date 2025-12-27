@@ -2,23 +2,24 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createHash } from 'crypto';
 import type { BuildContext } from '../context';
-import type { TailwindOutput } from '../types';
+import type { BuildPipelineState } from '../types';
 import { BuildPhase, type BuildStep } from '../types';
 import log from '../../logger';
 
-export const tailwindCssStep: BuildStep<TailwindOutput> = {
+export const tailwindCssStep: BuildStep = {
   name: '04-tailwind-css',
   description: 'Build Tailwind CSS',
   phase: BuildPhase.TailwindCss,
 
-  async execute(ctx: BuildContext): Promise<TailwindOutput> {
+  async execute(ctx: BuildContext, state: BuildPipelineState): Promise<void> {
     const inputCss = await ctx.tailwindCssSrcPath();
 
     // If no CSS file found, skip Tailwind build
     if (!inputCss) {
       log.info('No Tailwind CSS file found (src/tailwind.css, src/index.css, or src/globals.css).');
       log.info('Skipping CSS build. Run `scratch checkout src/tailwind.css` to create one.');
-      return { cssFilename: null };
+      state.outputs.cssFilename = null;
+      return;
     }
 
     const outputCss = path.join(ctx.clientCompiledDir, 'tailwind.css');
@@ -57,6 +58,6 @@ export const tailwindCssStep: BuildStep<TailwindOutput> = {
 
     log.debug(`  Built ${hashedFilename}`);
 
-    return { cssFilename: hashedFilename };
+    state.outputs.cssFilename = hashedFilename;
   },
 };

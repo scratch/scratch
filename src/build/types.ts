@@ -73,7 +73,7 @@ export interface BuildPipelineState {
 /**
  * Interface for a build step
  */
-export interface BuildStep<TOutput = void> {
+export interface BuildStep {
   /** Unique identifier for the step */
   name: string;
 
@@ -91,35 +91,8 @@ export interface BuildStep<TOutput = void> {
   shouldRun?(ctx: BuildContext, state: BuildPipelineState): boolean;
 
   /**
-   * Execute the step.
-   * @returns Step output data (stored in state.outputs by orchestrator)
+   * Execute the step. Store outputs directly on state.outputs.
    * @throws Error on failure (orchestrator catches and handles)
    */
-  execute(ctx: BuildContext, state: BuildPipelineState): Promise<TOutput>;
-}
-
-/**
- * Step-specific output types
- */
-export interface TsxEntriesOutput {
-  entries: Record<string, Entry>;
-  clientEntryPts: Record<string, string>;
-  serverEntryPts: Record<string, string> | null;
-}
-
-export interface TailwindOutput {
-  cssFilename: string | null;
-}
-
-export interface ServerBuildOutput {
-  buildResult: BunBuildResult | null;
-}
-
-export interface ClientBuildOutput {
-  buildResult: BunBuildResult;
-  jsOutputMap: Record<string, string>;
-}
-
-export interface RenderServerOutput {
-  renderedContent: Map<string, string>;
+  execute(ctx: BuildContext, state: BuildPipelineState): Promise<void>;
 }

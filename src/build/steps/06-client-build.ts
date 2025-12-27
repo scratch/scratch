@@ -1,17 +1,17 @@
 import path from 'path';
 import type { BuildContext } from '../context';
-import type { BuildPipelineState, ClientBuildOutput } from '../types';
+import type { BuildPipelineState } from '../types';
 import { BuildPhase, type BuildStep } from '../types';
 import { getBunBuildConfig } from '../buncfg';
 import { runBunBuild, type BunBuildResult } from '../bundler';
 import log from '../../logger';
 
-export const clientBuildStep: BuildStep<ClientBuildOutput> = {
+export const clientBuildStep: BuildStep = {
   name: '06-client-build',
   description: 'Client Bun.build',
   phase: BuildPhase.ClientBuild,
 
-  async execute(ctx: BuildContext, state: BuildPipelineState): Promise<ClientBuildOutput> {
+  async execute(ctx: BuildContext, state: BuildPipelineState): Promise<void> {
     const clientEntryPts = state.outputs.clientEntryPts!;
 
     const buildConfig = await getBunBuildConfig({
@@ -24,10 +24,9 @@ export const clientBuildStep: BuildStep<ClientBuildOutput> = {
 
     log.debug(`  Built ${buildResult.outputs.length} client bundles`);
 
-    // Build JS output map
-    const jsOutputMap = buildJsOutputMap(ctx, clientEntryPts, buildResult);
-
-    return { buildResult, jsOutputMap };
+    // Build JS output map and store outputs
+    state.outputs.clientBuildResult = buildResult;
+    state.outputs.jsOutputMap = buildJsOutputMap(ctx, clientEntryPts, buildResult);
   },
 };
 

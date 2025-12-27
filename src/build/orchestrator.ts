@@ -25,7 +25,7 @@ import {
  * Ordered list of all build steps.
  * The orchestrator executes these in sequence.
  */
-const BUILD_STEPS: BuildStep<any>[] = [
+const BUILD_STEPS: BuildStep[] = [
   ensureDependenciesStep,
   resetDirectoriesStep,
   createTsxEntriesStep,
@@ -62,48 +62,18 @@ function getStepNumber(name: string): string {
 /**
  * Execute a single step with timing
  */
-async function executeStep<T>(
-  step: BuildStep<T>,
+async function executeStep(
+  step: BuildStep,
   ctx: BuildContext,
   state: BuildPipelineState
-): Promise<{ data: T; durationMs: number }> {
+): Promise<void> {
   const stepNum = getStepNumber(step.name);
   log.debug(`=== [${stepNum}] ${step.description} ===`);
 
   const start = performance.now();
   state.phase = step.phase;
-  const data = await step.execute(ctx, state);
-  const durationMs = performance.now() - start;
-  state.timings[step.name] = durationMs;
-  return { data, durationMs };
-}
-
-/**
- * Store step-specific output in the pipeline state
- */
-function storeStepOutput(step: BuildStep<any>, data: any, state: BuildPipelineState): void {
-  if (!data) return;
-
-  switch (step.name) {
-    case '03-create-tsx-entries':
-      state.outputs.entries = data.entries;
-      state.outputs.clientEntryPts = data.clientEntryPts;
-      state.outputs.serverEntryPts = data.serverEntryPts;
-      break;
-    case '04-tailwind-css':
-      state.outputs.cssFilename = data.cssFilename;
-      break;
-    case '05-server-build':
-      state.outputs.serverBuildResult = data.buildResult;
-      break;
-    case '05b-render-server':
-      state.outputs.renderedContent = data.renderedContent;
-      break;
-    case '06-client-build':
-      state.outputs.clientBuildResult = data.buildResult;
-      state.outputs.jsOutputMap = data.jsOutputMap;
-      break;
-  }
+  await step.execute(ctx, state);
+  state.timings[step.name] = performance.now() - start;
 }
 
 /**
@@ -138,14 +108,10 @@ export async function runBuildPipeline(
         log.debug(`Running parallel: ${step.description} + ${serverStep.description}`);
 
         try {
-          const [tailwindResult, serverResult] = await Promise.all([
+          await Promise.all([
             executeStep(step, ctx, state),
             executeStep(serverStep, ctx, state),
           ]);
-
-          // Store outputs
-          storeStepOutput(step, tailwindResult.data, state);
-          storeStepOutput(serverStep, serverResult.data, state);
 
           // Skip the server build step in the main loop
           i++;
@@ -161,8 +127,7 @@ export async function runBuildPipeline(
 
     // Sequential execution
     try {
-      const result = await executeStep(step, ctx, state);
-      storeStepOutput(step, result.data, state);
+      await executeStep(step, ctx, state);
     } catch (error) {
       // Fail fast - stop on first error
       state.phase = BuildPhase.Failed;

@@ -1,9 +1,9 @@
 import type { BuildContext } from '../context';
-import type { BuildPipelineState, RenderServerOutput } from '../types';
+import type { BuildPipelineState } from '../types';
 import { BuildPhase, type BuildStep } from '../types';
 import log from '../../logger';
 
-export const renderServerStep: BuildStep<RenderServerOutput> = {
+export const renderServerStep: BuildStep = {
   name: '05b-render-server',
   description: 'Render server modules to HTML for SSG',
   phase: BuildPhase.RenderServer,
@@ -12,7 +12,7 @@ export const renderServerStep: BuildStep<RenderServerOutput> = {
     return state.options.ssg === true && state.outputs.serverBuildResult !== null;
   },
 
-  async execute(ctx: BuildContext, state: BuildPipelineState): Promise<RenderServerOutput> {
+  async execute(ctx: BuildContext, state: BuildPipelineState): Promise<void> {
     const entries = state.outputs.entries!;
     const renderedContent = new Map<string, string>();
 
@@ -28,6 +28,6 @@ export const renderServerStep: BuildStep<RenderServerOutput> = {
 
     await Promise.all(renderPromises);
 
-    return { renderedContent };
+    state.outputs.renderedContent = renderedContent;
   },
 };
