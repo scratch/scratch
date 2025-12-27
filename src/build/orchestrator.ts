@@ -51,7 +51,7 @@ function createInitialState(options: BuildOptions): BuildPipelineState {
 /**
  * Extract step number from step name (e.g., "03-foo" -> "03", "05b-bar" -> "05b")
  */
-function getStepNumber(name: string): string {
+export function getStepNumber(name: string): string {
   const match = name.match(/^(\d+[a-z]?)-/);
   return match ? match[1]! : name;
 }

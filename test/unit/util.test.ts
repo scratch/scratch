@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeAll } from "bun:test";
-import { render, buildFileMap, formatFileTree } from "../../src/util";
+import { render, buildFileMap, formatFileTree, escapeHtml, getContentType } from "../../src/util";
 import fs from "fs/promises";
 import { mkTempDir } from "../test-util";
 import path from "path";
@@ -118,5 +118,100 @@ describe("util.formatFileTree", () => {
         const zebraIndex = result.findIndex(line => line.includes("zebra.txt"));
 
         expect(alphaIndex).toBeLessThan(zebraIndex);
+    });
+});
+
+describe("util.escapeHtml", () => {
+    test("escapes ampersand", () => {
+        expect(escapeHtml("foo & bar")).toBe("foo &amp; bar");
+    });
+
+    test("escapes less than", () => {
+        expect(escapeHtml("foo < bar")).toBe("foo &lt; bar");
+    });
+
+    test("escapes greater than", () => {
+        expect(escapeHtml("foo > bar")).toBe("foo &gt; bar");
+    });
+
+    test("escapes double quotes", () => {
+        expect(escapeHtml('foo "bar" baz')).toBe("foo &quot;bar&quot; baz");
+    });
+
+    test("escapes single quotes", () => {
+        expect(escapeHtml("foo 'bar' baz")).toBe("foo &#039;bar&#039; baz");
+    });
+
+    test("escapes multiple special characters", () => {
+        expect(escapeHtml('<script>alert("xss")</script>')).toBe(
+            "&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;"
+        );
+    });
+
+    test("escapes HTML injection attempt", () => {
+        expect(escapeHtml('"><img src=x onerror=alert(1)>')).toBe(
+            "&quot;&gt;&lt;img src=x onerror=alert(1)&gt;"
+        );
+    });
+
+    test("handles empty string", () => {
+        expect(escapeHtml("")).toBe("");
+    });
+
+    test("returns unchanged string with no special characters", () => {
+        expect(escapeHtml("Hello World 123")).toBe("Hello World 123");
+    });
+
+    test("escapes all five characters in sequence", () => {
+        expect(escapeHtml("&<>\"'")).toBe("&amp;&lt;&gt;&quot;&#039;");
+    });
+});
+
+describe("util.getContentType", () => {
+    test("returns correct type for HTML files", () => {
+        expect(getContentType("index.html")).toBe("text/html");
+        expect(getContentType("/path/to/page.html")).toBe("text/html");
+    });
+
+    test("returns correct type for JavaScript files", () => {
+        expect(getContentType("app.js")).toBe("application/javascript");
+    });
+
+    test("returns correct type for CSS files", () => {
+        expect(getContentType("styles.css")).toBe("text/css");
+    });
+
+    test("returns correct type for JSON files", () => {
+        expect(getContentType("data.json")).toBe("application/json");
+    });
+
+    test("returns correct type for image files", () => {
+        expect(getContentType("image.png")).toBe("image/png");
+        expect(getContentType("photo.jpg")).toBe("image/jpeg");
+        expect(getContentType("photo.jpeg")).toBe("image/jpeg");
+        expect(getContentType("animation.gif")).toBe("image/gif");
+        expect(getContentType("icon.svg")).toBe("image/svg+xml");
+        expect(getContentType("favicon.ico")).toBe("image/x-icon");
+    });
+
+    test("returns correct type for font files", () => {
+        expect(getContentType("font.woff")).toBe("font/woff");
+        expect(getContentType("font.woff2")).toBe("font/woff2");
+        expect(getContentType("font.ttf")).toBe("font/ttf");
+        expect(getContentType("font.eot")).toBe("application/vnd.ms-fontobject");
+    });
+
+    test("returns octet-stream for unknown extensions", () => {
+        expect(getContentType("file.xyz")).toBe("application/octet-stream");
+        expect(getContentType("data.bin")).toBe("application/octet-stream");
+    });
+
+    test("handles uppercase extensions", () => {
+        expect(getContentType("FILE.HTML")).toBe("text/html");
+        expect(getContentType("IMAGE.PNG")).toBe("image/png");
+    });
+
+    test("handles files with no extension", () => {
+        expect(getContentType("Makefile")).toBe("application/octet-stream");
     });
 });
