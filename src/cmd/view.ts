@@ -72,28 +72,35 @@ export async function viewCommand(
       // File: copy with original name, watch for changes
       const filename = path.basename(absolutePath);
       const targetFile = path.join(tempPagesDir, filename);
+      const parentDir = path.dirname(absolutePath);
 
       await fs.copyFile(absolutePath, targetFile);
 
-      // Watch for changes to source file
-      watch(absolutePath, async (event) => {
-        if (event === 'rename') {
-          // File was renamed or deleted - check if it still exists
-          if (await fs.exists(absolutePath)) {
-            // File was recreated or renamed back
-            try {
-              await fs.copyFile(absolutePath, targetFile);
-              log.info('Source file recreated, synced');
-            } catch {
-              // File might be mid-write, ignore
-            }
-          } else {
-            log.info('Source file deleted, waiting for it to be recreated...');
-          }
-        } else if (event === 'change') {
+      // Track whether file currently exists
+      let fileExists = true;
+
+      // Watch the parent directory to detect file recreation
+      // (watching the file directly stops working when the file is deleted)
+      watch(parentDir, async (event, changedFile) => {
+        // Only react to changes to our target file
+        if (changedFile !== filename) return;
+
+        const nowExists = await fs.exists(absolutePath);
+
+        if (!nowExists && fileExists) {
+          // File was deleted
+          fileExists = false;
+          log.info('Source file deleted, waiting for it to be recreated...');
+        } else if (nowExists) {
+          // File exists - either it was just created or modified
           try {
             await fs.copyFile(absolutePath, targetFile);
-            log.debug('File updated');
+            if (!fileExists) {
+              log.info('Source file recreated, synced');
+              fileExists = true;
+            } else {
+              log.debug('File updated');
+            }
           } catch {
             // File might be mid-write, ignore
           }
