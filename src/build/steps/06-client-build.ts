@@ -1,7 +1,6 @@
 import path from 'path';
 import type { BuildContext } from '../context';
-import type { BuildPipelineState } from '../types';
-import { BuildPhase, type BuildStep } from '../types';
+import type { BuildPipelineState, BuildStep } from '../types';
 import { getBunBuildConfig } from '../buncfg';
 import { runBunBuild, type BunBuildResult } from '../bundler';
 import log from '../../logger';
@@ -9,7 +8,6 @@ import log from '../../logger';
 export const clientBuildStep: BuildStep = {
   name: '06-client-build',
   description: 'Client Bun.build',
-  phase: BuildPhase.ClientBuild,
 
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<void> {
     const clientEntryPts = state.outputs.clientEntryPts!;

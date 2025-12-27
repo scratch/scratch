@@ -1,13 +1,11 @@
 import fs from 'fs/promises';
 import type { BuildContext } from '../context';
-import type { BuildPipelineState } from '../types';
-import { BuildPhase, type BuildStep } from '../types';
+import type { BuildPipelineState, BuildStep } from '../types';
 import log from '../../logger';
 
 export const copyStaticStep: BuildStep = {
   name: '09-copy-static',
   description: 'Copy static assets',
-  phase: BuildPhase.CopyStatic,
 
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<void> {
     const staticMode = state.options.static ?? 'assets';

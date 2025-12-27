@@ -1,14 +1,12 @@
 import fs from 'fs/promises';
 import type { BuildContext } from '../context';
-import type { BuildPipelineState } from '../types';
-import { BuildPhase, type BuildStep } from '../types';
+import type { BuildPipelineState, BuildStep } from '../types';
 import { escapeHtml } from '../../util';
 import log from '../../logger';
 
 export const injectFrontmatterStep: BuildStep = {
   name: '08-inject-frontmatter',
   description: 'Inject frontmatter meta tags into HTML',
-  phase: BuildPhase.InjectFrontmatter,
 
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<void> {
     const entries = state.outputs.entries!;

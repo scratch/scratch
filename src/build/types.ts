@@ -1,26 +1,6 @@
 import type { BuildContext, Entry } from './context';
 
 /**
- * Enumeration of all build phases for progress tracking
- */
-export enum BuildPhase {
-  NotStarted = 'not_started',
-  EnsureDependencies = 'ensure_dependencies',
-  ResetDirectories = 'reset_directories',
-  CreateTsxEntries = 'create_tsx_entries',
-  TailwindCss = 'tailwind_css',
-  ServerBuild = 'server_build',
-  RenderServer = 'render_server',
-  ClientBuild = 'client_build',
-  GenerateHtml = 'generate_html',
-  InjectFrontmatter = 'inject_frontmatter',
-  CopyStatic = 'copy_static',
-  CopyToDist = 'copy_to_dist',
-  Completed = 'completed',
-  Failed = 'failed',
-}
-
-/**
  * Options passed to the build command
  */
 export interface BuildOptions {
@@ -51,9 +31,6 @@ export interface StepOutputs {
  * Pipeline state that flows through all build steps
  */
 export interface BuildPipelineState {
-  /** Current phase of the build */
-  phase: BuildPhase;
-
   /** Build options passed from CLI */
   options: BuildOptions;
 
@@ -79,9 +56,6 @@ export interface BuildStep {
 
   /** Human-readable description for logging */
   description: string;
-
-  /** The build phase this step represents */
-  phase: BuildPhase;
 
   /**
    * Check if this step should run given current state.

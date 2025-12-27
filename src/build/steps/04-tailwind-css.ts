@@ -3,13 +3,12 @@ import path from 'path';
 import { createHash } from 'crypto';
 import type { BuildContext } from '../context';
 import type { BuildPipelineState } from '../types';
-import { BuildPhase, type BuildStep } from '../types';
+import type { BuildStep } from '../types';
 import log from '../../logger';
 
 export const tailwindCssStep: BuildStep = {
   name: '04-tailwind-css',
   description: 'Build Tailwind CSS',
-  phase: BuildPhase.TailwindCss,
 
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<void> {
     const inputCss = await ctx.tailwindCssSrcPath();

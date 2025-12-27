@@ -1,12 +1,11 @@
 import type { BuildContext } from '../context';
 import type { BuildPipelineState } from '../types';
-import { BuildPhase, type BuildStep } from '../types';
+import type { BuildStep } from '../types';
 import log from '../../logger';
 
 export const renderServerStep: BuildStep = {
   name: '05b-render-server',
   description: 'Render server modules to HTML for SSG',
-  phase: BuildPhase.RenderServer,
 
   shouldRun(_ctx: BuildContext, state: BuildPipelineState): boolean {
     return state.options.ssg === true && state.outputs.serverBuildResult !== null;

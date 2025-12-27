@@ -1,6 +1,5 @@
 import type { BuildContext } from './context';
 import type { BuildOptions, BuildPipelineState, BuildStep } from './types';
-import { BuildPhase } from './types';
 import { formatBuildError } from './errors';
 import { resetPreprocessingState } from './preprocess';
 import { resetLanguageCache } from './buncfg';
@@ -43,7 +42,6 @@ const BUILD_STEPS: (BuildStep | BuildStep[])[] = [
  */
 function createInitialState(options: BuildOptions): BuildPipelineState {
   return {
-    phase: BuildPhase.NotStarted,
     options,
     outputs: {},
     timings: {},
@@ -70,7 +68,6 @@ async function executeStep(
   log.debug(`=== [${stepNum}] ${step.description} ===`);
 
   const start = performance.now();
-  state.phase = step.phase;
   await step.execute(ctx, state);
   state.timings[step.name] = performance.now() - start;
 }
@@ -113,14 +110,11 @@ export async function runBuildPipeline(
 
       await executeStep(step, ctx, state);
     } catch (error) {
-      state.phase = BuildPhase.Failed;
       state.error = error instanceof Error ? error : new Error(String(error));
       state.failedStep = Array.isArray(stepOrGroup) ? stepOrGroup[0]?.name : stepOrGroup.name;
       throw new Error(formatBuildError(state.error));
     }
   }
-
-  state.phase = BuildPhase.Completed;
 
   // Print timing breakdown in debug mode
   log.debug('=== TIMING BREAKDOWN ===');

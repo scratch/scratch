@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { spawnSync } from 'child_process';
 import type { BuildContext } from '../context';
-import { BuildPhase, type BuildStep } from '../types';
+import type { BuildStep } from '../types';
 import { bunInstall } from '../../util';
 import log from '../../logger';
 
@@ -18,7 +18,6 @@ export const BUILD_DEPENDENCIES = [
 export const ensureDependenciesStep: BuildStep = {
   name: '01-ensure-dependencies',
   description: 'Ensure build dependencies installed',
-  phase: BuildPhase.EnsureDependencies,
 
   async execute(ctx: BuildContext): Promise<void> {
     const packageJsonPath = path.resolve(ctx.rootDir, 'package.json');

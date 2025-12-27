@@ -1,14 +1,12 @@
 import fs from 'fs/promises';
 import path from 'path';
 import type { BuildContext } from '../context';
-import type { BuildPipelineState } from '../types';
-import { BuildPhase, type BuildStep } from '../types';
+import type { BuildPipelineState, BuildStep } from '../types';
 import log from '../../logger';
 
 export const generateHtmlStep: BuildStep = {
   name: '07-generate-html',
   description: 'Generate HTML files',
-  phase: BuildPhase.GenerateHtml,
 
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<void> {
     const entries = state.outputs.entries!;
