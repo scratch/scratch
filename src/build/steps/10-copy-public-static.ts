@@ -8,10 +8,6 @@ export const copyPublicStaticStep = defineStep({
   description: 'Copy public/ static assets',
   phase: BuildPhase.CopyPublicStatic,
 
-  shouldRun(): boolean {
-    return true;
-  },
-
   async execute(ctx: BuildContext): Promise<void> {
     if (!(await fs.exists(ctx.staticDir))) {
       log.debug('  No public/ directory found, skipping');

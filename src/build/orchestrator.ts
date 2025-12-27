@@ -144,8 +144,8 @@ export async function runBuildPipeline(
   for (let i = 0; i < BUILD_STEPS.length; i++) {
     const step = BUILD_STEPS[i]!;
 
-    // Check if step should run
-    if (!step.shouldRun(ctx, state)) {
+    // Check if step should run (defaults to true if not defined)
+    if (step.shouldRun && !step.shouldRun(ctx, state)) {
       log.debug(`Skipping step: ${step.description}`);
       continue;
     }
@@ -154,7 +154,7 @@ export async function runBuildPipeline(
     if (step.name === '04-tailwind-css') {
       const serverStep = BUILD_STEPS[i + 1]; // 05-server-build
 
-      if (serverStep && serverStep.shouldRun(ctx, state)) {
+      if (serverStep && (!serverStep.shouldRun || serverStep.shouldRun(ctx, state))) {
         // Run tailwind and server build in parallel
         log.debug(`Running parallel: ${step.description} + ${serverStep.description}`);
 

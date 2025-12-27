@@ -10,10 +10,6 @@ export const generateHtmlStep = defineStep({
   description: 'Generate HTML files',
   phase: BuildPhase.GenerateHtml,
 
-  shouldRun(): boolean {
-    return true;
-  },
-
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<void> {
     const entries = state.outputs.entries!;
     const cssFilename = state.outputs.cssFilename;

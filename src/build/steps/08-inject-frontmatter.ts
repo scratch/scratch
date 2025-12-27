@@ -10,10 +10,6 @@ export const injectFrontmatterStep = defineStep({
   description: 'Inject frontmatter meta tags into HTML',
   phase: BuildPhase.InjectFrontmatter,
 
-  shouldRun(): boolean {
-    return true;
-  },
-
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<void> {
     const entries = state.outputs.entries!;
     let injectedCount = 0;

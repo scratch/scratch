@@ -87,8 +87,9 @@ export interface BuildStep<TOutput = void> {
   /**
    * Check if this step should run given current state.
    * Return false to skip (e.g., server build only runs if ssg:true)
+   * Optional - defaults to true if not defined.
    */
-  shouldRun(ctx: BuildContext, state: BuildPipelineState): boolean;
+  shouldRun?(ctx: BuildContext, state: BuildPipelineState): boolean;
 
   /**
    * Execute the step.

@@ -45,10 +45,6 @@ export const createTsxEntriesStep = defineStep<TsxEntriesOutput>({
   description: 'Create TSX/JSX entry files from MDX pages',
   phase: BuildPhase.CreateTsxEntries,
 
-  shouldRun(): boolean {
-    return true;
-  },
-
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<TsxEntriesOutput> {
     const entries = await ctx.getEntries();
 

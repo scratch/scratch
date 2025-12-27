@@ -20,10 +20,6 @@ export const ensureDependenciesStep = defineStep({
   description: 'Ensure build dependencies installed',
   phase: BuildPhase.EnsureDependencies,
 
-  shouldRun(): boolean {
-    return true;
-  },
-
   async execute(ctx: BuildContext): Promise<void> {
     const packageJsonPath = path.resolve(ctx.rootDir, 'package.json');
     const nodeModulesPath = path.resolve(ctx.rootDir, 'node_modules');

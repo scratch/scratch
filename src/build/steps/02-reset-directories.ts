@@ -6,10 +6,6 @@ export const resetDirectoriesStep = defineStep({
   description: 'Reset build and temp directories',
   phase: BuildPhase.ResetDirectories,
 
-  shouldRun(): boolean {
-    return true;
-  },
-
   async execute(ctx: BuildContext): Promise<void> {
     await ctx.reset();
   },

@@ -8,10 +8,6 @@ export const copyToDistStep = defineStep({
   description: 'Copy compiled assets to dist/',
   phase: BuildPhase.CopyToDist,
 
-  shouldRun(): boolean {
-    return true;
-  },
-
   async execute(ctx: BuildContext): Promise<void> {
     await fs.cp(ctx.clientCompiledDir, ctx.buildDir, { recursive: true });
 

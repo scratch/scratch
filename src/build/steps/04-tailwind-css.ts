@@ -11,10 +11,6 @@ export const tailwindCssStep = defineStep<TailwindOutput>({
   description: 'Build Tailwind CSS',
   phase: BuildPhase.TailwindCss,
 
-  shouldRun(): boolean {
-    return true;
-  },
-
   async execute(ctx: BuildContext): Promise<TailwindOutput> {
     const inputCss = await ctx.tailwindCssSrcPath();
 

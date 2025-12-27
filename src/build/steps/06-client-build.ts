@@ -11,10 +11,6 @@ export const clientBuildStep = defineStep<ClientBuildOutput>({
   description: 'Client Bun.build',
   phase: BuildPhase.ClientBuild,
 
-  shouldRun(): boolean {
-    return true;
-  },
-
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<ClientBuildOutput> {
     const clientEntryPts = state.outputs.clientEntryPts!;
 
