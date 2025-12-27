@@ -203,5 +203,3 @@ export async function runBuildPipeline(
 
   return state;
 }
-
-export { BUILD_STEPS };
