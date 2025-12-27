@@ -309,7 +309,9 @@ async function doBuild(options: BuildOptions = {}, projectPath?: string) {
     log.debug('=== PAGES STATIC ASSETS ===');
     const buildFileExts = ['.md', '.mdx', '.tsx', '.jsx', '.ts', '.js', '.mjs', '.cjs'];
     await time('9. Pages static', async () => {
-      await fs.cp(ctx.pagesDir, ctx.buildDir, {
+      // Resolve symlinks to avoid fs.cp issues when pagesDir is a symlink (e.g., in view mode)
+      const realPagesDir = await fs.realpath(ctx.pagesDir);
+      await fs.cp(realPagesDir, ctx.buildDir, {
         recursive: true,
         filter: (src) => {
           if (staticMode === 'all') return true;
