@@ -135,6 +135,14 @@ export class BuildContext {
   }
 
   /**
+   * Get the path to the empty MDX components file.
+   * Used as fallback when src/markdown/ doesn't exist.
+   */
+  async emptyMdxComponentsPath(): Promise<string> {
+    return this.materializeEmbeddedFile('_build/empty-mdx-components.ts');
+  }
+
+  /**
    * Get the path to the Tailwind CSS source file.
    * Checks src/tailwind.css, src/index.css, and src/globals.css.
    * Returns null if none found.
