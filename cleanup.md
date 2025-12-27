@@ -367,11 +367,88 @@ const BUILD_STEPS: (BuildStep | BuildStep[])[] = [
 
 ---
 
-## 3.3 Remove `BuildPhase` enum (optional)
+## 3.3 Remove `BuildPhase` enum
 
-**What:** 14-value enum that mirrors step names. May be unused.
+### Problem
 
-**Action:** Audit if `state.phase` is consumed. If not, remove.
+The `BuildPhase` enum has 14 values that mirror step names:
+
+```typescript
+export enum BuildPhase {
+  NotStarted = 'not_started',
+  EnsureDependencies = 'ensure_dependencies',
+  ResetDirectories = 'reset_directories',
+  // ... 11 more values
+}
+```
+
+Each step declares its phase:
+```typescript
+export const resetDirectoriesStep: BuildStep = {
+  name: '02-reset-directories',
+  phase: BuildPhase.ResetDirectories,  // Redundant with name
+  // ...
+};
+```
+
+The orchestrator sets `state.phase` during execution:
+```typescript
+state.phase = step.phase;
+state.phase = BuildPhase.Failed;
+state.phase = BuildPhase.Completed;
+```
+
+**But `state.phase` is never read anywhere.** It's only set.
+
+### Audit results
+
+Searched for all usages of `state.phase` and `.phase`:
+- `state.phase = step.phase` - set in executeStep
+- `state.phase = BuildPhase.Failed` - set on error
+- `state.phase = BuildPhase.Completed` - set at end
+
+No code ever reads `state.phase`. The `BuildPipelineState` return value is not used by callers - they just `await` and ignore the result.
+
+### Solution
+
+Remove the enum entirely since it provides no value.
+
+### Changes
+
+**1. Delete from `types.ts`:**
+- Delete `BuildPhase` enum (~15 lines)
+- Remove `phase: BuildPhase` from `BuildStep` interface
+- Remove `phase: BuildPhase` from `BuildPipelineState` interface
+
+**2. Update `orchestrator.ts`:**
+- Remove `import { BuildPhase }`
+- Remove `phase: BuildPhase.NotStarted` from initial state
+- Remove `state.phase = step.phase` from executeStep
+- Remove `state.phase = BuildPhase.Failed` from error handling
+- Remove `state.phase = BuildPhase.Completed` at end
+
+**3. Update all 11 step files:**
+- Remove `BuildPhase` from imports
+- Remove `phase: BuildPhase.X` from step definitions
+
+### Files to modify
+
+| File | Change |
+|------|--------|
+| `src/build/types.ts` | Delete enum, remove `phase` from interfaces |
+| `src/build/orchestrator.ts` | Remove phase tracking |
+| `src/build/steps/*.ts` (11 files) | Remove phase imports and declarations |
+
+### Benefits
+
+- **Less code**: ~15 lines of enum + ~11 lines in steps + ~5 lines in orchestrator
+- **No duplication**: Step name is sufficient identifier
+- **Simpler interface**: `BuildStep` has fewer required fields
+
+### Net impact
+
+- ~30 lines removed
+- One less concept to understand
 
 ---
 
