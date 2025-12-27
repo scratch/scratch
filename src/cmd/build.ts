@@ -427,6 +427,7 @@ async function buildTailwindCss() {
   const tailwindBin = path.resolve(nodeModulesDir, '.bin/tailwindcss');
 
   const proc = Bun.spawn([tailwindBin, ...args], {
+    cwd: ctx.rootDir, // Tailwind v4 auto-detects content from cwd
     stdout: 'pipe',
     stderr: 'pipe',
   });
