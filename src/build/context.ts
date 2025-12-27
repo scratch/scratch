@@ -4,20 +4,6 @@ import fs from 'fs/promises';
 import { globSync } from 'fast-glob';
 import { materializeTemplate } from '../template';
 
-let CONTEXT: BuildContext | undefined;
-
-export function setBuildContext(opts: BuildContextInitOptions) {
-  CONTEXT = new BuildContext(opts);
-  return CONTEXT;
-}
-
-export function getBuildContext(): BuildContext {
-  if (CONTEXT === undefined) {
-    throw new Error('Build context not initialized');
-  }
-  return CONTEXT;
-}
-
 export type HighlightMode = 'off' | 'popular' | 'auto' | 'all';
 
 export interface BuildContextInitOptions {

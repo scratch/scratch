@@ -4,7 +4,7 @@ import path from 'path';
 import os from 'os';
 import { createCommand } from './create';
 import { devCommand } from './dev';
-import { setBuildContext } from '../build/context';
+import { BuildContext } from '../build/context';
 import { bunInstall } from '../util';
 import log from '../logger';
 
@@ -92,10 +92,10 @@ export async function viewCommand(
       });
     }
 
-    // 3. Set build context to temp dir and run dev server
+    // 3. Create build context for temp dir and run dev server
     // (dev server auto-detects the route to open)
-    setBuildContext({ path: tempDir, port: options.port });
-    await devCommand({
+    const ctx = new BuildContext({ path: tempDir, port: options.port });
+    await devCommand(ctx, {
       port: options.port,
       open: options.open,
     });

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
-import { BuildContext, Entry, setBuildContext, getBuildContext } from '../../src/build/context';
+import { BuildContext, Entry } from '../../src/build/context';
 import { mkTempDir } from '../test-util';
 import path from 'path';
 import { materializeProjectTemplates } from '../../src/template';
@@ -85,25 +85,6 @@ describe('Entry.getArtifactPath', () => {
     expect(entry.getArtifactPath('.js', '/project/build')).toBe(
       '/project/build/articles/index.js'
     );
-  });
-});
-
-describe('setBuildContext and getBuildContext', () => {
-  test('sets and gets build context correctly', () => {
-    const projectDir = path.join(tempDir, 'context-test');
-    const context = setBuildContext({ path: projectDir });
-
-    expect(context).toBeInstanceOf(BuildContext);
-    expect(context.rootDir).toBe(path.resolve(projectDir));
-
-    const retrievedContext = getBuildContext();
-    expect(retrievedContext).toBe(context);
-  });
-
-  test('getBuildContext throws error when context not initialized', () => {
-    // This test is tricky because we need to clear the module-level CONTEXT variable
-    // We'll skip this test as it would require mocking the module internals
-    // which is not easily done in Bun without complex workarounds
   });
 });
 

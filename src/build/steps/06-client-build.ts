@@ -12,7 +12,7 @@ export const clientBuildStep: BuildStep = {
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<void> {
     const clientEntryPts = state.outputs.clientEntryPts!;
 
-    const buildConfig = await getBunBuildConfig({
+    const buildConfig = await getBunBuildConfig(ctx, {
       entryPts: Object.values(clientEntryPts),
       outDir: ctx.clientCompiledDir,
       root: ctx.clientSrcDir,

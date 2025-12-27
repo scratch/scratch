@@ -9,9 +9,12 @@ import { previewCommand } from './cmd/preview';
 import { checkoutCommand } from './cmd/checkout';
 import { updateCommand } from './cmd/update';
 import { viewCommand } from './cmd/view';
-import { getBuildContext, setBuildContext } from './build/context';
+import { BuildContext } from './build/context';
 import log, { setLogLevel } from './logger';
 import { VERSION } from './version';
+
+// Context created in preAction hook, used by commands
+let ctx: BuildContext;
 
 const program = new Command();
 
@@ -63,7 +66,7 @@ program
     withErrorHandling('Build', async (path, options) => {
       const startTime = Date.now();
       log.debug('Options:', options);
-      await buildCommand(options, path);
+      await buildCommand(ctx, options, path);
       log.info(`Build completed in ${Date.now() - startTime}ms`);
     })
   );
@@ -81,7 +84,7 @@ program
   .action(
     withErrorHandling('Dev server', async (path, options) => {
       log.info('Starting dev server in', path);
-      await devCommand(options);
+      await devCommand(ctx, options);
     })
   );
 
@@ -94,7 +97,7 @@ program
   .action(
     withErrorHandling('Preview server', async (path, options) => {
       log.info('Starting preview server in', path);
-      await previewCommand(options);
+      await previewCommand(ctx, options);
     })
   );
 
@@ -119,7 +122,6 @@ program
   .argument('[path]', 'Path to project directory', '.')
   .action(
     withErrorHandling('Clean', async () => {
-      const ctx = getBuildContext();
       await fs.rm(ctx.buildDir, { recursive: true, force: true });
       await fs.rm(ctx.tempDir, { recursive: true, force: true });
       log.info('Cleaned dist/ and .scratch-build-cache/');
@@ -157,7 +159,7 @@ program.hook('preAction', (thisCommand, actionCommand) => {
   }
   const opts = actionCommand.opts() || {};
   opts.path = actionCommand.args[0] || '.';
-  setBuildContext(opts);
+  ctx = new BuildContext(opts);
 });
 
 program.parse();

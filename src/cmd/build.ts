@@ -1,4 +1,4 @@
-import { getBuildContext } from '../build/context';
+import type { BuildContext } from '../build/context';
 import { runBuildPipeline, formatBuildError } from '../build';
 import type { BuildOptions } from '../build';
 import log from '../logger';
@@ -8,8 +8,7 @@ export type { BuildOptions };
 /**
  * Build the project using the modular build pipeline
  */
-export async function buildCommand(options: BuildOptions = {}, projectPath?: string) {
-  const ctx = getBuildContext();
+export async function buildCommand(ctx: BuildContext, options: BuildOptions = {}, projectPath?: string) {
   const { ssg = false } = options;
 
   try {

@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeShikiFromHighlighter from '@shikijs/rehype/core';
 import { createHighlighter, bundledLanguages, type Highlighter, type BundledLanguage } from 'shiki';
 import { realpathSync } from 'fs';
-import { getBuildContext, type HighlightMode } from './context';
+import { BuildContext, type HighlightMode } from './context';
 import { createPreprocessMdxPlugin, createRehypeFootnotesPlugin, createNotProsePlugin } from './preprocess';
 import path from 'path';
 import type { VFile } from 'vfile';
@@ -127,9 +127,7 @@ export function createPackageResolverPlugin(nodeModulesDir: string): BunPlugin {
  * Create a remark plugin that extracts frontmatter and stores it for later HTML injection.
  * This runs during MDX compilation.
  */
-export function createFrontmatterRemarkPlugin() {
-  const ctx = getBuildContext();
-
+function createFrontmatterRemarkPlugin(ctx: BuildContext) {
   return () => {
     return async (tree: unknown, file: VFile) => {
       if (!file.path) return;
@@ -171,7 +169,7 @@ let detectedLanguagesPromise: Promise<BundledLanguage[]> | null = null;
  * Get the languages to load based on highlight mode.
  * For 'auto' mode, uses entries from context to avoid duplicate glob searches.
  */
-async function getLanguagesForMode(mode: HighlightMode): Promise<BundledLanguage[]> {
+async function getLanguagesForMode(ctx: BuildContext, mode: HighlightMode): Promise<BundledLanguage[]> {
   switch (mode) {
     case 'off':
       return [];
@@ -191,7 +189,6 @@ async function getLanguagesForMode(mode: HighlightMode): Promise<BundledLanguage
         return detectedLanguagesCache;
       } else {
         // Start detection - reuse entries from context instead of separate glob
-        const ctx = getBuildContext();
         const entries = await ctx.getEntries();
         const filePaths = Object.values(entries).map(entry => entry.absPath);
         detectedLanguagesPromise = detectLanguagesFromFiles(filePaths);
@@ -204,9 +201,8 @@ async function getLanguagesForMode(mode: HighlightMode): Promise<BundledLanguage
 /**
  * Create the MDX plugin with remark/rehype preprocessing.
  */
-async function createMdxBuildPlugin(options: { extractFrontmatter?: boolean } = {}): Promise<BunPlugin> {
+async function createMdxBuildPlugin(ctx: BuildContext, options: { extractFrontmatter?: boolean } = {}): Promise<BunPlugin> {
   const { extractFrontmatter = false } = options;
-  const ctx = getBuildContext();
   const componentMap = await ctx.getComponentMap();
   const componentConflicts = ctx.getComponentConflicts();
   const highlightMode = ctx.options.highlight || 'auto';
@@ -215,7 +211,7 @@ async function createMdxBuildPlugin(options: { extractFrontmatter?: boolean } = 
   const remarkPlugins: any[] = [remarkGfm, remarkFrontmatter];
 
   if (extractFrontmatter) {
-    remarkPlugins.push(createFrontmatterRemarkPlugin());
+    remarkPlugins.push(createFrontmatterRemarkPlugin(ctx));
   }
 
   if (!ctx.options.strict) {
@@ -228,7 +224,7 @@ async function createMdxBuildPlugin(options: { extractFrontmatter?: boolean } = 
 
   // Add shiki syntax highlighting unless disabled
   if (highlightMode !== 'off') {
-    const langs = await getLanguagesForMode(highlightMode);
+    const langs = await getLanguagesForMode(ctx, highlightMode);
     const highlighter = await getShikiHighlighter(langs);
     rehypePlugins.push([rehypeShikiFromHighlighter, highlighter, { theme: 'github-light' }]);
   }
@@ -258,10 +254,9 @@ export function resetLanguageCache(): void {
 /**
  * Get Bun.build() configuration for client build
  */
-export async function getBunBuildConfig(options: BunBuildConfigOptions): Promise<BuildConfig> {
-  const ctx = getBuildContext();
+export async function getBunBuildConfig(ctx: BuildContext, options: BunBuildConfigOptions): Promise<BuildConfig> {
   const nodeModulesDir = await ctx.nodeModulesDir();
-  const mdxPlugin = await createMdxBuildPlugin({ extractFrontmatter: true });
+  const mdxPlugin = await createMdxBuildPlugin(ctx, { extractFrontmatter: true });
 
   return {
     entrypoints: options.entryPts,
@@ -294,10 +289,9 @@ export async function getBunBuildConfig(options: BunBuildConfigOptions): Promise
 /**
  * Get Bun.build() configuration for server-side SSG build
  */
-export async function getServerBunBuildConfig(options: BunBuildConfigOptions): Promise<BuildConfig> {
-  const ctx = getBuildContext();
+export async function getServerBunBuildConfig(ctx: BuildContext, options: BunBuildConfigOptions): Promise<BuildConfig> {
   const nodeModulesDir = await ctx.nodeModulesDir();
-  const mdxPlugin = await createMdxBuildPlugin();
+  const mdxPlugin = await createMdxBuildPlugin(ctx);
 
   return {
     entrypoints: options.entryPts,

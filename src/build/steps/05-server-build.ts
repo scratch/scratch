@@ -16,7 +16,7 @@ export const serverBuildStep: BuildStep = {
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<void> {
     const serverEntryPts = state.outputs.serverEntryPts!;
 
-    const buildConfig = await getServerBunBuildConfig({
+    const buildConfig = await getServerBunBuildConfig(ctx, {
       entryPts: Object.values(serverEntryPts),
       outDir: ctx.serverCompiledDir,
       root: ctx.serverSrcDir,

@@ -2,7 +2,7 @@ import { watch } from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 import type { ServerWebSocket } from 'bun';
-import { getBuildContext } from '../build/context';
+import type { BuildContext } from '../build/context';
 import { buildCommand } from './build';
 import { getContentType } from '../util';
 import log from '../logger';
@@ -152,8 +152,7 @@ async function startDevServerWithFallback(
 /**
  * Run a development server using Bun
  */
-export async function devCommand(options: DevOptions = {}) {
-  const ctx = getBuildContext();
+export async function devCommand(ctx: BuildContext, options: DevOptions = {}) {
   const preferredPort = options.port || 5173;
 
   // Validate port number
@@ -166,7 +165,7 @@ export async function devCommand(options: DevOptions = {}) {
   log.debug('Starting Bun dev server...');
 
   // Initial build
-  await buildCommand({ ssg: false, static: options.static });
+  await buildCommand(ctx, { ssg: false, static: options.static });
 
   // Start the HTTP server with port fallback
   const { server, port } = await startDevServerWithFallback(
@@ -203,7 +202,7 @@ export async function devCommand(options: DevOptions = {}) {
       isRebuilding = true;
       log.info('File change detected, rebuilding...');
       try {
-        await buildCommand({ ssg: false, static: options.static });
+        await buildCommand(ctx, { ssg: false, static: options.static });
         // Notify all connected clients to reload
         for (const client of clients) {
           client.send('reload');

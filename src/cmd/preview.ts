@@ -1,4 +1,4 @@
-import { getBuildContext } from "../build/context";
+import type { BuildContext } from "../build/context";
 import fs from "fs/promises";
 import path from "path";
 import log from "../logger";
@@ -72,8 +72,7 @@ async function startServerWithFallback(
 /**
  * Serve the already-built site for local inspection using Bun.
  */
-export async function previewCommand(options: PreviewOptions) {
-    const ctx = getBuildContext();
+export async function previewCommand(ctx: BuildContext, options: PreviewOptions) {
     const preferredPort = typeof options.port === 'string' ? parseInt(options.port, 10) : (options.port || 4173);
 
     // Validate port number
