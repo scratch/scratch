@@ -131,7 +131,7 @@ export async function runBuildPipeline(
 
   // Execute steps in order
   for (let i = 0; i < BUILD_STEPS.length; i++) {
-    const step = BUILD_STEPS[i];
+    const step = BUILD_STEPS[i]!;
 
     // Check if step should run
     if (!step.shouldRun(ctx, state)) {
