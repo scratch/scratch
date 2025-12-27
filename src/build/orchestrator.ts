@@ -23,14 +23,13 @@ import {
 
 /**
  * Ordered list of all build steps.
- * The orchestrator executes these in sequence.
+ * Steps in nested arrays run in parallel.
  */
-const BUILD_STEPS: BuildStep[] = [
+const BUILD_STEPS: (BuildStep | BuildStep[])[] = [
   ensureDependenciesStep,
   resetDirectoriesStep,
   createTsxEntriesStep,
-  tailwindCssStep,
-  serverBuildStep,
+  [tailwindCssStep, serverBuildStep],
   renderServerStep,
   clientBuildStep,
   generateHtmlStep,
@@ -90,49 +89,33 @@ export async function runBuildPipeline(
   resetLanguageCache();
 
   // Execute steps in order
-  for (let i = 0; i < BUILD_STEPS.length; i++) {
-    const step = BUILD_STEPS[i]!;
-
-    // Check if step should run (defaults to true if not defined)
-    if (step.shouldRun && !step.shouldRun(ctx, state)) {
-      log.debug(`Skipping step: ${step.description}`);
-      continue;
-    }
-
-    // Handle parallel execution for tailwind + server build
-    if (step.name === '04-tailwind-css') {
-      const serverStep = BUILD_STEPS[i + 1]; // 05-server-build
-
-      if (serverStep && (!serverStep.shouldRun || serverStep.shouldRun(ctx, state))) {
-        // Run tailwind and server build in parallel
-        log.debug(`Running parallel: ${step.description} + ${serverStep.description}`);
-
-        try {
-          await Promise.all([
-            executeStep(step, ctx, state),
-            executeStep(serverStep, ctx, state),
-          ]);
-
-          // Skip the server build step in the main loop
-          i++;
-          continue;
-        } catch (error) {
-          state.phase = BuildPhase.Failed;
-          state.error = error instanceof Error ? error : new Error(String(error));
-          state.failedStep = step.name;
-          throw new Error(formatBuildError(state.error));
-        }
-      }
-    }
-
-    // Sequential execution
+  for (const stepOrGroup of BUILD_STEPS) {
     try {
+      // Handle parallel group
+      if (Array.isArray(stepOrGroup)) {
+        const runnableSteps = stepOrGroup.filter(
+          (s) => !s.shouldRun || s.shouldRun(ctx, state)
+        );
+
+        if (runnableSteps.length > 0) {
+          log.debug(`Running parallel: ${runnableSteps.map((s) => s.description).join(' + ')}`);
+          await Promise.all(runnableSteps.map((s) => executeStep(s, ctx, state)));
+        }
+        continue;
+      }
+
+      // Handle single step
+      const step = stepOrGroup;
+      if (step.shouldRun && !step.shouldRun(ctx, state)) {
+        log.debug(`Skipping step: ${step.description}`);
+        continue;
+      }
+
       await executeStep(step, ctx, state);
     } catch (error) {
-      // Fail fast - stop on first error
       state.phase = BuildPhase.Failed;
       state.error = error instanceof Error ? error : new Error(String(error));
-      state.failedStep = step.name;
+      state.failedStep = Array.isArray(stepOrGroup) ? stepOrGroup[0]?.name : stepOrGroup.name;
       throw new Error(formatBuildError(state.error));
     }
   }
