@@ -36,12 +36,13 @@ describe('POPULAR_LANGUAGES', () => {
 });
 
 describe('detectLanguagesFromFiles', () => {
-  test('detects languages from code fences in MDX files', async () => {
-    const pagesDir = path.join(tempDir, 'detect-test-1');
-    await fs.mkdir(pagesDir, { recursive: true });
+  test('detects languages from code fences in files', async () => {
+    const testDir = path.join(tempDir, 'detect-test-1');
+    await fs.mkdir(testDir, { recursive: true });
 
+    const filePath = path.join(testDir, 'index.mdx');
     await fs.writeFile(
-      path.join(pagesDir, 'index.mdx'),
+      filePath,
       `# Test
 
 \`\`\`javascript
@@ -58,7 +59,7 @@ fn main() {}
 `
     );
 
-    const langs = await detectLanguagesFromFiles(pagesDir);
+    const langs = await detectLanguagesFromFiles([filePath]);
 
     expect(langs).toContain('javascript');
     expect(langs).toContain('python');
@@ -67,11 +68,12 @@ fn main() {}
   });
 
   test('detects languages from .md files', async () => {
-    const pagesDir = path.join(tempDir, 'detect-test-2');
-    await fs.mkdir(pagesDir, { recursive: true });
+    const testDir = path.join(tempDir, 'detect-test-2');
+    await fs.mkdir(testDir, { recursive: true });
 
+    const filePath = path.join(testDir, 'doc.md');
     await fs.writeFile(
-      path.join(pagesDir, 'doc.md'),
+      filePath,
       `# Markdown Doc
 
 \`\`\`go
@@ -80,16 +82,17 @@ package main
 `
     );
 
-    const langs = await detectLanguagesFromFiles(pagesDir);
+    const langs = await detectLanguagesFromFiles([filePath]);
     expect(langs).toContain('go');
   });
 
   test('ignores invalid language identifiers', async () => {
-    const pagesDir = path.join(tempDir, 'detect-test-3');
-    await fs.mkdir(pagesDir, { recursive: true });
+    const testDir = path.join(tempDir, 'detect-test-3');
+    await fs.mkdir(testDir, { recursive: true });
 
+    const filePath = path.join(testDir, 'index.mdx');
     await fs.writeFile(
-      path.join(pagesDir, 'index.mdx'),
+      filePath,
       `# Test
 
 \`\`\`javascript
@@ -106,7 +109,7 @@ more code
 `
     );
 
-    const langs = await detectLanguagesFromFiles(pagesDir);
+    const langs = await detectLanguagesFromFiles([filePath]);
     expect(langs).toContain('javascript');
     expect(langs).not.toContain('notareallanguage');
     expect(langs).not.toContain('invalidlang123');
@@ -114,11 +117,14 @@ more code
   });
 
   test('deduplicates languages across multiple files', async () => {
-    const pagesDir = path.join(tempDir, 'detect-test-4');
-    await fs.mkdir(pagesDir, { recursive: true });
+    const testDir = path.join(tempDir, 'detect-test-4');
+    await fs.mkdir(testDir, { recursive: true });
+
+    const file1 = path.join(testDir, 'page1.mdx');
+    const file2 = path.join(testDir, 'page2.mdx');
 
     await fs.writeFile(
-      path.join(pagesDir, 'page1.mdx'),
+      file1,
       `\`\`\`javascript
 const x = 1;
 \`\`\`
@@ -126,69 +132,47 @@ const x = 1;
     );
 
     await fs.writeFile(
-      path.join(pagesDir, 'page2.mdx'),
+      file2,
       `\`\`\`javascript
 const y = 2;
 \`\`\`
 `
     );
 
-    const langs = await detectLanguagesFromFiles(pagesDir);
+    const langs = await detectLanguagesFromFiles([file1, file2]);
     expect(langs).toContain('javascript');
     expect(langs.length).toBe(1);
   });
 
-  test('handles nested directories', async () => {
-    const pagesDir = path.join(tempDir, 'detect-test-5');
-    await fs.mkdir(path.join(pagesDir, 'docs/guides'), { recursive: true });
-
-    await fs.writeFile(
-      path.join(pagesDir, 'docs/guides/tutorial.mdx'),
-      `\`\`\`typescript
-const x: number = 1;
-\`\`\`
-`
-    );
-
-    const langs = await detectLanguagesFromFiles(pagesDir);
-    expect(langs).toContain('typescript');
-  });
-
   test('returns empty array when no code fences found', async () => {
-    const pagesDir = path.join(tempDir, 'detect-test-6');
-    await fs.mkdir(pagesDir, { recursive: true });
+    const testDir = path.join(tempDir, 'detect-test-5');
+    await fs.mkdir(testDir, { recursive: true });
 
+    const filePath = path.join(testDir, 'index.mdx');
     await fs.writeFile(
-      path.join(pagesDir, 'index.mdx'),
+      filePath,
       `# Just text
 
 No code blocks here.
 `
     );
 
-    const langs = await detectLanguagesFromFiles(pagesDir);
+    const langs = await detectLanguagesFromFiles([filePath]);
     expect(langs.length).toBe(0);
   });
 
-  test('returns empty array when directory has no MDX/MD files', async () => {
-    const pagesDir = path.join(tempDir, 'detect-test-7');
-    await fs.mkdir(pagesDir, { recursive: true });
-
-    await fs.writeFile(
-      path.join(pagesDir, 'component.tsx'),
-      `export default function Component() { return <div />; }`
-    );
-
-    const langs = await detectLanguagesFromFiles(pagesDir);
+  test('returns empty array when given empty file list', async () => {
+    const langs = await detectLanguagesFromFiles([]);
     expect(langs.length).toBe(0);
   });
 
   test('normalizes language identifiers to lowercase', async () => {
-    const pagesDir = path.join(tempDir, 'detect-test-8');
-    await fs.mkdir(pagesDir, { recursive: true });
+    const testDir = path.join(tempDir, 'detect-test-6');
+    await fs.mkdir(testDir, { recursive: true });
 
+    const filePath = path.join(testDir, 'index.mdx');
     await fs.writeFile(
-      path.join(pagesDir, 'index.mdx'),
+      filePath,
       `\`\`\`JavaScript
 const x = 1;
 \`\`\`
@@ -199,7 +183,7 @@ print("hello")
 `
     );
 
-    const langs = await detectLanguagesFromFiles(pagesDir);
+    const langs = await detectLanguagesFromFiles([filePath]);
     expect(langs).toContain('javascript');
     expect(langs).toContain('python');
     expect(langs).not.toContain('JavaScript');

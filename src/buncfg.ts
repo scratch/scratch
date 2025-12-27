@@ -6,7 +6,6 @@ import remarkGfm from 'remark-gfm';
 import rehypeShikiFromHighlighter from '@shikijs/rehype/core';
 import { createHighlighter, bundledLanguages, type Highlighter, type BundledLanguage } from 'shiki';
 import { realpathSync } from 'fs';
-import { globSync } from 'fast-glob';
 import { getBuildContext, type HighlightMode } from './context';
 import { createPreprocessMdxPlugin, createRehypeFootnotesPlugin, createNotProsePlugin } from './preprocess';
 import path from 'path';
@@ -26,17 +25,17 @@ export const POPULAR_LANGUAGES: BundledLanguage[] = [
 ];
 
 /**
- * Scan MDX/MD files and extract code fence language identifiers.
+ * Scan files and extract code fence language identifiers.
  * Returns only languages that are valid shiki languages.
+ * @param filePaths - Array of absolute file paths to scan
  */
-export async function detectLanguagesFromFiles(pagesDir: string): Promise<BundledLanguage[]> {
-  const mdxFiles = globSync('**/*.{mdx,md}', { cwd: pagesDir, absolute: true });
+export async function detectLanguagesFromFiles(filePaths: string[]): Promise<BundledLanguage[]> {
   const detectedLangs = new Set<string>();
 
   // Regex to match code fence language identifiers: ```lang or ```lang{...}
   const codeFenceRegex = /^```(\w+)/gm;
 
-  await Promise.all(mdxFiles.map(async (file) => {
+  await Promise.all(filePaths.map(async (file) => {
     const content = await Bun.file(file).text();
     let match;
     while ((match = codeFenceRegex.exec(content)) !== null) {
@@ -170,8 +169,9 @@ let detectedLanguagesPromise: Promise<BundledLanguage[]> | null = null;
 
 /**
  * Get the languages to load based on highlight mode.
+ * For 'auto' mode, uses entries from context to avoid duplicate glob searches.
  */
-async function getLanguagesForMode(mode: HighlightMode, pagesDir: string): Promise<BundledLanguage[]> {
+async function getLanguagesForMode(mode: HighlightMode): Promise<BundledLanguage[]> {
   switch (mode) {
     case 'off':
       return [];
@@ -190,8 +190,11 @@ async function getLanguagesForMode(mode: HighlightMode, pagesDir: string): Promi
         detectedLanguagesCache = await detectedLanguagesPromise;
         return detectedLanguagesCache;
       } else {
-        // Start detection
-        detectedLanguagesPromise = detectLanguagesFromFiles(pagesDir);
+        // Start detection - reuse entries from context instead of separate glob
+        const ctx = getBuildContext();
+        const entries = await ctx.getEntries();
+        const filePaths = Object.values(entries).map(entry => entry.absPath);
+        detectedLanguagesPromise = detectLanguagesFromFiles(filePaths);
         detectedLanguagesCache = await detectedLanguagesPromise;
         return detectedLanguagesCache;
       }
@@ -225,7 +228,7 @@ async function createMdxBuildPlugin(options: { extractFrontmatter?: boolean } = 
 
   // Add shiki syntax highlighting unless disabled
   if (highlightMode !== 'off') {
-    const langs = await getLanguagesForMode(highlightMode, ctx.pagesDir);
+    const langs = await getLanguagesForMode(highlightMode);
     const highlighter = await getShikiHighlighter(langs);
     rehypePlugins.push([rehypeShikiFromHighlighter, highlighter, { theme: 'github-light' }]);
   }
