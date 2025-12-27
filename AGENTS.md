@@ -26,39 +26,57 @@ scratch is a CLI tool for building static MDX-based websites using Bun. Users cr
   - `-p, --port <port>` - Port for dev server
   - `-n, --no-open` - Don't auto-open browser
 
-### Build Pipeline (`src/cmd/build.ts`)
-1. Ensure build dependencies are installed (react, react-dom, @mdx-js/react, tailwindcss, @tailwindcss/cli)
-2. Reset temp directories (preserving node_modules cache)
-3. Create TSX entry files from MD and MDX pages
-4. Build Tailwind CSS
-5. Build server modules for SSG (if enabled)
-6. Run Bun.build() for client bundles
-7. Generate HTML files
-8. Inject frontmatter meta tags
-9. Copy to dist/
+### Build Pipeline (`src/build/`)
+The build system uses a modular step-based architecture orchestrated by `src/build/orchestrator.ts`:
+
+1. **01-ensure-dependencies** - Install build dependencies (react, react-dom, @mdx-js/react, tailwindcss, @tailwindcss/cli, @tailwindcss/typography)
+2. **02-reset-directories** - Reset temp directories (preserving node_modules)
+3. **03-create-tsx-entries** - Create TSX entry files from MD/MDX pages
+4. **04-tailwind-css** - Build Tailwind CSS (runs in parallel with step 5)
+5. **05-server-build** - Build server modules for SSG
+6. **05b-render-server** - Render server modules to HTML
+7. **06-client-build** - Run Bun.build() for client bundles
+8. **07-generate-html** - Generate HTML files
+9. **08-inject-frontmatter** - Inject frontmatter meta tags
+10. **09-copy-pages-static** - Copy static assets from pages/
+11. **10-copy-public-static** - Copy public/ directory assets
+12. **11-copy-to-dist** - Copy final output to dist/
 
 ### Component Resolution
 Components can be placed in two locations:
-- `components/` - Shared components available to all pages
+- `src/` - Shared components available to all pages
 - `pages/` - Co-located components alongside MDX files (useful for page-specific components)
 
 Components from both directories are auto-imported into MDX files by basename.
 
-**Fallback components**: If not present in user project, these are provided from embedded templates:
-- `components/PageWrapper.jsx` - Base layout wrapper
-- `components/markdown/CodeBlock.tsx` - Syntax-highlighted code blocks
-- `components/markdown/Heading.tsx` - Styled headings with anchor links
-- `components/markdown/Link.tsx` - Styled links
+**Key components**:
+- `src/PageWrapper.jsx` - Base layout wrapper (optional, pages render unwrapped if not present)
+- `src/markdown/CodeBlock.tsx` - Syntax-highlighted code blocks
+- `src/markdown/Heading.tsx` - Styled headings with anchor links
+- `src/markdown/Link.tsx` - Styled links
+
+These can be ejected from embedded templates using `scratch checkout`.
 
 ### Key Files
-- `src/context.ts` - BuildContext class managing paths, entries, dependency resolution, template materialization, and component discovery
-- `src/buncfg.ts` - Bun.build() configuration and plugins
-- `src/cmd/build.ts` - Main build logic
+
+**Build system** (`src/build/`):
+- `src/build/orchestrator.ts` - Step-based build orchestrator
+- `src/build/context.ts` - BuildContext class managing paths, entries, dependency resolution, template materialization, and component discovery
+- `src/build/buncfg.ts` - Bun.build() configuration and plugins
+- `src/build/types.ts` - Type definitions for pipeline state and steps
+- `src/build/preprocess.ts` - MDX preprocessing logic
+- `src/build/errors.ts` - Build error formatting
+- `src/build/steps/*.ts` - Individual build step implementations
+
+**CLI commands** (`src/cmd/`):
+- `src/cmd/build.ts` - Build command handler (thin wrapper calling orchestrator)
 - `src/cmd/dev.ts` - Development server with live reload
 - `src/cmd/create.ts` - Create command handler
 - `src/cmd/preview.ts` - Preview server for built sites
-- `src/cmd/checkout.ts` - Checkout/revert command handler
+- `src/cmd/checkout.ts` - Checkout/eject command handler
 - `src/cmd/view.ts` - View single file with live reload
+
+**Templates**:
 - `src/template.ts` - Template runtime API (materialize, getContent, list templates)
 - `src/template.generated.ts` - Compiled template content (generated, not checked in)
 - `scripts/compile-templates.ts` - Compiles template/ files into executable
@@ -86,7 +104,6 @@ Templates are embedded directly into the compiled executable for portability.
 **Fallback resolution**: During build, if a required file is missing from the user's project, the embedded template is materialized to `.scratch-build-cache/embedded-templates/` and used instead.
 
 ### Build Cache (`.scratch-build-cache/`)
-- `node_modules/` - Auto-installed build dependencies (react, react-dom, @mdx-js/react, tailwindcss, @tailwindcss/cli)
 - `client-src/` - Generated TSX entry files
 - `client-compiled/` - Bun.build() output
 - `server-src/` - SSG JSX entries
@@ -94,16 +111,16 @@ Templates are embedded directly into the compiled executable for portability.
 - `embedded-templates/` - Materialized embedded templates (fallbacks for missing user files)
 
 ### Dependency Resolution
-- If user has `node_modules/` in project root, uses their dependencies
-- Otherwise, auto-installs build essentials to `.scratch-build-cache/node_modules/`
-- Tailwind CSS input is symlinked to cache directory so `@import "tailwindcss"` resolves correctly
+- Dependencies are installed to `node_modules/` in the project root
+- Build dependencies: react, react-dom, @mdx-js/react, tailwindcss, @tailwindcss/cli, @tailwindcss/typography
+- If no package.json exists, one is auto-generated with the required dependencies
 
 ### File Search Patterns
-The build system searches multiple file names for key files, falling back to embedded templates:
-- **CSS input**: `src/tailwind.css` → `src/index.css` → `src/globals.css` → embedded fallback
-- **Client entry**: `entry-client.tsx` → `entry.tsx` → `client.tsx` → `build/entry-client.tsx` → `_build/entry-client.tsx` → embedded `_build/entry-client.tsx`
-- **Server entry**: `entry-server.jsx` → `index.jsx` → `server.jsx` → `build/entry-server.jsx` → `_build/entry-server.jsx` → embedded `_build/entry-server.jsx`
-- **PageWrapper**: `components/PageWrapper.jsx` or `.tsx` → embedded `components/PageWrapper.jsx`
+The build system searches for key files with the following fallback behavior:
+- **CSS input**: `src/tailwind.css` → `src/index.css` → `src/globals.css` (no embedded fallback)
+- **Client entry**: `_build/entry-client.tsx` → embedded template
+- **Server entry**: `_build/entry-server.jsx` → embedded template
+- **PageWrapper**: `src/PageWrapper.jsx` or `.tsx` (no embedded fallback, pages render unwrapped if not present)
 
 ### Development Server
 The dev server (`src/cmd/dev.ts`) provides:
@@ -142,8 +159,9 @@ bun run src/index.ts dev /tmp/test-scratch
 2. Register in `src/index.ts` using Commander
 
 ### Modifying build pipeline
-1. Update `src/cmd/build.ts`
-2. Build config is in `src/buncfg.ts`
+1. Add/modify steps in `src/build/steps/`
+2. Update step ordering in `src/build/orchestrator.ts`
+3. Build config is in `src/build/buncfg.ts`
 
 ### Adding template files
 1. Add to `template/` for user-facing files (copied to new projects)
