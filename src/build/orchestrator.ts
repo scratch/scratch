@@ -63,6 +63,14 @@ function createInitialState(options: BuildOptions): BuildPipelineState {
 }
 
 /**
+ * Extract step number from step name (e.g., "03-foo" -> "03", "05b-bar" -> "05b")
+ */
+function getStepNumber(name: string): string {
+  const match = name.match(/^(\d+[a-z]?)-/);
+  return match ? match[1]! : name;
+}
+
+/**
  * Execute a single step with timing
  */
 async function executeStep<T>(
@@ -70,6 +78,9 @@ async function executeStep<T>(
   ctx: BuildContext,
   state: BuildPipelineState
 ): Promise<{ data: T; durationMs: number }> {
+  const stepNum = getStepNumber(step.name);
+  log.debug(`=== [${stepNum}] ${step.description} ===`);
+
   const start = performance.now();
   state.phase = step.phase;
   const data = await step.execute(ctx, state);

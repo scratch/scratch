@@ -15,8 +15,6 @@ export const copyPagesStaticStep = defineStep({
   },
 
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<void> {
-    log.debug('=== PAGES STATIC ASSETS ===');
-
     const staticMode = state.options.static ?? 'assets';
     const buildFileExts = ['.md', '.mdx', '.tsx', '.jsx', '.ts', '.js', '.mjs', '.cjs'];
 

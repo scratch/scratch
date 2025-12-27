@@ -16,8 +16,6 @@ export const tailwindCssStep = defineStep<TailwindOutput>({
   },
 
   async execute(ctx: BuildContext): Promise<TailwindOutput> {
-    log.debug('=== TAILWIND CSS ===');
-
     const inputCss = await ctx.tailwindCssSrcPath();
 
     // If no CSS file found, skip Tailwind build

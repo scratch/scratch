@@ -14,12 +14,9 @@ export const copyPublicStaticStep = defineStep({
 
   async execute(ctx: BuildContext): Promise<void> {
     if (!(await fs.exists(ctx.staticDir))) {
-      log.debug('=== PUBLIC STATIC ASSETS ===');
       log.debug('  No public/ directory found, skipping');
       return;
     }
-
-    log.debug('=== PUBLIC STATIC ASSETS ===');
 
     await fs.cp(ctx.staticDir, ctx.buildDir, { recursive: true });
 

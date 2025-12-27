@@ -15,8 +15,6 @@ export const serverBuildStep = defineStep<ServerBuildOutput>({
   },
 
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<ServerBuildOutput> {
-    log.debug('=== SERVER BUILD ===');
-
     const serverEntryPts = state.outputs.serverEntryPts!;
 
     // Prepare build config

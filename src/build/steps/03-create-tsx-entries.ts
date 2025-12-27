@@ -55,8 +55,6 @@ export const createTsxEntriesStep = defineStep<TsxEntriesOutput>({
   },
 
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<TsxEntriesOutput> {
-    log.debug('=== TSX ENTRY FILES ===');
-
     const entries = await ctx.getEntries();
 
     if (Object.keys(entries).length === 0) {

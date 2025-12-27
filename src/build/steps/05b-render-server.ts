@@ -13,8 +13,6 @@ export const renderServerStep = defineStep<RenderServerOutput>({
   },
 
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<RenderServerOutput> {
-    log.debug('=== SERVER RENDER ===');
-
     const entries = state.outputs.entries!;
     const renderedContent = new Map<string, string>();
 

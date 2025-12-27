@@ -15,8 +15,6 @@ export const injectFrontmatterStep = defineStep({
   },
 
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<void> {
-    log.debug('=== FRONTMATTER INJECTION ===');
-
     const entries = state.outputs.entries!;
     let injectedCount = 0;
 

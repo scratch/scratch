@@ -13,8 +13,6 @@ export const copyToDistStep = defineStep({
   },
 
   async execute(ctx: BuildContext): Promise<void> {
-    log.debug('=== COPY TO DIST ===');
-
     await fs.cp(ctx.clientCompiledDir, ctx.buildDir, { recursive: true });
 
     log.debug(`  Output in: ${ctx.buildDir}`);

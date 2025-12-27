@@ -15,8 +15,6 @@ export const generateHtmlStep = defineStep({
   },
 
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<void> {
-    log.debug('=== HTML GENERATION ===');
-
     const entries = state.outputs.entries!;
     const cssFilename = state.outputs.cssFilename;
     const jsOutputMap = state.outputs.jsOutputMap!;

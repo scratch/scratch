@@ -16,8 +16,6 @@ export const clientBuildStep = defineStep<ClientBuildOutput>({
   },
 
   async execute(ctx: BuildContext, state: BuildPipelineState): Promise<ClientBuildOutput> {
-    log.debug('=== CLIENT BUILD ===');
-
     const clientEntryPts = state.outputs.clientEntryPts!;
 
     // Prepare build config
