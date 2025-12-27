@@ -2,7 +2,6 @@ import { buildFileMap, rmWithRetry, type FileMapResult } from '../util';
 import path from 'path';
 import fs from 'fs/promises';
 import { globSync } from 'fast-glob';
-import { templates, materializeTemplate, hasTemplate } from '../template';
 
 let CONTEXT: BuildContext | undefined;
 
@@ -50,9 +49,6 @@ export class BuildContext {
   private componentMap: Record<string, string> | undefined;
   private componentConflicts: Set<string> | undefined;
 
-  // Cache for materialized template paths
-  private materializedPaths: Map<string, string> = new Map();
-
   constructor(opts: BuildContextInitOptions) {
     this.options = opts;
     this.rootDir = path.resolve(opts.path || opts.rootDirName || '.');
@@ -85,10 +81,6 @@ export class BuildContext {
     return path.resolve(this.tempDir, 'server-compiled');
   }
 
-  get embeddedTemplatesDir(): string {
-    return path.resolve(this.tempDir, 'embedded-templates');
-  }
-
   /**
    * Returns the node_modules directory (always in project root).
    */
@@ -101,7 +93,6 @@ export class BuildContext {
    * Called by the reset directories step.
    */
   clearCaches(): void {
-    this.materializedPaths.clear();
     this.entries = undefined;
     this.componentMap = undefined;
     this.componentConflicts = undefined;
@@ -133,117 +124,56 @@ export class BuildContext {
   }
 
   /**
-   * Resolve a path by checking candidates in the project, falling back to embedded template.
-   */
-  private async resolvePathWithFallback(
-    candidates: string[],
-    fallbackTemplatePath: string
-  ): Promise<string> {
-    for (const candidate of candidates) {
-      const userPath = path.resolve(this.rootDir, candidate);
-      if (await fs.exists(userPath)) {
-        return userPath;
-      }
-    }
-    return this.materializeEmbeddedFile(fallbackTemplatePath);
-  }
-
-  /**
    * Get the path to the markdown components directory.
-   * Falls back to embedded templates if not in project.
+   * Returns null if not found in project.
    */
-  async markdownComponentsDir(): Promise<string> {
-    const userMarkdownDir = path.resolve(this.srcDir, 'markdown');
-    if (await fs.exists(userMarkdownDir)) {
-      return userMarkdownDir;
-    }
-    return this.materializeEmbeddedDir('src/markdown');
+  async markdownComponentsDir(): Promise<string | null> {
+    const markdownDir = path.resolve(this.srcDir, 'markdown');
+    return (await fs.exists(markdownDir)) ? markdownDir : null;
   }
 
   /**
    * Get the path to the Tailwind CSS source file.
-   * Falls back to embedded template if not in project.
+   * Checks src/tailwind.css, src/index.css, and src/globals.css.
+   * Returns null if none found.
    */
-  async tailwindCssSrcPath(): Promise<string> {
-    return this.resolvePathWithFallback(
-      ['src/tailwind.css', 'src/index.css', 'src/globals.css'],
-      'src/tailwind.css'
-    );
+  async tailwindCssSrcPath(): Promise<string | null> {
+    const candidates = ['src/tailwind.css', 'src/index.css', 'src/globals.css'];
+    for (const candidate of candidates) {
+      const p = path.resolve(this.rootDir, candidate);
+      if (await fs.exists(p)) return p;
+    }
+    return null;
   }
 
   /**
    * Get the path to the client entry template.
-   * Falls back to embedded template if not in project.
+   * Returns null if _build/entry-client.tsx not found.
    */
-  async clientTsxSrcPath(): Promise<string> {
-    return this.resolvePathWithFallback(
-      ['_build/entry-client.tsx'],
-      '_build/entry-client.tsx'
-    );
+  async clientTsxSrcPath(): Promise<string | null> {
+    const p = path.resolve(this.rootDir, '_build/entry-client.tsx');
+    return (await fs.exists(p)) ? p : null;
   }
 
   /**
    * Get the path to the server entry template.
-   * Falls back to embedded template if not in project.
+   * Returns null if _build/entry-server.jsx not found.
    */
-  async serverJsxSrcPath(): Promise<string> {
-    return this.resolvePathWithFallback(
-      ['_build/entry-server.jsx'],
-      '_build/entry-server.jsx'
-    );
+  async serverJsxSrcPath(): Promise<string | null> {
+    const p = path.resolve(this.rootDir, '_build/entry-server.jsx');
+    return (await fs.exists(p)) ? p : null;
   }
 
   /**
    * Get the path to the PageWrapper component.
-   * Falls back to embedded template if not in project.
+   * Returns null if not found in project.
    */
-  async pageWrapperPath(): Promise<string> {
-    return this.resolvePathWithFallback(
-      ['src/PageWrapper.jsx', 'src/PageWrapper.tsx'],
-      'src/PageWrapper.jsx'
-    );
-  }
-
-  /**
-   * Materialize a single embedded template file to the temp directory.
-   * Returns the path to the materialized file.
-   */
-  async materializeEmbeddedFile(templatePath: string): Promise<string> {
-    if (this.materializedPaths.has(templatePath)) {
-      return this.materializedPaths.get(templatePath)!;
+  async pageWrapperPath(): Promise<string | null> {
+    for (const name of ['src/PageWrapper.jsx', 'src/PageWrapper.tsx']) {
+      const p = path.resolve(this.rootDir, name);
+      if (await fs.exists(p)) return p;
     }
-
-    const targetPath = path.resolve(this.embeddedTemplatesDir, templatePath);
-    await materializeTemplate(templatePath, targetPath);
-    this.materializedPaths.set(templatePath, targetPath);
-    return targetPath;
-  }
-
-  /**
-   * Materialize all files in an embedded template subdirectory.
-   * Returns the path to the materialized directory.
-   */
-  async materializeEmbeddedDir(dirname: string): Promise<string> {
-    const cacheKey = `${dirname}/`;
-    if (this.materializedPaths.has(cacheKey)) {
-      return this.materializedPaths.get(cacheKey)!;
-    }
-
-    const targetDir = path.resolve(this.embeddedTemplatesDir, dirname);
-
-    // Find all files that start with this dirname
-    const prefix = dirname + '/';
-    for (const [filename, content] of Object.entries(templates)) {
-      if (filename.startsWith(prefix)) {
-        const relativePath = filename.slice(prefix.length);
-        const targetPath = path.resolve(targetDir, relativePath);
-        await fs.mkdir(path.dirname(targetPath), { recursive: true });
-        await fs.writeFile(targetPath, content);
-      }
-    }
-
-    this.materializedPaths.set(cacheKey, targetDir);
-    return targetDir;
+    return null;
   }
 
   /**
@@ -267,8 +197,6 @@ export class BuildContext {
 
   /**
    * Catalogue all of the component files in the src directory and pages directory.
-   * Falls back to template components for PageWrapper and markdown components
-   * if they are not found in the project.
    */
   async getComponentMap() {
     if (!this.componentMap) {
@@ -292,28 +220,6 @@ export class BuildContext {
         }
         for (const conflict of pagesResult.conflicts) {
           result.conflicts.add(conflict);
-        }
-      }
-
-      // Fallback: Add PageWrapper from embedded template if not in project
-      if (!('PageWrapper' in result.map)) {
-        const pageWrapperPath = await this.materializeEmbeddedFile(
-          'src/PageWrapper.jsx'
-        );
-        result.map['PageWrapper'] = pageWrapperPath;
-      }
-
-      // Fallback: Add markdown components from embedded template if not in project
-      const markdownComponents = ['CodeBlock', 'Heading'];
-      for (const comp of markdownComponents) {
-        if (!(comp in result.map)) {
-          // Check for .tsx variant first
-          const templatePath = `src/markdown/${comp}.tsx`;
-          if (hasTemplate(templatePath)) {
-            const componentPath =
-              await this.materializeEmbeddedFile(templatePath);
-            result.map[comp] = componentPath;
-          }
         }
       }
 

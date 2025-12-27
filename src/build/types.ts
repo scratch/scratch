@@ -41,7 +41,7 @@ export interface StepOutputs {
   entries?: Record<string, Entry>;
   clientEntryPts?: Record<string, string>;
   serverEntryPts?: Record<string, string> | null;
-  cssFilename?: string;
+  cssFilename?: string | null;
   serverBuildResult?: BunBuildResult | null;
   clientBuildResult?: BunBuildResult;
   jsOutputMap?: Record<string, string>;
@@ -117,7 +117,7 @@ export interface TsxEntriesOutput {
 }
 
 export interface TailwindOutput {
-  cssFilename: string;
+  cssFilename: string | null;
 }
 
 export interface ServerBuildOutput {

@@ -19,35 +19,22 @@ export const tailwindCssStep = defineStep<TailwindOutput>({
     log.debug('=== TAILWIND CSS ===');
 
     const inputCss = await ctx.tailwindCssSrcPath();
+
+    // If no CSS file found, skip Tailwind build
+    if (!inputCss) {
+      log.warn('No Tailwind CSS file found (src/tailwind.css, src/index.css, or src/globals.css).');
+      log.warn('Skipping CSS build. Run `scratch checkout src/tailwind.css` to create one.');
+      return { cssFilename: null };
+    }
+
     const outputCss = path.join(ctx.clientCompiledDir, 'tailwind.css');
     const nodeModulesDir = await ctx.nodeModulesDir();
 
     // Ensure output directory exists
     await fs.mkdir(path.dirname(outputCss), { recursive: true });
 
-    // Read the input CSS and prepend @source directives for template src
-    let cssContent = await fs.readFile(inputCss, 'utf-8');
-
-    // Add @source directive for embedded template src
-    const embeddedSrcDir = path.resolve(ctx.embeddedTemplatesDir, 'src');
-    const sourceDirective = `@source "${embeddedSrcDir}";\n`;
-
-    // Insert after @import "tailwindcss" or at the beginning
-    if (cssContent.includes('@import "tailwindcss"')) {
-      cssContent = cssContent.replace(
-        '@import "tailwindcss";',
-        `@import "tailwindcss";\n${sourceDirective}`
-      );
-    } else {
-      cssContent = sourceDirective + cssContent;
-    }
-
-    // Write the modified CSS to cache directory
-    const cacheInputCss = path.join(ctx.tempDir, 'tailwind-input.css');
-    await fs.writeFile(cacheInputCss, cssContent);
-
     // Build Tailwind CSS (v4 auto-detects content from cwd)
-    const args = ['-i', cacheInputCss, '-o', outputCss];
+    const args = ['-i', inputCss, '-o', outputCss];
     if (!ctx.options.development) {
       args.push('--minify');
     }

@@ -18,13 +18,18 @@ export const generateHtmlStep = defineStep({
     log.debug('=== HTML GENERATION ===');
 
     const entries = state.outputs.entries!;
-    const cssFilename = state.outputs.cssFilename!;
+    const cssFilename = state.outputs.cssFilename;
     const jsOutputMap = state.outputs.jsOutputMap!;
     const ssg = state.options.ssg ?? false;
     const renderedContent = state.outputs.renderedContent ?? new Map();
 
     // Detect favicons once for all entries
     const faviconLinks = await getFaviconLinkTags(ctx);
+
+    // Build CSS link tag (only if CSS was built)
+    const cssLinkTag = cssFilename
+      ? `<link rel="stylesheet" href="/${cssFilename}" />`
+      : '';
 
     // Build HTML for each entry
     const ssgFlagScript =
@@ -52,7 +57,7 @@ export const generateHtmlStep = defineStep({
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="/${cssFilename}" />
+    ${cssLinkTag}
     ${faviconLinks}
     ${ssg ? ssgFlagScript : ''}
   </head>
