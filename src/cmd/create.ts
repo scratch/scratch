@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { materializeProjectTemplates } from '../template';
-import { BUILD_DEPENDENCIES } from '../context';
+import { BUILD_DEPENDENCIES } from '../build/steps/01-ensure-dependencies';
 import { formatFileTree } from '../util';
 import log from '../logger';
 

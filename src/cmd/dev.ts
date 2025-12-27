@@ -2,7 +2,7 @@ import { watch } from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 import type { ServerWebSocket } from 'bun';
-import { getBuildContext } from '../context';
+import { getBuildContext } from '../build/context';
 import { buildCommand } from './build';
 import { getContentType } from '../util';
 import log from '../logger';

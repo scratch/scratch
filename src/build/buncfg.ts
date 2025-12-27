@@ -10,7 +10,7 @@ import { getBuildContext, type HighlightMode } from './context';
 import { createPreprocessMdxPlugin, createRehypeFootnotesPlugin, createNotProsePlugin } from './preprocess';
 import path from 'path';
 import type { VFile } from 'vfile';
-import log from './logger';
+import log from '../logger';
 
 // Set of all valid shiki language identifiers for validation
 const VALID_LANGUAGES = new Set(Object.keys(bundledLanguages));
@@ -39,7 +39,7 @@ export async function detectLanguagesFromFiles(filePaths: string[]): Promise<Bun
     const content = await Bun.file(file).text();
     let match;
     while ((match = codeFenceRegex.exec(content)) !== null) {
-      const lang = match[1].toLowerCase();
+      const lang = match[1]!.toLowerCase();
       if (VALID_LANGUAGES.has(lang)) {
         detectedLangs.add(lang);
       }

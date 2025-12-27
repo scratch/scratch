@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
-import { BuildContext, Entry, setBuildContext, getBuildContext } from '../../src/context';
+import { BuildContext, Entry, setBuildContext, getBuildContext } from '../../src/build/context';
 import { mkTempDir } from '../test-util';
 import path from 'path';
 import { materializeProjectTemplates } from '../../src/template';
@@ -168,15 +168,13 @@ describe('BuildContext path finding methods', () => {
     expect(mdCompDir).toBe(path.join(projectDir, 'src/markdown'));
   });
 
-  test('markdownComponentsDir falls back to embedded template directory', async () => {
-    const projectDir = path.join(tempDir, 'markdown-components-fallback');
+  test('markdownComponentsDir returns null when directory not found', async () => {
+    const projectDir = path.join(tempDir, 'markdown-components-missing');
     await fs.mkdir(projectDir, { recursive: true });
     const context = new BuildContext({ path: projectDir });
 
     const mdCompDir = await context.markdownComponentsDir();
-    // Fallback path should be in embedded-templates and contain expected files
-    expect(mdCompDir).toContain('embedded-templates');
-    expect(await fs.exists(path.join(mdCompDir, 'index.ts'))).toBe(true);
+    expect(mdCompDir).toBeNull();
   });
 
   test('tailwindCssSrcPath finds existing tailwind.css in src/', async () => {
@@ -197,6 +195,84 @@ describe('BuildContext path finding methods', () => {
 
     const tailwindPath = await context.tailwindCssSrcPath();
     expect(tailwindPath).toBe(path.join(projectDir, 'src', 'index.css'));
+  });
+
+  test('tailwindCssSrcPath returns null when no CSS file found', async () => {
+    const projectDir = path.join(tempDir, 'tailwind-missing-test');
+    await fs.mkdir(projectDir, { recursive: true });
+    const context = new BuildContext({ path: projectDir });
+
+    const tailwindPath = await context.tailwindCssSrcPath();
+    expect(tailwindPath).toBeNull();
+  });
+
+  test('clientTsxSrcPath finds existing entry template', async () => {
+    const projectDir = path.join(tempDir, 'client-tsx-test');
+    await fs.mkdir(path.join(projectDir, '_build'), { recursive: true });
+    await fs.writeFile(path.join(projectDir, '_build', 'entry-client.tsx'), '// client');
+    const context = new BuildContext({ path: projectDir });
+
+    const clientPath = await context.clientTsxSrcPath();
+    expect(clientPath).toBe(path.join(projectDir, '_build', 'entry-client.tsx'));
+  });
+
+  test('clientTsxSrcPath falls back to embedded template when not found', async () => {
+    const projectDir = path.join(tempDir, 'client-tsx-fallback');
+    await fs.mkdir(projectDir, { recursive: true });
+    const context = new BuildContext({ path: projectDir });
+
+    const clientPath = await context.clientTsxSrcPath();
+    expect(clientPath).toContain('embedded-templates');
+    expect(clientPath).toContain('entry-client.tsx');
+  });
+
+  test('serverJsxSrcPath finds existing entry template', async () => {
+    const projectDir = path.join(tempDir, 'server-jsx-test');
+    await fs.mkdir(path.join(projectDir, '_build'), { recursive: true });
+    await fs.writeFile(path.join(projectDir, '_build', 'entry-server.jsx'), '// server');
+    const context = new BuildContext({ path: projectDir });
+
+    const serverPath = await context.serverJsxSrcPath();
+    expect(serverPath).toBe(path.join(projectDir, '_build', 'entry-server.jsx'));
+  });
+
+  test('serverJsxSrcPath falls back to embedded template when not found', async () => {
+    const projectDir = path.join(tempDir, 'server-jsx-fallback');
+    await fs.mkdir(projectDir, { recursive: true });
+    const context = new BuildContext({ path: projectDir });
+
+    const serverPath = await context.serverJsxSrcPath();
+    expect(serverPath).toContain('embedded-templates');
+    expect(serverPath).toContain('entry-server.jsx');
+  });
+
+  test('pageWrapperPath finds PageWrapper.jsx', async () => {
+    const projectDir = path.join(tempDir, 'pagewrapper-jsx-test');
+    await fs.mkdir(path.join(projectDir, 'src'), { recursive: true });
+    await fs.writeFile(path.join(projectDir, 'src', 'PageWrapper.jsx'), '// wrapper');
+    const context = new BuildContext({ path: projectDir });
+
+    const wrapperPath = await context.pageWrapperPath();
+    expect(wrapperPath).toBe(path.join(projectDir, 'src', 'PageWrapper.jsx'));
+  });
+
+  test('pageWrapperPath finds PageWrapper.tsx', async () => {
+    const projectDir = path.join(tempDir, 'pagewrapper-tsx-test');
+    await fs.mkdir(path.join(projectDir, 'src'), { recursive: true });
+    await fs.writeFile(path.join(projectDir, 'src', 'PageWrapper.tsx'), '// wrapper');
+    const context = new BuildContext({ path: projectDir });
+
+    const wrapperPath = await context.pageWrapperPath();
+    expect(wrapperPath).toBe(path.join(projectDir, 'src', 'PageWrapper.tsx'));
+  });
+
+  test('pageWrapperPath returns null when not found', async () => {
+    const projectDir = path.join(tempDir, 'pagewrapper-missing');
+    await fs.mkdir(projectDir, { recursive: true });
+    const context = new BuildContext({ path: projectDir });
+
+    const wrapperPath = await context.pageWrapperPath();
+    expect(wrapperPath).toBeNull();
   });
 });
 

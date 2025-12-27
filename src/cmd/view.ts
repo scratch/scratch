@@ -4,7 +4,7 @@ import path from 'path';
 import os from 'os';
 import { createCommand } from './create';
 import { devCommand } from './dev';
-import { setBuildContext } from '../context';
+import { setBuildContext } from '../build/context';
 import { bunInstall } from '../util';
 import log from '../logger';
 

@@ -5,7 +5,7 @@ import { visit } from 'unist-util-visit';
 import { is } from 'unist-util-is';
 import { parse } from 'acorn';
 import type { Node, Root } from 'mdast';
-import log from './logger';
+import log from '../logger';
 
 /**
  * Strip comments from source code to avoid false positives in regex matching.
