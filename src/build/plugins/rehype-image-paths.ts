@@ -9,6 +9,7 @@ import type { Plugin } from 'unified';
 import { visit } from 'unist-util-visit';
 import path from 'path';
 import type { BuildContext } from '../context';
+import log from '../../logger';
 
 /**
  * Check if a path is relative (not absolute, not a URL, not a data URI)
@@ -116,7 +117,9 @@ export function createImagePathsPlugin(ctx: BuildContext): Plugin {
         );
 
         // Build the final absolute path with base
-        return base + '/' + resolvedPath;
+        const absolutePath = base + '/' + resolvedPath;
+        log.debug(`  - image: ${src} -> ${absolutePath}`);
+        return absolutePath;
       }
 
       // Handle HAST element nodes (from raw HTML via rehype-raw)
