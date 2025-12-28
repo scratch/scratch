@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import log from "../logger";
 import { getContentType } from "../util";
+import { findRoute } from "./dev";
 
 interface PreviewOptions {
     port?: number;
@@ -95,7 +96,8 @@ export async function previewCommand(ctx: BuildContext, options: PreviewOptions)
     // Open browser if requested
     if (options.open !== false) {
         const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
-        Bun.spawn([opener, `http://localhost:${port}`]);
+        const route = await findRoute(ctx.pagesDir);
+        Bun.spawn([opener, `http://localhost:${port}${route}`]);
     }
 
     // Graceful shutdown on Ctrl-C

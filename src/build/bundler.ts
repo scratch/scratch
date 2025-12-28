@@ -1,4 +1,4 @@
-import { getPreprocessingErrors } from './preprocess';
+import { getPreprocessingErrors } from './plugins';
 import log from '../logger';
 
 export type BunBuildResult = Awaited<ReturnType<typeof Bun.build>>;

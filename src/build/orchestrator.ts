@@ -1,8 +1,7 @@
 import type { BuildContext } from './context';
 import type { BuildOptions, BuildPipelineState, BuildStep } from './types';
 import { formatBuildError } from './errors';
-import { resetPreprocessingState } from './preprocess';
-import { resetLanguageCache } from './buncfg';
+import { resetPluginState } from './plugins';
 import log from '../logger';
 
 // Import all steps
@@ -82,8 +81,7 @@ export async function runBuildPipeline(
   const state = createInitialState(options);
 
   // Reset global state from any previous builds
-  resetPreprocessingState();
-  resetLanguageCache();
+  resetPluginState();
 
   // Execute steps in order
   for (const stepOrGroup of BUILD_STEPS) {

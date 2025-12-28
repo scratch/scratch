@@ -45,6 +45,7 @@
     "commander": "^14.0.0",
     "fast-glob": "^3.3.3",
     "gray-matter": "^4.0.3",
+    "rehype-raw": "^7.0.0",
     "remark-frontmatter": "^5.0.0",
     "remark-gfm": "^4.0.0",
     "shiki": "^3.20.0",

@@ -136,6 +136,7 @@ export async function buildFileMap(
   const files = await glob(pattern, {
     cwd: baseDir,
     absolute: true,
+    ignore: ['**/node_modules/**'],
   });
 
   const map: Record<string, string> = {};
