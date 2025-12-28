@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.5] - 2025-12-28
+
+This release fixes a dev server stability issue and improves build error reporting.
+
+### Bug Fixes
+
+- Fixed dev server rebuild loop caused by file watcher timing issues
+
+### Improvements
+
+- Improved error messages when Bun build fails, making it easier to diagnose compilation issues
+- Updated scratch logo
+
 ## [0.3.4] - 2025-12-28
 
 This release adds support for relative image paths in MDX files and improves raw HTML handling.
