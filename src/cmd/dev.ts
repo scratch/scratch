@@ -193,13 +193,17 @@ export async function devCommand(ctx: BuildContext, options: DevOptions = {}) {
 
   let rebuildTimeout: Timer | null = null;
   let isRebuilding = false;
+  let watchingEnabled = true;
+
   const debouncedRebuild = () => {
+    if (!watchingEnabled) return;
     if (rebuildTimeout) {
       clearTimeout(rebuildTimeout);
     }
     rebuildTimeout = setTimeout(async () => {
       if (isRebuilding) return;
       isRebuilding = true;
+      watchingEnabled = false; // Pause watching during build
       log.info('File change detected, rebuilding...');
       try {
         await buildCommand(ctx, { ssg: false, static: options.static });
@@ -212,6 +216,8 @@ export async function devCommand(ctx: BuildContext, options: DevOptions = {}) {
         log.error('Rebuild failed:', error);
       } finally {
         isRebuilding = false;
+        // Resume watching after a brief delay to let filesystem settle
+        setTimeout(() => { watchingEnabled = true; }, 100);
       }
     }, 100);
   };
@@ -220,6 +226,7 @@ export async function devCommand(ctx: BuildContext, options: DevOptions = {}) {
     try {
       const watcher = watch(dir, { recursive: true }, (event, filename) => {
         if (filename && !filename.startsWith('.')) {
+          log.debug(`File ${event}: ${filename}`);
           debouncedRebuild();
         }
       });

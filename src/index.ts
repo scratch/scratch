@@ -10,7 +10,7 @@ import { checkoutCommand } from './cmd/checkout';
 import { updateCommand } from './cmd/update';
 import { viewCommand } from './cmd/view';
 import { BuildContext } from './build/context';
-import log, { setLogLevel } from './logger';
+import log, { setLogLevel, setShowBunErrors, shouldShowBunErrors } from './logger';
 import { VERSION } from './version';
 
 // Context created in preAction hook, used by commands
@@ -25,8 +25,15 @@ function withErrorHandling(
   return async (...args: any[]) => {
     try {
       await handler(...args);
-    } catch (error) {
-      log.error(`${name} failed:`, error);
+    } catch (error: any) {
+      // By default, just show the error message cleanly
+      // With --show-bun-errors, show the full error with stack trace
+      if (shouldShowBunErrors()) {
+        log.error(`${name} failed:`, error);
+      } else {
+        const message = error instanceof Error ? error.message : String(error);
+        log.error(`${name} failed: ${message}`);
+      }
       process.exit(1);
     }
   };
@@ -37,7 +44,8 @@ program
   .description('Build static websites with Markdown and React')
   .version(VERSION)
   .option('-v, --verbose', 'Verbose output')
-  .option('-q, --quiet', 'Quiet mode (errors only)');
+  .option('-q, --quiet', 'Quiet mode (errors only)')
+  .option('--show-bun-errors', 'Show full Bun error stack traces');
 
 program
   .command('create')
@@ -158,6 +166,9 @@ program.hook('preAction', (thisCommand, actionCommand) => {
     setLogLevel('verbose');
   } else if (globalOpts.quiet) {
     setLogLevel('quiet');
+  }
+  if (globalOpts.showBunErrors) {
+    setShowBunErrors(true);
   }
   const opts = actionCommand.opts() || {};
   opts.path = actionCommand.args[0] || '.';
