@@ -1,15 +1,15 @@
 import { describe, expect, test, beforeEach } from "bun:test";
 import {
     getPreprocessingErrors,
-    resetPreprocessingState,
-    createPreprocessMdxPlugin,
+    resetAutoImportState,
+    createAutoImportPlugin,
     checkDefaultExport,
     type ComponentMap,
-} from "../../src/build/preprocess";
+} from "../../src/build/plugins";
 
 describe("preprocess error handling", () => {
     beforeEach(() => {
-        resetPreprocessingState();
+        resetAutoImportState();
     });
 
     test("getPreprocessingErrors returns empty array initially", () => {
@@ -25,16 +25,16 @@ describe("preprocess error handling", () => {
         expect(errors2).toEqual([]);
     });
 
-    test("resetPreprocessingState clears all state", () => {
-        resetPreprocessingState();
+    test("resetAutoImportState clears all state", () => {
+        resetAutoImportState();
         const errors = getPreprocessingErrors();
         expect(errors).toEqual([]);
     });
 });
 
-describe("createPreprocessMdxPlugin", () => {
+describe("createAutoImportPlugin", () => {
     beforeEach(() => {
-        resetPreprocessingState();
+        resetAutoImportState();
     });
 
     test("creates a plugin function", () => {
@@ -42,20 +42,20 @@ describe("createPreprocessMdxPlugin", () => {
             Button: "/path/to/Button.jsx",
         };
 
-        const plugin = createPreprocessMdxPlugin(componentMap);
+        const plugin = createAutoImportPlugin(componentMap);
         expect(typeof plugin).toBe("function");
     });
 
     test("plugin returns a transformer function", () => {
         const componentMap: ComponentMap = {};
-        const plugin = createPreprocessMdxPlugin(componentMap);
+        const plugin = createAutoImportPlugin(componentMap);
         const transformer = plugin();
         expect(typeof transformer).toBe("function");
     });
 
     test("handles empty component map", () => {
         const componentMap: ComponentMap = {};
-        const plugin = createPreprocessMdxPlugin(componentMap);
+        const plugin = createAutoImportPlugin(componentMap);
 
         // Create a minimal MDX AST
         const tree = {
@@ -74,7 +74,7 @@ describe("createPreprocessMdxPlugin", () => {
         };
         const conflicts = new Set(["Button"]);
 
-        const plugin = createPreprocessMdxPlugin(componentMap, conflicts);
+        const plugin = createAutoImportPlugin(componentMap, conflicts);
         expect(typeof plugin).toBe("function");
     });
 });
