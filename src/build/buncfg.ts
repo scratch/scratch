@@ -17,6 +17,7 @@ import {
   createFrontmatterPlugin,
   createShikiPlugin,
   createPackageResolverPlugin,
+  createImagePathsPlugin,
 } from './plugins';
 
 export interface BunBuildConfigOptions {
@@ -60,6 +61,9 @@ async function createMdxBuildPlugin(
   // Build rehype plugins list
   // rehype-raw processes raw HTML in markdown, with passThrough to preserve MDX nodes
   const rehypePlugins: any[] = [[rehypeRaw, { passThrough: MDX_NODE_TYPES }]];
+
+  // Transform relative image paths to absolute static routes
+  rehypePlugins.push(createImagePathsPlugin(ctx));
 
   // Add shiki syntax highlighting unless disabled
   const shikiPlugin = await createShikiPlugin(ctx);

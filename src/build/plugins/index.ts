@@ -29,6 +29,8 @@ export {
   resetShikiState,
 } from './rehype-shiki';
 
+export { createImagePathsPlugin } from './rehype-image-paths';
+
 // Bun plugins (for Bun.build())
 export { createPackageResolverPlugin } from './bun-package-resolver';
 
