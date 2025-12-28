@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.4] - 2025-12-28
+
+This release adds support for relative image paths in MDX files and improves raw HTML handling.
+
+### Features
+
+- Added support for relative image paths in MDX files - images are now resolved relative to the MDX file location and transformed to absolute static routes
+- Added raw HTML support in markdown content using `rehype-raw`
+
+### Improvements
+
+- Glob search now ignores `node_modules` directories, improving search performance in projects with dependencies
+- Preview command now uses route matching for more reliable file serving
+- Refactored build plugins into a modular architecture under `src/build/plugins/`
+
 ## [0.3.3] - 2025-12-27
 
 This release focuses on internal architecture improvements and test coverage for the build pipeline.
