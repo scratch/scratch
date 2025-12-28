@@ -19,6 +19,7 @@ export interface BuildContextInitOptions {
   port?: number;
   strict?: boolean;
   highlight?: HighlightMode;
+  base?: string;
 }
 
 export class BuildContext {
@@ -198,6 +199,7 @@ export class BuildContext {
       const mdxFiles = globSync('**/*.{mdx,md}', {
         cwd: this.pagesDir,
         absolute: true,
+        ignore: ['**/node_modules/**'],
       });
       this.entries = {};
       for (const mdxFile of mdxFiles) {
