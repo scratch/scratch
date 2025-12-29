@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.6] - 2025-12-29
+
+This release improves performance for the `view` command and adds the ability to checkout internal build files.
+
+### Improvements
+
+- The `view` command now caches `node_modules` between runs, significantly speeding up subsequent invocations
+- `scratch checkout _build` now works to eject internal build infrastructure files (entry-client.tsx, entry-server.jsx) for customization
+
 ## [0.3.5] - 2025-12-28
 
 This release fixes a dev server stability issue and improves build error reporting.
