@@ -5,8 +5,11 @@ import os from 'os';
 import { createCommand } from './create';
 import { devCommand } from './dev';
 import { BuildContext } from '../build/context';
+import { VERSION } from '../version';
 import { bunInstall } from '../util';
 import log from '../logger';
+
+const CACHE_DIR = path.join(os.homedir(), '.scratch');
 
 interface ViewOptions {
   port?: number;
@@ -56,13 +59,23 @@ export async function viewCommand(
   try {
     // 1. Create project in temp dir (quiet, no example content)
     await createCommand(tempDir, { src: true, package: true, example: false, quiet: true });
-    log.info(`Created temp project in ${tempDir}`);
+    log.debug(`Created temp project in ${tempDir}`);
 
-    // 2. Pre-install dependencies to avoid subprocess restart loop
-    // TODO: This is slow. Consider caching a pre-installed template to skip this step.
-    log.info('Installing dependencies...');
-    bunInstall(tempDir);
-    log.info('Dependencies installed');
+    // 2. Set up cached node_modules
+    // Structure: ~/.scratch/[version]/node_modules/
+    // Symlink temp/node_modules → ~/.scratch/[version]/node_modules/
+    const cacheVersionDir = path.join(CACHE_DIR, VERSION);
+    const nodeModulesCache = path.join(cacheVersionDir, 'node_modules');
+    await fs.mkdir(nodeModulesCache, { recursive: true });
+    await fs.symlink(nodeModulesCache, path.join(tempDir, 'node_modules'));
+
+    // Install dependencies if cache is empty (first run for this version)
+    const reactPath = path.join(nodeModulesCache, 'react');
+    if (!(await fs.exists(reactPath))) {
+      log.info('Installing dependencies (first run, this will be cached)...');
+      bunInstall(tempDir);
+      log.info('Dependencies installed');
+    }
 
     if (isDirectory) {
       // Directory: replace empty pages/ with symlink to user's directory
