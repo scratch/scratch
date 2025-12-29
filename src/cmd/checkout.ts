@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs/promises';
-import { hasTemplate, materializeTemplate, listUserFacingTemplateFiles } from '../template';
+import { hasTemplate, materializeTemplate, listUserFacingTemplateFiles, listTemplateFiles } from '../template';
 import { generatePackageJson } from './create';
 import { confirm, formatFileTree } from '../util';
 import log from '../logger';
@@ -65,7 +65,9 @@ export async function checkoutCommand(filePath: string | undefined, options: Che
   } else {
     // Check if it's a directory (find all templates that start with this path)
     const dirPrefix = templatePath + '/';
-    filesToRevert = allFiles.filter(f => f.startsWith(dirPrefix));
+    // For _build/, use the full template list (not shown in --list but can be explicitly checked out)
+    const searchList = templatePath.startsWith('_build') ? listTemplateFiles() : allFiles;
+    filesToRevert = searchList.filter(f => f.startsWith(dirPrefix));
   }
 
   if (filesToRevert.length === 0) {
