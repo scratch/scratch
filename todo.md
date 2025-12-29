@@ -1,3 +1,0 @@
-- [ ] Support multiple PageWrapper components via front matter
-- [ ] make sure social tags in header is correct
-- [x] support scratch checkout _build
