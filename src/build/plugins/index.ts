@@ -31,6 +31,8 @@ export {
 
 export { createImagePathsPlugin } from './rehype-image-paths';
 
+export { createLinkPathsPlugin } from './rehype-link-paths';
+
 // Bun plugins (for Bun.build())
 export { createPackageResolverPlugin } from './bun-package-resolver';
 

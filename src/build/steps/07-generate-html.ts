@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { BuildContext } from '../context';
 import type { BuildPipelineState, BuildStep } from '../types';
+import { normalizeBase } from '../util';
 import log from '../../logger';
 
 export const generateHtmlStep: BuildStep = {
@@ -15,12 +16,20 @@ export const generateHtmlStep: BuildStep = {
     const ssg = state.options.ssg ?? false;
     const renderedContent = state.outputs.renderedContent ?? new Map();
 
+    // Normalize base path for URL prefixing
+    const base = normalizeBase(ctx.options.base);
+
     // Detect favicons once for all entries
-    const faviconLinks = await getFaviconLinkTags(ctx);
+    const faviconLinks = await getFaviconLinkTags(ctx, base);
 
     // Build CSS link tag (only if CSS was built)
     const cssLinkTag = cssFilename
-      ? `<link rel="stylesheet" href="/${cssFilename}" />`
+      ? `<link rel="stylesheet" href="${base}/${cssFilename}" />`
+      : '';
+
+    // Inject base path as global variable for client-side access
+    const baseScript = base
+      ? `<script>window.__SCRATCH_BASE__ = '${base}';</script>`
       : '';
 
     // Build HTML for each entry
@@ -36,8 +45,9 @@ export const generateHtmlStep: BuildStep = {
         throw new Error(`No JS output found for entry: ${name}`);
       }
 
-      // Calculate relative path from HTML to JS
-      const relativeJsPath = '/' + path.relative(ctx.clientCompiledDir, jsPath);
+      // Calculate relative path from HTML to JS (with base path prefix)
+      const relativeJsPath =
+        base + '/' + path.relative(ctx.clientCompiledDir, jsPath);
 
       // Get SSG content if available
       const ssgContent =
@@ -52,6 +62,7 @@ export const generateHtmlStep: BuildStep = {
     ${cssLinkTag}
     ${faviconLinks}
     ${ssg ? ssgFlagScript : ''}
+    ${baseScript}
   </head>
   <body>
     <div id="mdx">${ssgContent}</div>
@@ -69,19 +80,24 @@ export const generateHtmlStep: BuildStep = {
 /**
  * Detect favicons in the public directory and return appropriate link tags
  */
-async function getFaviconLinkTags(ctx: BuildContext): Promise<string> {
+async function getFaviconLinkTags(
+  ctx: BuildContext,
+  base: string
+): Promise<string> {
   const links: string[] = [];
 
   // Check for SVG favicon (preferred for modern browsers)
   const svgFaviconPath = path.join(ctx.staticDir, 'favicon.svg');
   if (await fs.exists(svgFaviconPath)) {
-    links.push('<link rel="icon" type="image/svg+xml" href="/favicon.svg" />');
+    links.push(
+      `<link rel="icon" type="image/svg+xml" href="${base}/favicon.svg" />`
+    );
   }
 
   // Check for ICO favicon (fallback for older browsers)
   const icoFaviconPath = path.join(ctx.staticDir, 'favicon.ico');
   if (await fs.exists(icoFaviconPath)) {
-    links.push('<link rel="icon" href="/favicon.ico" />');
+    links.push(`<link rel="icon" href="${base}/favicon.ico" />`);
   }
 
   return links.join('\n    ');

@@ -1,0 +1,114 @@
+# Base Path URL Rewriting Plan
+
+## Goal
+Modify all relative URLs in the build output to include the configured `--base` path, enabling deployment to subdirectories (e.g., GitHub Pages at `username.github.io/repo-name/`).
+
+## Current State
+- `--base` flag exists and is passed to `ctx.options.base`
+- Image paths in MDX already rewritten via `rehype-image-paths.ts` plugin
+- HTML shell URLs (CSS, JS, favicon) are hardcoded with `/` prefix
+- Internal navigation links not rewritten
+
+## Implementation
+
+### 1. Extract `normalizeBase` to shared utility
+**File:** `src/build/util.ts` (new)
+
+Extract the `normalizeBase` function from `rehype-image-paths.ts` to a shared location.
+
+### 2. Update step 07-generate-html to use base path
+**File:** `src/build/steps/07-generate-html.ts`
+
+Prepend base path to:
+- CSS stylesheet href: `/${cssFilename}` → `${base}/${cssFilename}`
+- JS module src: `${relativeJsPath}` → `${base}${relativeJsPath}`
+- Favicon hrefs: `/favicon.svg` → `${base}/favicon.svg`
+
+Inject global variable for client-side access:
+```html
+<script>window.__SCRATCH_BASE__ = '/base';</script>
+```
+
+### 3. Create rehype-link-paths plugin for internal links
+**File:** `src/build/plugins/rehype-link-paths.ts` (new)
+
+Similar to `rehype-image-paths.ts`, but for `<a href="...">` elements:
+- Only transform internal links (starting with `/`, not `http://`, `https://`, `#`, `mailto:`)
+- Prepend base path: `/about` → `/base/about`
+- Handle both HAST elements and MDX JSX elements
+
+### 4. Export link paths plugin from plugins/index.ts
+**File:** `src/build/plugins/index.ts`
+
+Add export for the new plugin:
+```typescript
+export { createLinkPathsPlugin } from './rehype-link-paths';
+```
+
+### 5. Register link paths plugin in buncfg.ts
+**File:** `src/build/buncfg.ts`
+
+Import and add the new plugin to rehype pipeline (line ~66):
+```typescript
+rehypePlugins.push(createLinkPathsPlugin(ctx));
+```
+
+### 6. Update rehype-image-paths.ts to use shared utility
+**File:** `src/build/plugins/rehype-image-paths.ts`
+
+Import `normalizeBase` from shared utility, remove local definition.
+
+## Files to Modify
+
+### Source Files
+1. `src/build/util.ts` - Create with shared `normalizeBase` function
+2. `src/build/steps/07-generate-html.ts` - Use base path for CSS/JS/favicon + inject global
+3. `src/build/plugins/rehype-link-paths.ts` - New plugin for internal link rewriting
+4. `src/build/plugins/index.ts` - Export new plugin
+5. `src/build/buncfg.ts` - Import and register new plugin
+6. `src/build/plugins/rehype-image-paths.ts` - Use shared utility
+
+### Test Files
+7. `test/unit/build-util.test.ts` - Unit tests for `normalizeBase`
+8. `test/e2e/base-path.test.ts` - E2E tests for HTML shell base path
+9. `test/e2e/link-paths.test.ts` - E2E tests for internal link rewriting
+
+## Testing
+
+### Unit Tests
+
+**File:** `test/unit/build-util.test.ts` (new)
+
+Test `normalizeBase` function:
+- Returns empty string for undefined/null input
+- Adds leading `/` if missing: `mysite` → `/mysite`
+- Removes trailing `/`: `/mysite/` → `/mysite`
+- Handles both: `mysite/` → `/mysite`
+- Preserves valid input: `/mysite` → `/mysite`
+- Handles root path: `/` → `/` (or empty string?)
+
+### E2E Tests
+
+**File:** `test/e2e/base-path.test.ts` (new)
+
+Tests for HTML shell URLs with `--base`:
+1. **CSS link includes base path** - `href="/mysite/style-xxx.css"`
+2. **JS script includes base path** - `src="/mysite/index-xxx.js"`
+3. **Favicon includes base path** - `href="/mysite/favicon.svg"`
+4. **Global variable injected** - `window.__SCRATCH_BASE__ = '/mysite'`
+5. **Base path normalization** - handles `mysite`, `/mysite/`, etc.
+
+**File:** `test/e2e/link-paths.test.ts` (new)
+
+Tests for internal link rewriting (follows pattern of `image-paths.test.ts`):
+1. **Internal links rewritten** - `[About](/about)` → `href="/mysite/about"`
+2. **Raw HTML links rewritten** - `<a href="/about">` → `href="/mysite/about"`
+3. **External links unchanged** - `https://example.com` not modified
+4. **Anchor links unchanged** - `#section` not modified
+5. **mailto links unchanged** - `mailto:test@example.com` not modified
+6. **Relative links unchanged** - `./page` not modified (only absolute `/` paths)
+
+### Test Files to Create
+1. `test/unit/build-util.test.ts` - Unit tests for `normalizeBase`
+2. `test/e2e/base-path.test.ts` - E2E tests for CSS/JS/favicon/global base path
+3. `test/e2e/link-paths.test.ts` - E2E tests for internal link rewriting

@@ -9,6 +9,7 @@ import type { Plugin } from 'unified';
 import { visit } from 'unist-util-visit';
 import path from 'path';
 import type { BuildContext } from '../context';
+import { normalizeBase } from '../util';
 import log from '../../logger';
 
 /**
@@ -25,24 +26,6 @@ function isRelativePath(src: string): boolean {
   if (src.startsWith('//')) return false;
 
   return true;
-}
-
-/**
- * Normalize a base path to ensure it starts with / and doesn't end with /
- */
-function normalizeBase(base: string | undefined): string {
-  if (!base) return '';
-
-  let normalized = base;
-  // Ensure starts with /
-  if (!normalized.startsWith('/')) {
-    normalized = '/' + normalized;
-  }
-  // Remove trailing /
-  if (normalized.endsWith('/') && normalized.length > 1) {
-    normalized = normalized.slice(0, -1);
-  }
-  return normalized;
 }
 
 export interface ImagePathsPluginOptions {

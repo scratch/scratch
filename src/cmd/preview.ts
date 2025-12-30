@@ -96,7 +96,7 @@ export async function previewCommand(ctx: BuildContext, options: PreviewOptions)
     // Open browser if requested
     if (options.open !== false) {
         const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
-        const route = await findRoute(ctx.pagesDir);
+        const route = await findRoute(ctx.buildDir);
         Bun.spawn([opener, `http://localhost:${port}${route}`]);
     }
 

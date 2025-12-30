@@ -15,41 +15,12 @@ afterAll(async () => {
 });
 
 describe("findRoute", () => {
-  test("returns '/' when index.mdx exists", async () => {
-    const dir = path.join(tempDir, "with-index-mdx");
+  test("returns '/' when index.html exists at root", async () => {
+    const dir = path.join(tempDir, "with-index");
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, "index.mdx"), "# Index");
-    await fs.writeFile(path.join(dir, "other.md"), "# Other");
+    await fs.writeFile(path.join(dir, "index.html"), "<html></html>");
 
     expect(await findRoute(dir)).toBe("/");
-  });
-
-  test("returns '/' when index.md exists", async () => {
-    const dir = path.join(tempDir, "with-index-md");
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, "index.md"), "# Index");
-    await fs.writeFile(path.join(dir, "other.md"), "# Other");
-
-    expect(await findRoute(dir)).toBe("/");
-  });
-
-  test("prefers index.mdx over index.md", async () => {
-    const dir = path.join(tempDir, "both-index");
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, "index.mdx"), "# MDX");
-    await fs.writeFile(path.join(dir, "index.md"), "# MD");
-
-    expect(await findRoute(dir)).toBe("/");
-  });
-
-  test("returns first file alphabetically when no index", async () => {
-    const dir = path.join(tempDir, "no-index");
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, "beta.md"), "# Beta");
-    await fs.writeFile(path.join(dir, "alpha.md"), "# Alpha");
-    await fs.writeFile(path.join(dir, "gamma.mdx"), "# Gamma");
-
-    expect(await findRoute(dir)).toBe("/alpha");
   });
 
   test("returns '/' for empty directory", async () => {
@@ -59,13 +30,70 @@ describe("findRoute", () => {
     expect(await findRoute(dir)).toBe("/");
   });
 
-  test("ignores non-markdown files", async () => {
+  test("ignores non-html files", async () => {
     const dir = path.join(tempDir, "mixed-files");
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, "readme.txt"), "text");
     await fs.writeFile(path.join(dir, "script.js"), "js");
-    await fs.writeFile(path.join(dir, "page.md"), "# Page");
 
-    expect(await findRoute(dir)).toBe("/page");
+    expect(await findRoute(dir)).toBe("/");
+  });
+
+  // Recursive tests
+  test("finds index.html in subdirectory when root is empty", async () => {
+    const dir = path.join(tempDir, "recursive-index");
+    await fs.mkdir(path.join(dir, "blog"), { recursive: true });
+    await fs.writeFile(path.join(dir, "blog", "index.html"), "<html></html>");
+
+    expect(await findRoute(dir)).toBe("/blog");
+  });
+
+  test("prefers root index over subdirectory index", async () => {
+    const dir = path.join(tempDir, "root-wins");
+    await fs.mkdir(path.join(dir, "blog"), { recursive: true });
+    await fs.writeFile(path.join(dir, "index.html"), "<html></html>");
+    await fs.writeFile(path.join(dir, "blog", "index.html"), "<html></html>");
+
+    expect(await findRoute(dir)).toBe("/");
+  });
+
+  test("finds index.html in deeply nested directory", async () => {
+    const dir = path.join(tempDir, "deep-index");
+    await fs.mkdir(path.join(dir, "a", "b", "c"), { recursive: true });
+    await fs.writeFile(path.join(dir, "a", "b", "c", "index.html"), "<html></html>");
+
+    expect(await findRoute(dir)).toBe("/a/b/c");
+  });
+
+  test("alphabetical order for subdirectories", async () => {
+    const dir = path.join(tempDir, "alpha-order");
+    await fs.mkdir(path.join(dir, "zebra"), { recursive: true });
+    await fs.mkdir(path.join(dir, "alpha"), { recursive: true });
+    await fs.writeFile(path.join(dir, "zebra", "index.html"), "<html></html>");
+    await fs.writeFile(path.join(dir, "alpha", "index.html"), "<html></html>");
+
+    // alpha comes before zebra alphabetically
+    expect(await findRoute(dir)).toBe("/alpha");
+  });
+
+  test("skips hidden directories", async () => {
+    const dir = path.join(tempDir, "hidden-dirs");
+    await fs.mkdir(path.join(dir, ".hidden"), { recursive: true });
+    await fs.mkdir(path.join(dir, "visible"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".hidden", "index.html"), "<html></html>");
+    await fs.writeFile(path.join(dir, "visible", "index.html"), "<html></html>");
+
+    expect(await findRoute(dir)).toBe("/visible");
+  });
+
+  test("returns first matching subdirectory in DFS order", async () => {
+    const dir = path.join(tempDir, "dfs-order");
+    await fs.mkdir(path.join(dir, "aaa", "nested"), { recursive: true });
+    await fs.mkdir(path.join(dir, "bbb"), { recursive: true });
+    await fs.writeFile(path.join(dir, "aaa", "nested", "index.html"), "<html></html>");
+    await fs.writeFile(path.join(dir, "bbb", "index.html"), "<html></html>");
+
+    // aaa/nested is found via DFS before bbb because aaa < bbb alphabetically
+    expect(await findRoute(dir)).toBe("/aaa/nested");
   });
 });

@@ -67,6 +67,7 @@ program
   .option('-o, --out-dir <path>', 'Output directory (default: dist)')
   .option('-d, --development', 'Development mode')
   .option('-b, --base <path>', 'Base path for deployment (e.g., /mysite/)')
+  .option('--test-base', 'Output to dist/<base>/ for local testing')
   .option('--no-ssg', 'Disable static site generation')
   .option('--static <mode>', 'Static file mode: public, assets, all', 'assets')
   .option('--strict', 'Do not inject PageWrapper component or missing imports')

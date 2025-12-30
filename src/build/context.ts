@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { globSync } from 'fast-glob';
 import { materializeTemplate } from '../template';
+import { normalizeBase } from './util';
 
 export type HighlightMode = 'off' | 'popular' | 'auto' | 'all';
 
@@ -20,12 +21,14 @@ export interface BuildContextInitOptions {
   strict?: boolean;
   highlight?: HighlightMode;
   base?: string;
+  testBase?: boolean;
 }
 
 export class BuildContext {
   rootDir: string;
   tempDir: string;
-  buildDir: string;
+  outDir: string; // Root output directory (e.g., dist/)
+  buildDir: string; // Final build directory (may be nested with --test-base)
   srcDir: string;
   pagesDir: string;
   staticDir: string;
@@ -43,7 +46,22 @@ export class BuildContext {
     this.options = opts;
     this.rootDir = path.resolve(opts.path || '.');
     this.tempDir = path.resolve(this.rootDir, opts.tempDir || '.scratch-build-cache');
-    this.buildDir = path.resolve(this.rootDir, opts.outDir || 'dist');
+
+    // Root output directory (always dist/ or custom --out-dir)
+    this.outDir = path.resolve(this.rootDir, opts.outDir || 'dist');
+
+    // Final build directory, optionally nested under base path for local testing
+    let buildDir = this.outDir;
+    if (opts.testBase && opts.base) {
+      const base = normalizeBase(opts.base);
+      // Remove leading slash for path joining (e.g., '/mysite' -> 'mysite')
+      const baseSubdir = base.startsWith('/') ? base.slice(1) : base;
+      if (baseSubdir) {
+        buildDir = path.resolve(buildDir, baseSubdir);
+      }
+    }
+    this.buildDir = buildDir;
+
     this.srcDir = path.resolve(this.rootDir, opts.srcDir || 'src');
     this.pagesDir = path.resolve(this.rootDir, opts.pagesDir || 'pages');
     this.staticDir = path.resolve(this.rootDir, opts.staticDir || 'public');
@@ -97,9 +115,10 @@ export class BuildContext {
 
   /**
    * Reset the build directory.
+   * Always cleans the root outDir to remove stale files from previous builds.
    */
   async resetBuildDir(): Promise<void> {
-    await rmWithRetry(this.buildDir, { recursive: true, force: true });
+    await rmWithRetry(this.outDir, { recursive: true, force: true });
     await fs.mkdir(this.buildDir, { recursive: true });
   }
 

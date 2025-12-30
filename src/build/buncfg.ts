@@ -18,6 +18,7 @@ import {
   createShikiPlugin,
   createPackageResolverPlugin,
   createImagePathsPlugin,
+  createLinkPathsPlugin,
 } from './plugins';
 
 export interface BunBuildConfigOptions {
@@ -64,6 +65,9 @@ async function createMdxBuildPlugin(
 
   // Transform relative image paths to absolute static routes
   rehypePlugins.push(createImagePathsPlugin(ctx));
+
+  // Transform internal link paths to include base path
+  rehypePlugins.push(createLinkPathsPlugin(ctx));
 
   // Add shiki syntax highlighting unless disabled
   const shikiPlugin = await createShikiPlugin(ctx);

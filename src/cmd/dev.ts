@@ -8,35 +8,50 @@ import { getContentType } from '../util';
 import log from '../logger';
 
 /**
- * Given a directory, find the best route to open in the dev server.
- * Prefers / if /index.md[x] exists, otherwise first markdown file
- * alphabetically. Returns / if no markdown files are found.
+ * Given a build directory, find the best route to open in the dev server.
+ * Uses DFS to search recursively for index.html files.
+ * Returns '/' if nothing found.
  */
 export async function findRoute(dir: string): Promise<string> {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
+  const result = await findRouteRecursive(dir, dir);
+  return result || '/';
+}
 
-  // Get all markdown files
-  const mdFiles = entries
-    .filter(
-      (e) => e.isFile() && (e.name.endsWith('.md') || e.name.endsWith('.mdx'))
-    )
-    .map((e) => e.name);
-
-  // Return the route if  the directory contains an index file, or if there
-  // are no markdown files
-  if (
-    mdFiles.includes('index.mdx') ||
-    mdFiles.includes('index.md') ||
-    mdFiles.length == 0
-  ) {
-    return '/';
+/**
+ * DFS to find the first index.html file.
+ */
+async function findRouteRecursive(
+  baseDir: string,
+  currentDir: string
+): Promise<string | null> {
+  let entries;
+  try {
+    entries = await fs.readdir(currentDir, { withFileTypes: true });
+  } catch {
+    return null;
   }
 
-  // Return the route corresponding to the first markdown file (alphabetically)
-  mdFiles.sort();
-  const firstFile = mdFiles[0];
-  const basename = path.basename(firstFile, path.extname(firstFile));
-  return `/${basename}`;
+  // Sort for deterministic order
+  entries.sort((a, b) => a.name.localeCompare(b.name));
+
+  const files = entries.filter((e) => e.isFile());
+  const dirs = entries.filter((e) => e.isDirectory() && !e.name.startsWith('.'));
+
+  // Check for index.html (indicates a valid route)
+  if (files.some((e) => e.name === 'index.html')) {
+    const relativePath = path.relative(baseDir, currentDir);
+    return relativePath ? `/${relativePath}` : '/';
+  }
+
+  // DFS into subdirectories
+  for (const subdir of dirs) {
+    const result = await findRouteRecursive(baseDir, path.join(currentDir, subdir.name));
+    if (result) {
+      return result;
+    }
+  }
+
+  return null;
 }
 
 interface DevOptions {
@@ -183,7 +198,7 @@ export async function devCommand(ctx: BuildContext, options: DevOptions = {}) {
         : process.platform === 'win32'
           ? 'start'
           : 'xdg-open';
-    const route = options.route ?? await findRoute(ctx.pagesDir);
+    const route = options.route ?? await findRoute(ctx.buildDir);
     Bun.spawn([opener, `http://localhost:${port}${route}`]);
   }
 
