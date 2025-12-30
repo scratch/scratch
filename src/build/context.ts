@@ -54,10 +54,9 @@ export class BuildContext {
     let buildDir = this.outDir;
     if (opts.testBase && opts.base) {
       const base = normalizeBase(opts.base);
-      // Remove leading slash for path joining (e.g., '/mysite' -> 'mysite')
-      const baseSubdir = base.startsWith('/') ? base.slice(1) : base;
-      if (baseSubdir) {
-        buildDir = path.resolve(buildDir, baseSubdir);
+      if (base) {
+        // normalizeBase guarantees leading slash, remove it for path joining
+        buildDir = path.resolve(buildDir, base.slice(1));
       }
     }
     this.buildDir = buildDir;
