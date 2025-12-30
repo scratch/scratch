@@ -9,19 +9,8 @@
 import type { Plugin } from 'unified';
 import { visit } from 'unist-util-visit';
 import type { BuildContext } from '../context';
-import { normalizeBase } from '../util';
+import { normalizeBase, isInternalAbsolutePath } from '../util';
 import log from '../../logger';
-
-/**
- * Check if an href should be transformed (internal absolute path)
- */
-function isInternalAbsolutePath(href: string): boolean {
-  // Only transform paths starting with /
-  if (!href.startsWith('/')) return false;
-  // Skip protocol-relative URLs
-  if (href.startsWith('//')) return false;
-  return true;
-}
 
 /**
  * Get the href attribute from an MDX JSX element's attributes array.

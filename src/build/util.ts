@@ -20,3 +20,13 @@ export function normalizeBase(base: string | undefined): string {
   }
   return normalized;
 }
+
+/**
+ * Check if a path is an internal absolute path (starting with /).
+ * Returns false for protocol-relative URLs (//example.com).
+ */
+export function isInternalAbsolutePath(path: string): boolean {
+  if (!path.startsWith('/')) return false;
+  if (path.startsWith('//')) return false;
+  return true;
+}

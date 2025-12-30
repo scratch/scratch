@@ -32,7 +32,7 @@ describe('normalizeBase', () => {
   });
 
   test('handles single slash (root path)', () => {
-    // Single slash should remain as is (it's a valid base)
-    expect(normalizeBase('/')).toBe('/');
+    // Single slash should return empty string (no base path needed for root)
+    expect(normalizeBase('/')).toBe('');
   });
 });

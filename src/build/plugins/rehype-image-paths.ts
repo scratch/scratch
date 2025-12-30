@@ -9,7 +9,7 @@ import type { Plugin } from 'unified';
 import { visit } from 'unist-util-visit';
 import path from 'path';
 import type { BuildContext } from '../context';
-import { normalizeBase } from '../util';
+import { normalizeBase, isInternalAbsolutePath } from '../util';
 import log from '../../logger';
 
 /**
@@ -25,17 +25,6 @@ function isRelativePath(src: string): boolean {
   // Skip protocol-relative URLs
   if (src.startsWith('//')) return false;
 
-  return true;
-}
-
-/**
- * Check if a path is an internal absolute path (starting with /)
- */
-function isInternalAbsolutePath(src: string): boolean {
-  // Only match paths starting with /
-  if (!src.startsWith('/')) return false;
-  // Skip protocol-relative URLs
-  if (src.startsWith('//')) return false;
   return true;
 }
 
