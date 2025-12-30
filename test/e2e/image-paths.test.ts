@@ -143,6 +143,39 @@ Some text between images.
     await rm(tempDir, { recursive: true, force: true });
   }, 180_000);
 
+  test("transforms absolute paths when --base is specified", async () => {
+    // 1. Create a fresh project
+    const tempDir = await mkTempDir("image-paths-abs-base-");
+    runCliSync(["create", "sandbox"], tempDir);
+
+    const sandboxDir = path.join(tempDir, "sandbox");
+
+    // 2. Create an MDX file with absolute image paths
+    const mdxPath = path.join(sandboxDir, "pages", "index.mdx");
+    await writeFile(
+      mdxPath,
+      `# Image Test
+
+![Absolute](/images/photo.png)
+
+<img src="/logo.svg" alt="Logo" />
+`
+    );
+
+    // 3. Build with --base flag
+    runCliSync(["build", "sandbox", "--development", "--base", "/mysite"], tempDir);
+
+    // 4. Read the generated HTML
+    const html = await readFile(path.join(sandboxDir, "dist", "index.html"), "utf-8");
+
+    // 5. Verify absolute paths include the base prefix
+    expect(html).toContain('src="/mysite/images/photo.png"');
+    expect(html).toContain('src="/mysite/logo.svg"');
+
+    // Cleanup
+    await rm(tempDir, { recursive: true, force: true });
+  }, 180_000);
+
   test("normalizes base path with or without slashes", async () => {
     // 1. Create a fresh project
     const tempDir = await mkTempDir("image-paths-base-normalize-");
