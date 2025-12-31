@@ -46,4 +46,78 @@ This page has frontmatter metadata.
     // Cleanup
     await rm(tempDir, { recursive: true, force: true });
   }, 180_000);
+
+  test("social sharing meta tags are injected correctly", async () => {
+    const tempDir = await mkTempDir("frontmatter-social-");
+    runCliSync(["create", "sandbox"], tempDir);
+
+    const sandboxDir = path.join(tempDir, "sandbox");
+    const mdxPath = path.join(sandboxDir, "pages", "index.mdx");
+
+    await writeFile(
+      mdxPath,
+      `---
+title: Social Test Page
+description: Testing social sharing tags
+image: /social-image.png
+siteName: My Site
+locale: en_US
+twitterSite: "@mysite"
+twitterCreator: "@author"
+---
+
+# Social Sharing Test
+`
+    );
+
+    runCliSync(["build", "sandbox", "--development", "--no-ssg"], tempDir);
+
+    const html = await readFile(path.join(sandboxDir, "dist", "index.html"), "utf-8");
+
+    // Open Graph tags
+    expect(html).toContain('property="og:title" content="Social Test Page"');
+    expect(html).toContain('property="og:description" content="Testing social sharing tags"');
+    expect(html).toContain('property="og:image" content="/social-image.png"');
+    expect(html).toContain('property="og:site_name" content="My Site"');
+    expect(html).toContain('property="og:locale" content="en_US"');
+
+    // Twitter tags
+    expect(html).toContain('name="twitter:title" content="Social Test Page"');
+    expect(html).toContain('name="twitter:image" content="/social-image.png"');
+    expect(html).toContain('name="twitter:site" content="@mysite"');
+    expect(html).toContain('name="twitter:creator" content="@author"');
+    expect(html).toContain('name="twitter:card" content="summary_large_image"');
+
+    await rm(tempDir, { recursive: true, force: true });
+  }, 180_000);
+
+  test("siteUrl resolves relative image paths to absolute URLs", async () => {
+    const tempDir = await mkTempDir("frontmatter-siteurl-");
+    runCliSync(["create", "sandbox"], tempDir);
+
+    const sandboxDir = path.join(tempDir, "sandbox");
+    const mdxPath = path.join(sandboxDir, "pages", "index.mdx");
+
+    await writeFile(
+      mdxPath,
+      `---
+title: SiteUrl Test
+siteUrl: "https://example.com"
+image: /images/og.png
+---
+
+# SiteUrl Resolution Test
+`
+    );
+
+    runCliSync(["build", "sandbox", "--development", "--no-ssg"], tempDir);
+
+    const html = await readFile(path.join(sandboxDir, "dist", "index.html"), "utf-8");
+
+    // Image URLs should be absolute
+    expect(html).toContain('property="og:image" content="https://example.com/images/og.png"');
+    expect(html).toContain('name="twitter:image" content="https://example.com/images/og.png"');
+
+    await rm(tempDir, { recursive: true, force: true });
+  }, 180_000);
 });
