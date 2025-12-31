@@ -4,6 +4,26 @@ import type { BuildPipelineState, BuildStep } from '../types';
 import { escapeHtml } from '../../util';
 import log from '../../logger';
 
+/**
+ * Resolve image URLs for social sharing meta tags.
+ * Prepends siteUrl to relative paths to create absolute URLs.
+ */
+export function resolveImageUrl(imagePath: string, siteUrl?: string): string {
+  if (!imagePath) return '';
+  // If it's already absolute, return as-is
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  // If we have a siteUrl and image is relative, combine them
+  if (siteUrl) {
+    const base = String(siteUrl).replace(/\/$/, ''); // remove trailing slash
+    const path = imagePath.startsWith('/') ? imagePath : '/' + imagePath;
+    return base + path;
+  }
+  // No siteUrl, return relative path (won't work for social sharing but allows local dev)
+  return imagePath;
+}
+
 export const injectFrontmatterStep: BuildStep = {
   name: '08-inject-frontmatter',
   description: 'Inject frontmatter meta tags into HTML',
@@ -27,6 +47,7 @@ export const injectFrontmatterStep: BuildStep = {
 
       // Helper to safely escape metadata values
       const e = (val: unknown): string => escapeHtml(String(val));
+      const siteUrl = metadata.siteUrl as string | undefined;
 
       // Build meta tags (escape all user-provided values to prevent XSS)
       let metaTags = [
@@ -44,9 +65,13 @@ export const injectFrontmatterStep: BuildStep = {
         metadata.description &&
           `<meta property="og:description" content="${e(metadata.description)}">`,
         metadata.image &&
-          `<meta property="og:image" content="${e(metadata.image)}">`,
+          `<meta property="og:image" content="${e(resolveImageUrl(String(metadata.image), siteUrl))}">`,
         metadata.url && `<meta property="og:url" content="${e(metadata.url)}">`,
         `<meta property="og:type" content="${e(metadata.type || 'article')}">`,
+        metadata.siteName &&
+          `<meta property="og:site_name" content="${e(metadata.siteName)}">`,
+        metadata.locale &&
+          `<meta property="og:locale" content="${e(metadata.locale)}">`,
 
         // Twitter
         metadata.title &&
@@ -54,8 +79,12 @@ export const injectFrontmatterStep: BuildStep = {
         metadata.description &&
           `<meta name="twitter:description" content="${e(metadata.description)}">`,
         metadata.image &&
-          `<meta name="twitter:image" content="${e(metadata.image)}">`,
+          `<meta name="twitter:image" content="${e(resolveImageUrl(String(metadata.image), siteUrl))}">`,
         `<meta name="twitter:card" content="${e(metadata.twitterCard || 'summary_large_image')}">`,
+        metadata.twitterSite &&
+          `<meta name="twitter:site" content="${e(metadata.twitterSite)}">`,
+        metadata.twitterCreator &&
+          `<meta name="twitter:creator" content="${e(metadata.twitterCreator)}">`,
 
         // Dates
         metadata.publishDate &&
