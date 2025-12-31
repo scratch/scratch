@@ -28,6 +28,23 @@ export const injectFrontmatterStep: BuildStep = {
       // Helper to safely escape metadata values
       const e = (val: unknown): string => escapeHtml(String(val));
 
+      // Helper to resolve image URLs - prepend siteUrl to relative paths
+      const resolveImageUrl = (imagePath: string): string => {
+        if (!imagePath) return '';
+        // If it's already absolute, return as-is
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+          return imagePath;
+        }
+        // If we have a siteUrl and image is relative, combine them
+        if (metadata.siteUrl) {
+          const base = String(metadata.siteUrl).replace(/\/$/, ''); // remove trailing slash
+          const path = imagePath.startsWith('/') ? imagePath : '/' + imagePath;
+          return base + path;
+        }
+        // No siteUrl, return relative path (won't work for social sharing but allows local dev)
+        return imagePath;
+      };
+
       // Build meta tags (escape all user-provided values to prevent XSS)
       let metaTags = [
         metadata.title && `<title>${e(metadata.title)}</title>`,
@@ -44,9 +61,13 @@ export const injectFrontmatterStep: BuildStep = {
         metadata.description &&
           `<meta property="og:description" content="${e(metadata.description)}">`,
         metadata.image &&
-          `<meta property="og:image" content="${e(metadata.image)}">`,
+          `<meta property="og:image" content="${e(resolveImageUrl(String(metadata.image)))}">`,
         metadata.url && `<meta property="og:url" content="${e(metadata.url)}">`,
         `<meta property="og:type" content="${e(metadata.type || 'article')}">`,
+        metadata.siteName &&
+          `<meta property="og:site_name" content="${e(metadata.siteName)}">`,
+        metadata.locale &&
+          `<meta property="og:locale" content="${e(metadata.locale)}">`,
 
         // Twitter
         metadata.title &&
@@ -54,8 +75,12 @@ export const injectFrontmatterStep: BuildStep = {
         metadata.description &&
           `<meta name="twitter:description" content="${e(metadata.description)}">`,
         metadata.image &&
-          `<meta name="twitter:image" content="${e(metadata.image)}">`,
+          `<meta name="twitter:image" content="${e(resolveImageUrl(String(metadata.image)))}">`,
         `<meta name="twitter:card" content="${e(metadata.twitterCard || 'summary_large_image')}">`,
+        metadata.twitterSite &&
+          `<meta name="twitter:site" content="${e(metadata.twitterSite)}">`,
+        metadata.twitterCreator &&
+          `<meta name="twitter:creator" content="${e(metadata.twitterCreator)}">`,
 
         // Dates
         metadata.publishDate &&

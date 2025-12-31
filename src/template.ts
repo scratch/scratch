@@ -1,9 +1,20 @@
 import fs from 'fs/promises';
 import path from 'path';
 import log from './logger';
-import { templates } from './template.generated';
+import { templates, type TemplateFile } from './template.generated';
 
 export { templates };
+
+/**
+ * Get the content to write for a template file.
+ * Decodes base64 for binary files.
+ */
+function getWritableContent(file: TemplateFile): string | Buffer {
+  if (file.binary) {
+    return Buffer.from(file.content, 'base64');
+  }
+  return file.content;
+}
 
 // ============================================================================
 // TEMPLATE TIERS
@@ -87,7 +98,7 @@ export async function materializeProjectTemplates(
     log.debug('Created empty pages/ and public/ directories');
   }
 
-  for (const [relativePath, content] of Object.entries(templates)) {
+  for (const [relativePath, file] of Object.entries(templates)) {
     // Skip _build/ files (internal build infrastructure)
     if (relativePath.startsWith('_build/')) {
       continue;
@@ -127,7 +138,7 @@ export async function materializeProjectTemplates(
       continue;
     }
 
-    await fs.writeFile(targetPath, content);
+    await fs.writeFile(targetPath, getWritableContent(file));
     log.debug(`${exists ? 'Overwrote' : 'Wrote'} ${relativePath}`);
     created.push(relativePath);
   }
@@ -143,27 +154,32 @@ export async function materializeTemplate(
   templatePath: string,
   targetPath: string
 ): Promise<void> {
-  const content = templates[templatePath];
+  const file = templates[templatePath];
 
-  if (!content) {
+  if (!file) {
     throw new Error(`Template not found: ${templatePath}`);
   }
 
   await fs.mkdir(path.dirname(targetPath), { recursive: true });
-  await fs.writeFile(targetPath, content);
+  await fs.writeFile(targetPath, getWritableContent(file));
 }
 
 /**
  * Get the content of a template file without writing to disk.
+ * For text files, returns the string content.
+ * For binary files, returns the base64-decoded content as a string.
  */
 export function getTemplateContent(templatePath: string): string {
-  const content = templates[templatePath];
+  const file = templates[templatePath];
 
-  if (!content) {
+  if (!file) {
     throw new Error(`Template not found: ${templatePath}`);
   }
 
-  return content;
+  if (file.binary) {
+    return Buffer.from(file.content, 'base64').toString();
+  }
+  return file.content;
 }
 
 /**
@@ -171,6 +187,14 @@ export function getTemplateContent(templatePath: string): string {
  */
 export function hasTemplate(templatePath: string): boolean {
   return templatePath in templates;
+}
+
+/**
+ * Check if a template file is binary.
+ */
+export function isTemplateBinary(templatePath: string): boolean {
+  const file = templates[templatePath];
+  return file?.binary ?? false;
 }
 
 /**
