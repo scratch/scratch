@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.8] - 2025-12-31
+
+This release adds expanded social media meta tag support for better sharing on platforms like Twitter/X and Facebook.
+
+### Features
+
+- Added new frontmatter fields for social sharing: `siteName`, `locale`, `twitterSite`, and `twitterCreator`
+- Added `siteUrl` frontmatter field to automatically resolve relative image paths to absolute URLs for social sharing
+
+### Improvements
+
+- Template system now properly handles binary files (images, fonts) with base64 encoding
+
 ## [0.3.6] - 2025-12-29
 
 This release improves performance for the `view` command and adds the ability to checkout internal build files.
