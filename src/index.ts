@@ -9,6 +9,7 @@ import { previewCommand } from './cmd/preview';
 import { checkoutCommand } from './cmd/checkout';
 import { updateCommand } from './cmd/update';
 import { watchCommand } from './cmd/watch';
+import { registerCloudCommands } from './cmd/cloud';
 import { BuildContext } from './build/context';
 import log, { setLogLevel, setShowBunErrors, shouldShowBunErrors } from './logger';
 import { VERSION } from './version';
@@ -176,5 +177,8 @@ program.hook('preAction', (thisCommand, actionCommand) => {
   opts.path = actionCommand.args[0] || '.';
   ctx = new BuildContext(opts);
 });
+
+// Register cloud commands
+registerCloudCommands(program);
 
 program.parse();
