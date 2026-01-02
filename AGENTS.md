@@ -20,7 +20,8 @@ scratch is a CLI tool for building static MDX-based websites using Bun. Users cr
   - Alias: `eject`
   - `-l, --list` - List available template files
   - `-f, --force` - Overwrite existing files without confirmation
-- `view <path>` - View markdown file(s) with live reload
+- `watch <path>` - Watch markdown file(s) with live reload
+  - Alias: `view`
   - If path is a file: opens that file's route
   - If path is a directory: opens first markdown file alphabetically
   - `-p, --port <port>` - Port for dev server
@@ -74,7 +75,7 @@ These can be ejected from embedded templates using `scratch checkout`.
 - `src/cmd/create.ts` - Create command handler
 - `src/cmd/preview.ts` - Preview server for built sites
 - `src/cmd/checkout.ts` - Checkout/eject command handler
-- `src/cmd/view.ts` - View single file with live reload
+- `src/cmd/watch.ts` - Watch single file with live reload
 
 **Templates**:
 - `src/template.ts` - Template runtime API (materialize, getContent, list templates)

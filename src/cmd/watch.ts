@@ -11,14 +11,14 @@ import log from '../logger';
 
 const CACHE_DIR = path.join(os.homedir(), '.scratch');
 
-interface ViewOptions {
+interface WatchOptions {
   port?: number;
   open?: boolean;
 }
 
-export async function viewCommand(
+export async function watchCommand(
   filePath: string,
-  options: ViewOptions = {}
+  options: WatchOptions = {}
 ): Promise<void> {
   const absolutePath = path.resolve(filePath);
 
@@ -34,7 +34,7 @@ export async function viewCommand(
   log.info(`Rendering ${isDirectory ? 'directory' : 'file'} ${filePath}`);
 
   // Create temp directory
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'scratch-view-'));
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'scratch-watch-'));
   const tempPagesDir = path.join(tempDir, 'pages');
 
   // Cleanup function
