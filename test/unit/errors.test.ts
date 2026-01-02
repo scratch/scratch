@@ -21,7 +21,7 @@ describe("formatBuildError", () => {
             );
             error.stack = `Error: The \`style\` prop expects a mapping from style properties to values, not a string
     at renderToString (node_modules/react-dom/cjs/react-dom-server.browser.production.min.js:1:1)
-    at Object.render (/project/.scratch-build-cache/server-compiled/about/index.js:123:45)`;
+    at Object.render (/project/.scratch/cache/server-compiled/about/index.js:123:45)`;
 
             const result = formatBuildError(error);
             expect(result).toContain("pages/about.mdx");
@@ -125,7 +125,7 @@ describe("formatBuildError", () => {
             );
             // The regex expects a single path segment (entry name) followed by /index.js
             error.stack = `Error: message
-    at render (/project/.scratch-build-cache/server-compiled/about/index.js:1:1)`;
+    at render (/project/.scratch/cache/server-compiled/about/index.js:1:1)`;
 
             const result = formatBuildError(error);
             expect(result).toContain("pages/about.mdx");
@@ -136,7 +136,7 @@ describe("formatBuildError", () => {
                 'Invalid DOM property `class`. Did you mean `className`?'
             );
             error.stack = `Error: message
-    at render (/project/.scratch-build-cache/client-compiled/contact/index.js:1:1)`;
+    at render (/project/.scratch/cache/client-compiled/contact/index.js:1:1)`;
 
             const result = formatBuildError(error);
             expect(result).toContain("pages/contact.mdx");

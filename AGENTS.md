@@ -102,9 +102,9 @@ Templates are embedded directly into the compiled executable for portability.
 - `hasTemplate(templatePath)` - Check if template exists
 - `listTemplateFiles()` - List all template files
 
-**Fallback resolution**: During build, if a required file is missing from the user's project, the embedded template is materialized to `.scratch-build-cache/embedded-templates/` and used instead.
+**Fallback resolution**: During build, if a required file is missing from the user's project, the embedded template is materialized to `.scratch/cache/embedded-templates/` and used instead.
 
-### Build Cache (`.scratch-build-cache/`)
+### Build Cache (`.scratch/cache/`)
 - `client-src/` - Generated TSX entry files
 - `client-compiled/` - Bun.build() output
 - `server-src/` - SSG JSX entries

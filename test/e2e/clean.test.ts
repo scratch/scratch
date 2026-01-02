@@ -5,19 +5,19 @@ import path from "path";
 import { runCliSync, mkTempDir } from "./util";
 
 describe("clean command", () => {
-  test("removes dist/ and .scratch-build-cache/ directories", async () => {
+  test("removes dist/ and .scratch/cache/ directories", async () => {
     // 1. Create a fresh project
     const tempDir = await mkTempDir("clean-");
     runCliSync(["create", "sandbox"], tempDir);
 
     const sandboxDir = path.join(tempDir, "sandbox");
 
-    // 2. Build the project to create dist/ and .scratch-build-cache/
+    // 2. Build the project to create dist/ and .scratch/cache/
     runCliSync(["build", "sandbox", "--no-ssg"], tempDir);
 
     // 3. Verify both directories exist after build
     const distDir = path.join(sandboxDir, "dist");
-    const cacheDir = path.join(sandboxDir, ".scratch-build-cache");
+    const cacheDir = path.join(sandboxDir, ".scratch", "cache");
 
     expect(await fs.exists(distDir)).toBe(true);
     expect(await fs.exists(cacheDir)).toBe(true);

@@ -260,4 +260,4 @@ Use `not-prose` class to exclude elements from typography styling.
 These are generated and should be in `.gitignore`:
 
 - `dist/` - Build output
-- `.scratch-build-cache/` - Build cache and auto-installed dependencies
+- `.scratch/` - Build cache and project config

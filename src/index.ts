@@ -137,7 +137,7 @@ program
     withErrorHandling('Clean', async () => {
       await fs.rm(ctx.buildDir, { recursive: true, force: true });
       await fs.rm(ctx.tempDir, { recursive: true, force: true });
-      log.info('Cleaned dist/ and .scratch-build-cache/');
+      log.info('Cleaned dist/ and .scratch/cache/');
     })
   );
 
