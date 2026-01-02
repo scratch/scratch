@@ -1,15 +1,13 @@
 ---
 # Page metadata
-title: "Scratch"                                          # Page title and og:title
+title: "Scratch Page"                                           # Page title and og:title
 description: "A CLI for building static MDX websites with Bun"  # Meta description and og:description
 keywords: ["MDX", "static site", "React", "Bun", "markdown"]    # Meta keywords
-author: "Scratch"                                         # Meta author
-lang: "en"                                                # HTML lang attribute
+author: "Scratch"                                               # Meta author
+lang: "en"                                                      # HTML lang attribute
 ---
 
-<div className="not-prose flex flex-col items-center justify-center mb-8">
-  <img src="/scratch-logo.svg" alt="Scratch" height="120" />
-</div>
+![Scratch Logo](/scratch-logo.svg)
 
 Scratch compiles Markdown and React into beautiful static websites that can be hosted anywhere.
 
@@ -68,25 +66,31 @@ Scratch uses an opinionated project structure and requires **no boilerplate or c
 
 A simple Scratch project (created with `scratch create`) looks like this:
 
-<Files content={`
+<Files>
+```
 my-scratch-project/
--pages/                 # put markdown and components here
---index.mdx
---Counter.tsx
--public/ (collapsed)    # static assets
---favicon.svg
--src/ (collapsed)       # global components and css
---PageWrapper.jsx       # wraps every page
---tailwind.css          # global styles
---markdown/ (collapsed) # default markdown components
----index.ts
----CodeBlock.tsx
----Heading.tsx
----Link.tsx
--AGENTS.md              # agent context
--package.json           # dependencies
--.gitignore
-`} />
+  pages/                 # put markdown and components here
+    posts/ (collapsed)
+      post1.md           # accessible at /posts/post1
+      post2.md           # /posts/post2
+      blog.png           # static assets in pages/ or public/
+    index.mdx            # accessible at root path (/)
+    Counter.tsx
+  public/ (collapsed)    # static assets
+    favicon.svg
+  src/ (collapsed)       # global components and css
+    markdown/ (collapsed) # default markdown components
+      index.ts
+      CodeBlock.tsx
+      Heading.tsx
+      Link.tsx
+    PageWrapper.jsx       # wraps every page
+    tailwind.css          # global styles
+  AGENTS.md              # agent context
+  package.json           # dependencies
+  .gitignore
+```
+</Files>
 
 
 Use `scratch build` to compile this project into a static website, like [this one](https://github.com/scratch/scratch.dev).
@@ -97,6 +101,8 @@ Modify `src/tailwind.css` directory to change the styling of your document. Add 
 
 ## Commands
 
+Here's a quick list of the Scratch CLI commands. See the [Scratch docs](https://scratch.dev/docs/) for a full rundown.
+
 ```bash
 # Create a new project
 scratch create [path]     # create project at path (default: current directory)
@@ -106,8 +112,6 @@ scratch dev
 
 # Build for production
 scratch build
-scratch build --no-ssg        # disable static site generation
-scratch build --development   # unminified, with source maps
 
 # Preview production build locally
 scratch preview
@@ -119,16 +123,13 @@ scratch watch path
 scratch clean
 
 # Revert a file to its template version
-scratch checkout [file]           # revert a file to its template version
-scratch checkout --force [file]   # overwrite without confirmation
-scratch checkout --list           # list available template files
+scratch checkout path           # revert file/directory to its template version
 
 # Update scratch to latest version
 scratch update
 ```
 
 ## Acknowledgements
-
 
 [Bun](https://bun.com/) for lightning-fast builds, development with HMR, native typescript support, and a portable executable.
 

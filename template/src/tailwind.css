@@ -11,9 +11,19 @@
  * Custom prose overrides for elements not fully styled by @tailwindcss/typography
  */
 
+/* Links - only underline on hover */
+.prose :where(a):not(:where([class~='not-prose'] *)) {
+  @apply no-underline hover:underline;
+}
+
+/* H1 - center and add extra top margin */
+.prose :where(h1):not(:where([class~='not-prose'] *)) {
+  @apply text-center mt-16;
+}
+
 /* Inline code - add background and padding, remove backticks */
 .prose :where(code):not(:where([class~='not-prose'], pre *)) {
-  @apply text-gray-900 font-medium text-[0.9em] bg-gray-100 px-1.5 py-0.5 rounded;
+  @apply text-gray-700 font-medium text-[0.9em] bg-gray-50 px-1.5 py-0.5 rounded;
 }
 
 .prose :where(code):not(:where([class~='not-prose'], pre *))::before,
