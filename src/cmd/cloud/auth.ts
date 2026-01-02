@@ -13,6 +13,8 @@ import log from '../../logger';
  * Login via device flow
  */
 export async function loginCommand(): Promise<void> {
+  log.debug(`[Auth] Server URL: ${CLOUD_CONFIG.serverUrl}`);
+
   // Check if already logged in
   const existing = await getCredentials();
   if (existing) {
@@ -26,6 +28,7 @@ export async function loginCommand(): Promise<void> {
   // Initiate device flow
   log.info('Logging in to Scratch Cloud...');
   const deviceFlow = await api.initiateDeviceFlow();
+  log.debug(`[Auth] Device flow initiated:`, deviceFlow);
 
   log.info('');
   log.info(`Your code: ${deviceFlow.user_code}`);
@@ -60,7 +63,9 @@ export async function loginCommand(): Promise<void> {
   while (Date.now() < expiresAt) {
     await new Promise((resolve) => setTimeout(resolve, pollInterval));
 
+    log.debug(`[Auth] Polling for token...`);
     const result = await api.pollDeviceToken(deviceFlow.device_code);
+    log.debug(`[Auth] Poll result: ${result.status}`);
 
     if (result.status === 'approved' && result.token && result.user) {
       // Save credentials

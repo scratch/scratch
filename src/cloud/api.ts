@@ -1,6 +1,7 @@
 // Type-safe API client for cloud server
 
 import { CLOUD_CONFIG } from './config';
+import log from '../logger';
 import type {
   Credentials,
   DeviceFlowResponse,
@@ -26,6 +27,8 @@ export function createApiClient(credentials?: Credentials) {
     options: { body?: unknown; headers?: Record<string, string> } = {}
   ): Promise<T> {
     const url = `${baseUrl}${path}`;
+    log.debug(`[API] ${method} ${url}`);
+
     const headers: Record<string, string> = {
       ...options.headers,
     };
@@ -46,9 +49,11 @@ export function createApiClient(credentials?: Credentials) {
     }
 
     const response = await fetch(url, { method, headers, body });
+    log.debug(`[API] Response: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }));
+      log.debug(`[API] Error response:`, error);
       throw new Error(error.error || `Request failed: ${response.status}`);
     }
 
