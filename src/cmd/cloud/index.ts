@@ -9,6 +9,7 @@ import {
   updateProjectCommand,
 } from './projects';
 import { deployCommand } from './deploy';
+import { configCommand } from './config';
 import log from '../../logger';
 import { shouldShowBunErrors } from '../../logger';
 
@@ -57,6 +58,16 @@ export function registerCloudCommands(program: Command): void {
     .command('whoami')
     .description('Show current user')
     .action(withErrorHandling('Whoami', whoamiCommand));
+
+  cloud
+    .command('config')
+    .description('Configure Scratch Cloud settings')
+    .option('-s, --server <url>', 'Scratch server URL (non-interactive)')
+    .action(
+      withErrorHandling('Config', async (options) => {
+        await configCommand(options);
+      })
+    );
 
   // Projects subcommand group
   const projects = cloud

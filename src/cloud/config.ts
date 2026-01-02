@@ -1,8 +1,13 @@
 // Cloud server configuration
 
+import { getUserConfigSync } from './userConfig';
+
 export const CLOUD_CONFIG = {
-  // Default server URL (can be overridden via env)
-  serverUrl: process.env.SCRATCH_CLOUD_URL || 'https://app.sndbx.sh',
+  // Default server URL (can be overridden via user config or env)
+  serverUrl:
+    getUserConfigSync()?.serverUrl ||
+    process.env.SCRATCH_CLOUD_URL ||
+    'https://app.sndbx.sh',
 
   // Credentials file path
   credentialsPath: () => {

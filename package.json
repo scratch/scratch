@@ -38,10 +38,10 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "acorn": "^8.14.0",
     "@mdx-js/esbuild": "^3.1.0",
     "@shikijs/rehype": "^3.20.0",
     "@types/mdast": "^4.0.4",
+    "acorn": "^8.14.0",
     "commander": "^14.0.0",
     "fast-glob": "^3.3.3",
     "gray-matter": "^4.0.3",
@@ -50,6 +50,7 @@
     "remark-frontmatter": "^5.0.0",
     "remark-gfm": "^4.0.0",
     "shiki": "^3.20.0",
+    "smol-toml": "^1.6.0",
     "unified": "^11.0.4",
     "unist-util-is": "^6.0.0",
     "unist-util-visit": "^5.0.0"
