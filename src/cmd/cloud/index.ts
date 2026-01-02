@@ -83,6 +83,7 @@ export function registerCloudCommands(program: Command): void {
 
   projects
     .command('list')
+    .alias('ls')
     .description('List projects in your organization')
     .action(withErrorHandling('List projects', listProjectsCommand));
 
