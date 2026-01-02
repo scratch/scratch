@@ -8,7 +8,7 @@ import { devCommand } from './cmd/dev';
 import { previewCommand } from './cmd/preview';
 import { checkoutCommand } from './cmd/checkout';
 import { updateCommand } from './cmd/update';
-import { viewCommand } from './cmd/view';
+import { watchCommand } from './cmd/watch';
 import { BuildContext } from './build/context';
 import log, { setLogLevel, setShowBunErrors, shouldShowBunErrors } from './logger';
 import { VERSION } from './version';
@@ -113,14 +113,15 @@ program
   );
 
 program
-  .command('view')
+  .command('watch')
+  .aliases(['view'])
   .description('Serve target file/directory on development server')
-  .argument('<path>', 'Markdown file or directory to view')
+  .argument('<path>', 'Markdown file or directory to watch')
   .option('-p, --port <port>', 'Port for dev server', '5173')
   .option('-n, --no-open', "Don't open browser automatically")
   .action(
-    withErrorHandling('View', async (file, options) => {
-      await viewCommand(file, {
+    withErrorHandling('Watch', async (file, options) => {
+      await watchCommand(file, {
         ...options,
         port: options.port ? parseInt(options.port, 10) : undefined,
       });

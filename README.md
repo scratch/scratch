@@ -91,8 +91,8 @@ scratch checkout [file]            # revert a file to its template version
 scratch checkout --force [file]    # overwrite without confirmation
 scratch checkout --list            # list available template files
 
-# View markdown file(s) with live reload
-scratch view <path>               # file or directory
+# Watch markdown file(s) with live reload
+scratch watch <path>              # file or directory
 
 # Update scratch to latest version
 scratch update
