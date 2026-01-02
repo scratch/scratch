@@ -109,6 +109,11 @@ export const injectFrontmatterStep: BuildStep = {
         metaTags += '\n    ' + tagMetas;
       }
 
+      // Add script to set window.__scratch_author__ if author is present
+      if (metadata.author) {
+        metaTags += `\n    <script>window.__scratch_author__ = ${JSON.stringify(metadata.author)};</script>`;
+      }
+
       // Insert before closing </head>
       html = html.replace('</head>', `    ${metaTags}\n  </head>`);
 

@@ -68,8 +68,8 @@ export const createTsxEntriesStep: BuildStep = {
     // Check for PageWrapper component
     const pageWrapperPath = await ctx.pageWrapperPath();
     if (!pageWrapperPath) {
-      log.info('No PageWrapper component found in src/. Pages will not be wrapped.');
-      log.info('Run `scratch checkout src/PageWrapper.jsx` to create one.');
+      log.info('No PageWrapper component found. Pages will not be wrapped.');
+      log.info('Run `scratch checkout src/template/PageWrapper.jsx` to create one.');
     }
 
     const createEntriesContext: CreateEntriesContext = {
