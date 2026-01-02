@@ -1,4 +1,6 @@
 import React from 'react';
+import Header from './Header';
+import Footer from './Footer';
 
 /**
  * A simple wrapper applied to every page in the demo project. Feel free to
@@ -7,8 +9,10 @@ import React from 'react';
  */
 export default function PageWrapper({ children }) {
   return (
-    <div className="min-h-screen bg-white prose max-w-2xl mx-auto px-6 py-16">
+    <div className="min-h-screen bg-white prose max-w-2xl mx-auto px-6 py-8">
+      <Header />
       {children}
+      <Footer />
     </div>
   );
 }

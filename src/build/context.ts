@@ -201,7 +201,12 @@ export class BuildContext {
    * Returns null if not found in project.
    */
   async pageWrapperPath(): Promise<string | null> {
-    for (const name of ['src/PageWrapper.jsx', 'src/PageWrapper.tsx']) {
+    for (const name of [
+      'src/template/PageWrapper.jsx',
+      'src/template/PageWrapper.tsx',
+      'src/PageWrapper.jsx',
+      'src/PageWrapper.tsx',
+    ]) {
       const p = path.resolve(this.rootDir, name);
       if (await fs.exists(p)) return p;
     }

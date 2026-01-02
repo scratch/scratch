@@ -12,7 +12,7 @@ describe("checkout command", () => {
 
     // Modify multiple files in src/
     const tailwindPath = path.join(sandboxDir, "src/tailwind.css");
-    const pageWrapperPath = path.join(sandboxDir, "src/PageWrapper.jsx");
+    const pageWrapperPath = path.join(sandboxDir, "src/template/PageWrapper.jsx");
 
     const originalTailwind = await fs.readFile(tailwindPath, "utf-8");
     const originalPageWrapper = await fs.readFile(pageWrapperPath, "utf-8");

@@ -27,19 +27,23 @@ Run `scratch --help` to see all available commands.
 
 ```
 project/
-├── pages/           # MDX and Markdown content (required)
-│   ├── index.mdx    # Homepage (resolves to /)
-│   ├── Counter.tsx  # Components can live alongside pages
+├── pages/              # MDX and Markdown content (required)
+│   ├── index.mdx       # Homepage (resolves to /)
+│   ├── Counter.tsx     # Components can live alongside pages
 │   └── posts/
-│       └── hello.mdx  # Resolves to /posts/hello/
-├── src/             # React components and styles (optional)
-│   ├── Button.jsx
-│   ├── PageWrapper.jsx
-│   ├── tailwind.css
-│   └── markdown/    # Custom markdown renderers
-├── public/          # Static assets (optional, copied as-is)
+│       └── hello.mdx   # Resolves to /posts/hello/
+├── src/                # React components and styles (optional)
+│   ├── Button.jsx      # Custom components
+│   ├── tailwind.css    # Global styles
+│   ├── markdown/       # Custom markdown renderers
+│   └── template/       # Page layout components
+│       ├── PageWrapper.jsx  # Wraps every page
+│       ├── Header.jsx       # Site header
+│       ├── Footer.jsx       # Site footer
+│       └── ...
+├── public/             # Static assets (optional, copied as-is)
 │   └── logo.png
-└── dist/            # Build output (generated)
+└── dist/               # Build output (generated)
 ```
 
 ## Writing Content
@@ -67,7 +71,7 @@ YAML frontmatter is automatically extracted and injected as HTML meta tags:
 - `description` - Meta description and og:description
 - `image` - og:image
 - `keywords` - Meta keywords
-- `author` - Meta author
+- `author` - Meta author (also available as `window.__scratch_author__` for the Copyright component)
 
 ### URL Path Resolution
 
@@ -153,20 +157,25 @@ export function Card({ children }) {
 
 ### PageWrapper Component
 
-If you create a `src/PageWrapper.jsx`, it will **automatically wrap all page content**. Useful for layouts:
+If you create a `src/template/PageWrapper.jsx`, it will **automatically wrap all page content**. Useful for layouts:
 
 ```jsx
-// src/PageWrapper.jsx
+// src/template/PageWrapper.jsx
+import Header from './Header';
+import Footer from './Footer';
+
 export default function PageWrapper({ children }) {
   return (
     <div className="max-w-2xl mx-auto p-8">
-      <nav>...</nav>
+      <Header />
       <main>{children}</main>
-      <footer>...</footer>
+      <Footer />
     </div>
   );
 }
 ```
+
+The default template includes Header, Footer, ScratchBadge, and Copyright components in `src/template/`. Customize these to change your site's layout.
 
 ### Markdown Components
 

@@ -177,7 +177,7 @@ function FileRow({ node, isCollapsed, onToggle }: FileRowProps) {
               strokeWidth="1"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className={isCollapsed ? "" : "rotate-90"}
+              className={`transition-transform duration-150 ${isCollapsed ? "" : "rotate-90"}`}
             >
               <path d="M2 1L6 4L2 7" />
             </svg>

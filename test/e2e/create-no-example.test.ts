@@ -23,9 +23,14 @@ describe("scratch create --no-example", () => {
     // Verify src/ directory exists and has content
     const srcDir = path.join(projectDir, "src");
     const srcFiles = await readdir(srcDir);
-    expect(srcFiles).toContain("PageWrapper.jsx");
+    expect(srcFiles).toContain("template");
     expect(srcFiles).toContain("tailwind.css");
     expect(srcFiles).toContain("markdown");
+
+    // Verify src/template/ has PageWrapper
+    const templateDir = path.join(projectDir, "src/template");
+    const templateFiles = await readdir(templateDir);
+    expect(templateFiles).toContain("PageWrapper.jsx");
 
     // Verify root files exist
     const rootFiles = await readdir(projectDir);
