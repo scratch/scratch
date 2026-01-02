@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/scratch-logo.svg" alt="Scratch" height="120" />
+  <img src="./template/public/scratch-logo.svg" alt="Scratch" height="120" />
 </p>
 
 Scratch compiles Markdown and React into beautiful static websites that can be hosted anywhere.
