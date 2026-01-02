@@ -10,6 +10,11 @@ import {
 } from './projects';
 import { deployCommand } from './deploy';
 import { configCommand } from './config';
+import {
+  listTokensCommand,
+  createTokenCommand,
+  deleteTokenCommand,
+} from './tokens';
 import log from '../../logger';
 import { shouldShowBunErrors } from '../../logger';
 
@@ -82,38 +87,38 @@ export function registerCloudCommands(program: Command): void {
   projects
     .command('create')
     .description('Create a new project')
-    .argument('<name>', 'Project name')
-    .option('-s, --slug <slug>', 'Project slug (defaults to name)')
+    .argument('<display-name>', 'Project display name')
+    .option('-n, --name <name>', 'Project name/identifier (defaults to normalized display name)')
     .option(
       '-a, --access <access>',
       'View access: public or authenticated',
       'public'
     )
     .action(
-      withErrorHandling('Create project', async (name, options) => {
-        await createProjectCommand(name, options);
+      withErrorHandling('Create project', async (displayName, options) => {
+        await createProjectCommand(displayName, options);
       })
     );
 
   projects
     .command('info')
     .description('Get project details')
-    .argument('<project>', 'Project slug')
+    .argument('<name>', 'Project name')
     .action(
-      withErrorHandling('Project info', async (project) => {
-        await projectInfoCommand(project);
+      withErrorHandling('Project info', async (name) => {
+        await projectInfoCommand(name);
       })
     );
 
   projects
     .command('update')
     .description('Update project settings')
-    .argument('<project>', 'Project slug')
-    .option('-n, --name <name>', 'New project name')
+    .argument('<name>', 'Project name')
+    .option('-d, --display-name <display-name>', 'New display name')
     .option('-a, --access <access>', 'View access: public or authenticated')
     .action(
-      withErrorHandling('Update project', async (project, options) => {
-        await updateProjectCommand(project, options);
+      withErrorHandling('Update project', async (name, options) => {
+        await updateProjectCommand(name, options);
       })
     );
 
@@ -123,12 +128,44 @@ export function registerCloudCommands(program: Command): void {
     .description('Build and deploy project to cloud')
     .argument('[path]', 'Path to project directory', '.')
     .option(
-      '-p, --project <slug>',
-      'Project slug (defaults to package.json name)'
+      '-p, --project <name>',
+      'Project name (defaults to package.json name)'
     )
     .action(
       withErrorHandling('Deploy', async (path, options) => {
         await deployCommand(path, options);
+      })
+    );
+
+  // Tokens subcommand group
+  const tokens = cloud
+    .command('tokens')
+    .description('Manage API tokens');
+
+  tokens
+    .command('list')
+    .alias('ls')
+    .description('List all API tokens')
+    .action(withErrorHandling('List tokens', listTokensCommand));
+
+  tokens
+    .command('create')
+    .description('Create a new API token')
+    .option('-n, --name <name>', 'Token name for identification')
+    .option('-e, --expires <days>', 'Days until expiration (default: never)', parseInt)
+    .action(
+      withErrorHandling('Create token', async (options) => {
+        await createTokenCommand(options);
+      })
+    );
+
+  tokens
+    .command('delete <id>')
+    .alias('rm')
+    .description('Delete an API token')
+    .action(
+      withErrorHandling('Delete token', async (id) => {
+        await deleteTokenCommand(id);
       })
     );
 }

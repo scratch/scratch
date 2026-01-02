@@ -16,6 +16,7 @@
     "test": "bun test",
     "test:unit": "bun test test/unit",
     "test:e2e": "bun test test/e2e",
+    "test:cloud-e2e": "bun run build && ./test/cloud-e2e/cloud-deploy.sh",
     "test:parallel": "bun run build && bun scripts/test-parallel.ts",
     "pretest": "bun run build",
     "pretest:unit": "bun run build",

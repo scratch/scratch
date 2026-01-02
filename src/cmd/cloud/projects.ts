@@ -16,14 +16,14 @@ export async function listProjectsCommand(): Promise<void> {
 
   if (projects.length === 0) {
     log.info('No projects found.');
-    log.info('Create one with: scratch cloud projects create <name>');
+    log.info('Create one with: scratch cloud projects create <display-name>');
     return;
   }
 
   log.info(`Projects in ${creds.user.org}:\n`);
   for (const project of projects) {
-    log.info(`  ${project.slug}`);
-    log.info(`    Name: ${project.name}`);
+    log.info(`  ${project.name}`);
+    log.info(`    Display Name: ${project.display_name}`);
     log.info(`    URL: ${project.url}`);
     log.info(`    Version: ${project.current_version || 'not deployed'}`);
     log.info(`    Access: ${project.view_access}`);
@@ -35,21 +35,22 @@ export async function listProjectsCommand(): Promise<void> {
  * Create a new project
  */
 export async function createProjectCommand(
-  name: string,
-  options: { slug?: string; access?: string }
+  displayName: string,
+  options: { name?: string; access?: string }
 ): Promise<void> {
   const creds = await requireAuth();
   const api = createApiClient(creds);
 
   const body: CreateProjectBody = {
-    name,
-    slug: options.slug,
+    display_name: displayName,
+    name: options.name,
     view_access: options.access as 'public' | 'authenticated' | undefined,
   };
 
   const { project } = await api.createProject(creds.user.org, body);
 
-  log.info(`Created project: ${project.slug}`);
+  log.info(`Created project: ${project.name}`);
+  log.info(`Display Name: ${project.display_name}`);
   log.info(`URL: ${project.url}`);
   log.info('');
   log.info('Deploy with: scratch cloud deploy');
@@ -58,13 +59,14 @@ export async function createProjectCommand(
 /**
  * Get project details
  */
-export async function projectInfoCommand(projectSlug: string): Promise<void> {
+export async function projectInfoCommand(projectName: string): Promise<void> {
   const creds = await requireAuth();
   const api = createApiClient(creds);
 
-  const { project } = await api.getProject(creds.user.org, projectSlug);
+  const { project } = await api.getProject(creds.user.org, projectName);
 
-  log.info(`Project: ${project.name} (${project.slug})`);
+  log.info(`Project: ${project.name}`);
+  log.info(`Display Name: ${project.display_name}`);
   log.info(`URL: ${project.url}`);
   log.info(`Version: ${project.current_version || 'not deployed'}`);
   log.info(`Access: ${project.view_access}`);
@@ -75,25 +77,25 @@ export async function projectInfoCommand(projectSlug: string): Promise<void> {
  * Update project settings
  */
 export async function updateProjectCommand(
-  projectSlug: string,
-  options: { name?: string; access?: string }
+  projectName: string,
+  options: { displayName?: string; access?: string }
 ): Promise<void> {
   const creds = await requireAuth();
   const api = createApiClient(creds);
 
   const body: UpdateProjectBody = {};
-  if (options.name) body.name = options.name;
+  if (options.displayName) body.display_name = options.displayName;
   if (options.access)
     body.view_access = options.access as 'public' | 'authenticated';
 
   if (Object.keys(body).length === 0) {
-    log.info('No changes specified. Use --name or --access options.');
+    log.info('No changes specified. Use --display-name or --access options.');
     return;
   }
 
-  const { project } = await api.updateProject(creds.user.org, projectSlug, body);
+  const { project } = await api.updateProject(creds.user.org, projectName, body);
 
-  log.info(`Updated project: ${project.slug}`);
-  log.info(`Name: ${project.name}`);
+  log.info(`Updated project: ${project.name}`);
+  log.info(`Display Name: ${project.display_name}`);
   log.info(`Access: ${project.view_access}`);
 }

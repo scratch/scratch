@@ -36,3 +36,29 @@ export interface Credentials {
   };
   server: string;
 }
+
+// API Token types
+export interface ApiToken {
+  id: string;
+  name: string | null;
+  last_used_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface TokensResponse {
+  tokens: ApiToken[];
+}
+
+export interface CreateTokenBody {
+  name?: string;
+  expires_in_days?: number;
+}
+
+export interface CreateTokenResponse {
+  id: string;
+  token: string;
+  name: string | null;
+  expires_at: string | null;
+  created_at: string;
+}

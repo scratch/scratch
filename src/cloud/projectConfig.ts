@@ -5,8 +5,10 @@ import path from 'path';
 import { parse, stringify } from 'smol-toml';
 
 export interface ProjectConfig {
-  name: string; // Project slug (validated: letters, numbers, -, _, .)
-  serverUrl?: string; // Optional per-project server override
+  name: string; // Project identifier (validated: letters, numbers, -, _, .)
+  display_name?: string; // Human-readable project name
+  view_access?: 'public' | 'authenticated'; // Project visibility
+  serverUrl?: string; // Per-project server override
 }
 
 /**

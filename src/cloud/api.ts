@@ -14,6 +14,9 @@ import type {
   CreateProjectBody,
   UpdateProjectBody,
   UploadResponse,
+  TokensResponse,
+  CreateTokenBody,
+  CreateTokenResponse,
 } from './types';
 
 /**
@@ -35,14 +38,23 @@ export function createApiClient(credentials?: Credentials) {
   async function authRequest<T>(
     method: string,
     path: string,
-    body?: unknown
+    body?: unknown,
+    authenticated = false
   ): Promise<T> {
     const url = `${baseUrl}${path}`;
     log.debug(`[API] ${method} ${url}`);
 
+    const headers: Record<string, string> = {};
+    if (body) {
+      headers['Content-Type'] = 'application/json';
+    }
+    if (authenticated && token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(url, {
       method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
       body: body ? JSON.stringify(body) : undefined,
     });
 
@@ -152,6 +164,43 @@ export function createApiClient(credentials?: Credentials) {
       });
 
       return checkResponse(response) as Promise<UploadResponse>;
+    },
+
+    // ========================================
+    // Token management endpoints (manual fetch - not in AppType)
+    // ========================================
+
+    async listTokens(): Promise<TokensResponse> {
+      return authRequest('GET', '/auth/tokens', undefined, true);
+    },
+
+    async createToken(body?: CreateTokenBody): Promise<CreateTokenResponse> {
+      return authRequest('POST', '/auth/tokens', body || {}, true);
+    },
+
+    async deleteToken(id: string): Promise<void> {
+      const url = `${baseUrl}/auth/tokens/${encodeURIComponent(id)}`;
+      log.debug(`[API] DELETE ${url}`);
+
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: Object.keys(headers).length > 0 ? headers : undefined,
+      });
+
+      log.debug(`[API] Response: ${response.status} ${response.statusText}`);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Token not found');
+        }
+        const error = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error((error as { error?: string }).error || `Request failed: ${response.status}`);
+      }
     },
   };
 }

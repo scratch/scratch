@@ -46,6 +46,8 @@ interface DeployOptions {
   project?: string;
 }
 
+const DEFAULT_SERVER_URL = 'https://app.scratch.dev';
+
 /**
  * Deploy current project to cloud
  */
@@ -66,19 +68,44 @@ export async function deployCommand(
     }
   }
 
-  // 2. Ensure server URL configured
-  let userConfig = await getUserConfig();
-  if (!userConfig?.serverUrl) {
-    log.info('Server not configured. Starting setup...\n');
-    await configCommand({});
-    userConfig = await getUserConfig();
-    if (!userConfig?.serverUrl) {
-      throw new Error('Server URL required to deploy');
+  // 2. Load project and user configs
+  let projectConfig = await getProjectConfig(resolvedPath);
+  const userConfig = await getUserConfig();
+
+  // 3. Prompt for server URL with cascading defaults
+  const defaultServerUrl =
+    projectConfig?.serverUrl ||
+    userConfig?.serverUrl ||
+    DEFAULT_SERVER_URL;
+
+  const serverUrl = await promptText(
+    'Server URL',
+    defaultServerUrl,
+    (url) => {
+      try {
+        new URL(url);
+        return null;
+      } catch {
+        return 'Invalid URL';
+      }
     }
+  );
+
+  // Save server URL to project config if different
+  if (serverUrl !== projectConfig?.serverUrl) {
+    projectConfig = {
+      ...projectConfig,
+      name: projectConfig?.name || '',
+      serverUrl,
+    };
   }
 
-  // 3. Load or create project config
-  let projectConfig = await getProjectConfig(resolvedPath);
+  // Update global config with server URL (config command handles this)
+  if (!userConfig?.serverUrl) {
+    await configCommand({ server: serverUrl });
+  }
+
+  // 4. Load or create project name
   let projectName: string;
 
   if (options.project) {
@@ -88,9 +115,6 @@ export async function deployCommand(
       throw new Error(`Invalid project name: ${error}`);
     }
     projectName = options.project;
-    // Update stored config
-    await saveProjectConfig(resolvedPath, { name: projectName });
-    log.debug(`Updated project config: ${getProjectConfigPath(resolvedPath)}`);
   } else if (projectConfig?.name) {
     // Use stored config
     projectName = projectConfig.name;
@@ -102,13 +126,19 @@ export async function deployCommand(
       undefined,
       validateProjectName
     );
-    await saveProjectConfig(resolvedPath, { name: projectName });
-    log.info(`Saved project config to ${getProjectConfigPath(resolvedPath)}`);
   }
+
+  // Save project config
+  await saveProjectConfig(resolvedPath, {
+    ...projectConfig,
+    name: projectName,
+    serverUrl,
+  });
+  log.debug(`Updated project config: ${getProjectConfigPath(resolvedPath)}`);
 
   log.info(`\nDeploying to ${creds.user.org}/${projectName}...`);
 
-  // 4. Get/create project on server
+  // 5. Get/create project on server
   const api = createApiClient(creds);
   let basePath: string;
 
@@ -123,18 +153,30 @@ export async function deployCommand(
       error.message?.includes('404')
     ) {
       log.info(`Creating project '${projectName}'...`);
+      // Use project name as display name when auto-creating
       const { project } = await api.createProject(creds.user.org, {
+        display_name: projectConfig?.display_name || projectName,
         name: projectName,
+        view_access: projectConfig?.view_access,
       });
       const url = new URL(project.url);
       basePath = url.pathname;
       log.info(`Created project: ${project.url}`);
+
+      // Save display_name and view_access from the created project
+      await saveProjectConfig(resolvedPath, {
+        ...projectConfig,
+        name: projectName,
+        display_name: project.display_name,
+        view_access: project.view_access,
+        serverUrl,
+      });
     } else {
       throw error;
     }
   }
 
-  // 5. Build project with correct base path
+  // 6. Build project with correct base path
   log.info('Building...');
   const ctx = new BuildContext({
     path: resolvedPath,
@@ -143,7 +185,7 @@ export async function deployCommand(
 
   await buildCommand(ctx, { base: basePath }, resolvedPath);
 
-  // 6. Zip and upload
+  // 7. Zip and upload
   log.info('Creating deployment package...');
   const distDir = path.resolve(resolvedPath, 'dist');
 
