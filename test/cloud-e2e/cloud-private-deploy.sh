@@ -30,11 +30,17 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SCRATCH_BIN="$REPO_ROOT/dist/scratch"
 SERVER_URL="${SCRATCH_SERVER:-http://localhost:8788}"
 PAGES_URL="${SCRATCH_PAGES:-http://localhost:8787}"
-TEST_TOKEN="${SCRATCH_TEST_TOKEN:-}"
 
-# Generate unique project name for this test run
-TEST_PROJECT="e2e-private-$(date +%s)"
+# Generate unique identifiers for this test run
+TIMESTAMP=$(date +%s)
+TEST_EMAIL="private-test-${TIMESTAMP}@testmail.com"
+TEST_PROJECT="e2e-private-${TIMESTAMP}"
 TEMP_DIR=""
+
+# Will be set after user creation
+TEST_TOKEN=""
+USER_ORG=""
+VALID_SIGNED_URL=""
 
 log_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -61,10 +67,20 @@ log_fail() {
 }
 
 cleanup() {
+    log_info "Cleaning up..."
+
+    # Clean up temp directory
     if [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
-        log_info "Cleaning up temp directory: $TEMP_DIR"
         rm -rf "$TEMP_DIR"
     fi
+
+    # Delete test user
+    if [ -n "$TEST_EMAIL" ]; then
+        ENCODED_EMAIL=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$TEST_EMAIL'))")
+        curl -s -X DELETE "$SERVER_URL/api/test/users/$ENCODED_EMAIL" > /dev/null 2>&1 || true
+    fi
+
+    log_info "Cleanup complete"
 }
 
 trap cleanup EXIT
@@ -77,21 +93,6 @@ check_prerequisites() {
         log_error "Scratch executable not found at $SCRATCH_BIN"
         log_error "Run 'bun run build' first"
         exit 1
-    fi
-
-    # Check if token is set, prompt if not
-    if [ -z "$TEST_TOKEN" ]; then
-        log_warn "SCRATCH_TEST_TOKEN not set"
-        echo ""
-        echo "To get a token:"
-        echo "  1. Run: ./dist/scratch cloud login"
-        echo "  2. Run: ./dist/scratch cloud tokens create -n e2e-test"
-        echo ""
-        read -p "Enter your API token: " TEST_TOKEN
-        if [ -z "$TEST_TOKEN" ]; then
-            log_error "No token provided"
-            exit 1
-        fi
     fi
 
     # Check if server is reachable
@@ -108,7 +109,47 @@ check_prerequisites() {
         exit 1
     fi
 
+    # Check if test endpoints are available (non-production mode)
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+        -H "Content-Type: application/json" \
+        -d '{"email": "probe@test.com"}' \
+        "$SERVER_URL/api/test/users")
+
+    if [ "$HTTP_CODE" = "403" ]; then
+        log_error "Test endpoints not available - server is in production mode"
+        exit 1
+    fi
+
+    # Clean up probe user
+    curl -s -X DELETE "$SERVER_URL/api/test/users/probe%40test.com" > /dev/null 2>&1 || true
+
     log_info "Prerequisites check passed"
+}
+
+create_test_user() {
+    log_info "Creating test user: $TEST_EMAIL"
+
+    RESPONSE=$(curl -s -X POST \
+        -H "Content-Type: application/json" \
+        -d "{\"email\": \"$TEST_EMAIL\", \"name\": \"Private Test User\"}" \
+        "$SERVER_URL/api/test/users")
+
+    if echo "$RESPONSE" | grep -q '"error"'; then
+        log_error "Failed to create test user"
+        log_error "Response: $RESPONSE"
+        exit 1
+    fi
+
+    TEST_TOKEN=$(echo "$RESPONSE" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+    # Extract org name from the "org":{...,"name":"..."} object
+    USER_ORG=$(echo "$RESPONSE" | grep -o '"org":{[^}]*}' | grep -o '"name":"[^"]*"' | cut -d'"' -f4)
+
+    if [ -z "$TEST_TOKEN" ]; then
+        log_error "No token returned"
+        exit 1
+    fi
+
+    log_info "Test user created (org: $USER_ORG)"
 }
 
 setup_credentials() {
@@ -118,21 +159,12 @@ setup_credentials() {
     CREDS_DIR="$HOME/.scratch"
     mkdir -p "$CREDS_DIR"
 
-    # Fetch user info to get org
+    # Get user info
     USER_RESPONSE=$(curl -s -H "Authorization: Bearer $TEST_TOKEN" "$SERVER_URL/api/me")
-
-    if echo "$USER_RESPONSE" | grep -q "error"; then
-        log_error "Failed to authenticate with token"
-        log_error "Response: $USER_RESPONSE"
-        exit 1
-    fi
 
     USER_ID=$(echo "$USER_RESPONSE" | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
     USER_EMAIL=$(echo "$USER_RESPONSE" | grep -o '"email":"[^"]*"' | cut -d'"' -f4)
     USER_NAME=$(echo "$USER_RESPONSE" | grep -o '"name":"[^"]*"' | cut -d'"' -f4 || echo "")
-    USER_ORG=$(echo "$USER_RESPONSE" | grep -o '"org":"[^"]*"' | cut -d'"' -f4)
-
-    log_info "Authenticated as: $USER_EMAIL (org: $USER_ORG)"
 
     # Write credentials file
     cat > "$CREDS_DIR/credentials.json" << EOF
@@ -187,6 +219,9 @@ EOF
 deploy_private_project() {
     log_info "Deploying private project..."
 
+    # URL encode the org name
+    ENCODED_ORG=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$USER_ORG'))")
+
     cd "$TEMP_DIR"
 
     # First create the project as private via API
@@ -194,7 +229,7 @@ deploy_private_project() {
         -H "Authorization: Bearer $TEST_TOKEN" \
         -H "Content-Type: application/json" \
         -d "{\"display_name\": \"$TEST_PROJECT\", \"name\": \"$TEST_PROJECT\", \"view_access\": \"authenticated\"}" \
-        "$SERVER_URL/api/orgs/$USER_ORG/projects")
+        "$SERVER_URL/api/orgs/$ENCODED_ORG/projects")
 
     if echo "$CREATE_RESPONSE" | grep -q "error"; then
         log_error "Failed to create private project"
@@ -225,7 +260,9 @@ deploy_private_project() {
 test_unauthenticated_redirect() {
     log_test "Testing unauthenticated access redirects to app domain..."
 
-    PROJECT_URL="$PAGES_URL/$USER_ORG/$TEST_PROJECT/"
+    # URL encode the org name
+    ENCODED_ORG=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$USER_ORG'))")
+    PROJECT_URL="$PAGES_URL/$ENCODED_ORG/$TEST_PROJECT/"
 
     # Make request without following redirects
     RESPONSE=$(curl -s -o /dev/null -w "%{http_code}|%{redirect_url}" "$PROJECT_URL")
@@ -248,7 +285,9 @@ test_unauthenticated_redirect() {
 test_get_signed_url_with_valid_token() {
     log_test "Testing signed URL generation with valid token..."
 
-    PROJECT_URL="$PAGES_URL/$USER_ORG/$TEST_PROJECT/"
+    # URL encode the org name
+    ENCODED_ORG=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$USER_ORG'))")
+    PROJECT_URL="$PAGES_URL/$ENCODED_ORG/$TEST_PROJECT/"
 
     # URL encode the return parameter using python
     ENCODED_RETURN=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$PROJECT_URL', safe=''))")
@@ -313,7 +352,10 @@ test_signed_url_grants_access() {
 test_invalid_token_denied() {
     log_test "Testing invalid token cannot get signed URL..."
 
-    PROJECT_URL="$PAGES_URL/$USER_ORG/$TEST_PROJECT/"
+    # URL encode the org name
+    ENCODED_ORG=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$USER_ORG'))")
+    PROJECT_URL="$PAGES_URL/$ENCODED_ORG/$TEST_PROJECT/"
+
     ENCODED_RETURN=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$PROJECT_URL', safe=''))")
     ACCESS_URL="$SERVER_URL/auth/access?return=$ENCODED_RETURN"
 
@@ -339,7 +381,10 @@ test_invalid_token_denied() {
 test_no_token_denied() {
     log_test "Testing no token cannot get signed URL..."
 
-    PROJECT_URL="$PAGES_URL/$USER_ORG/$TEST_PROJECT/"
+    # URL encode the org name
+    ENCODED_ORG=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$USER_ORG'))")
+    PROJECT_URL="$PAGES_URL/$ENCODED_ORG/$TEST_PROJECT/"
+
     ENCODED_RETURN=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$PROJECT_URL', safe=''))")
     ACCESS_URL="$SERVER_URL/auth/access?return=$ENCODED_RETURN"
 
@@ -389,6 +434,7 @@ main() {
     echo ""
 
     check_prerequisites
+    create_test_user
     setup_credentials
     create_test_project
     deploy_private_project
