@@ -202,5 +202,34 @@ export function createApiClient(credentials?: Credentials) {
         throw new Error((error as { error?: string }).error || `Request failed: ${response.status}`);
       }
     },
+
+    // ========================================
+    // Project delete (manual fetch - DELETE returns 204)
+    // ========================================
+
+    async deleteProject(org: string, project: string): Promise<void> {
+      const url = `${baseUrl}/api/orgs/${encodeURIComponent(org)}/projects/${encodeURIComponent(project)}`;
+      log.debug(`[API] DELETE ${url}`);
+
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: Object.keys(headers).length > 0 ? headers : undefined,
+      });
+
+      log.debug(`[API] Response: ${response.status} ${response.statusText}`);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Project not found');
+        }
+        const error = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error((error as { error?: string }).error || `Request failed: ${response.status}`);
+      }
+    },
   };
 }

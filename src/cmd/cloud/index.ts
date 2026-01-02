@@ -7,6 +7,8 @@ import {
   createProjectCommand,
   projectInfoCommand,
   updateProjectCommand,
+  linkProjectCommand,
+  deleteProjectCommand,
 } from './projects';
 import { deployCommand } from './deploy';
 import { configCommand } from './config';
@@ -87,16 +89,17 @@ export function registerCloudCommands(program: Command): void {
   projects
     .command('create')
     .description('Create a new project')
-    .argument('<display-name>', 'Project display name')
-    .option('-n, --name <name>', 'Project name/identifier (defaults to normalized display name)')
+    .argument('<name>', 'Project name/identifier')
+    .option('-D, --display-name <name>', 'Display name (defaults to project name)')
+    .option('-d, --description <text>', 'Project description')
     .option(
       '-a, --access <access>',
       'View access: public or authenticated',
       'public'
     )
     .action(
-      withErrorHandling('Create project', async (displayName, options) => {
-        await createProjectCommand(displayName, options);
+      withErrorHandling('Create project', async (name, options) => {
+        await createProjectCommand(name, options);
       })
     );
 
@@ -114,11 +117,34 @@ export function registerCloudCommands(program: Command): void {
     .command('update')
     .description('Update project settings')
     .argument('<name>', 'Project name')
-    .option('-d, --display-name <display-name>', 'New display name')
+    .option('-D, --display-name <name>', 'New display name')
+    .option('-d, --description <text>', 'New description')
     .option('-a, --access <access>', 'View access: public or authenticated')
     .action(
       withErrorHandling('Update project', async (name, options) => {
         await updateProjectCommand(name, options);
+      })
+    );
+
+  projects
+    .command('link')
+    .description('Link current directory to a cloud project')
+    .argument('<name>', 'Project name')
+    .action(
+      withErrorHandling('Link project', async (name) => {
+        await linkProjectCommand(name);
+      })
+    );
+
+  projects
+    .command('delete')
+    .alias('rm')
+    .description('Delete a project')
+    .argument('<name>', 'Project name')
+    .option('-f, --force', 'Skip confirmation prompt')
+    .action(
+      withErrorHandling('Delete project', async (name, options) => {
+        await deleteProjectCommand(name, options);
       })
     );
 
