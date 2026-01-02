@@ -14,6 +14,13 @@
     "verbatimModuleSyntax": true,
     "noEmit": true,
 
+    // Path aliases for local packages
+    "baseUrl": ".",
+    "paths": {
+      "@scratch/shared": ["../../scratch-server/shared/src/index.ts"],
+      "@scratch/shared/*": ["../../scratch-server/shared/src/*"]
+    },
+
     // Best practices
     "strict": true,
     "skipLibCheck": true,

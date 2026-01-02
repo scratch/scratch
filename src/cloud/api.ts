@@ -1,5 +1,7 @@
-// Type-safe API client for cloud server
+// Type-safe API client for cloud server using Hono RPC
 
+import { hc } from 'hono/client';
+import type { AppType } from '@scratch/shared';
 import { CLOUD_CONFIG } from './config';
 import log from '../logger';
 import type {
@@ -16,44 +18,50 @@ import type {
 
 /**
  * Create an API client for the cloud server
+ *
+ * Uses Hono RPC for type-safe /api/* routes.
+ * Auth routes (/auth/*) use manual fetch as they're not part of AppType.
  */
 export function createApiClient(credentials?: Credentials) {
   const baseUrl = credentials?.server || CLOUD_CONFIG.serverUrl;
   const token = credentials?.token;
 
-  async function request<T>(
+  // Create Hono RPC client for /api/* routes
+  const client = hc<AppType>(baseUrl, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+
+  // Helper for auth endpoints (not in Hono app)
+  async function authRequest<T>(
     method: string,
     path: string,
-    options: { body?: unknown; headers?: Record<string, string> } = {}
+    body?: unknown
   ): Promise<T> {
     const url = `${baseUrl}${path}`;
     log.debug(`[API] ${method} ${url}`);
 
-    const headers: Record<string, string> = {
-      ...options.headers,
-    };
+    const response = await fetch(url, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    let body: BodyInit | undefined;
-    if (options.body !== undefined) {
-      if (options.body instanceof ArrayBuffer) {
-        headers['Content-Type'] = 'application/zip';
-        body = options.body;
-      } else {
-        headers['Content-Type'] = 'application/json';
-        body = JSON.stringify(options.body);
-      }
-    }
-
-    const response = await fetch(url, { method, headers, body });
     log.debug(`[API] Response: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }));
-      log.debug(`[API] Error response:`, error);
+      throw new Error((error as { error?: string }).error || `Request failed: ${response.status}`);
+    }
+
+    return response.json() as Promise<T>;
+  }
+
+  // Helper to check response and throw on error
+  async function checkResponse<T>(response: { ok: boolean; status: number; statusText: string; json: () => Promise<T> }): Promise<T> {
+    log.debug(`[API] Response: ${response.status} ${response.statusText}`);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: response.statusText })) as { error?: string };
       throw new Error(error.error || `Request failed: ${response.status}`);
     }
 
@@ -61,44 +69,52 @@ export function createApiClient(credentials?: Credentials) {
   }
 
   return {
-    // Auth endpoints (no token required)
+    // ========================================
+    // Auth endpoints (manual fetch - not in AppType)
+    // ========================================
+
     async initiateDeviceFlow(): Promise<DeviceFlowResponse> {
-      return request('POST', '/auth/device');
+      return authRequest('POST', '/auth/device');
     },
 
     async pollDeviceToken(deviceCode: string): Promise<DeviceTokenResponse> {
-      return request('POST', '/auth/device/token', {
-        body: { device_code: deviceCode },
-      });
+      return authRequest('POST', '/auth/device/token', { device_code: deviceCode });
     },
 
-    // API endpoints (token required)
+    // ========================================
+    // API endpoints (Hono RPC - fully type-safe)
+    // ========================================
+
     async health(): Promise<{ status: string }> {
-      return request('GET', '/api/health');
+      const res = await client.api.health.$get();
+      return checkResponse(res);
     },
 
     async me(): Promise<UserResponse> {
-      return request('GET', '/api/me');
+      const res = await client.api.me.$get();
+      return checkResponse(res) as Promise<UserResponse>;
     },
 
     async listProjects(org: string): Promise<ProjectsResponse> {
-      return request('GET', `/api/orgs/${encodeURIComponent(org)}/projects`);
+      const res = await client.api.orgs[':org'].projects.$get({
+        param: { org },
+      });
+      return checkResponse(res) as Promise<ProjectsResponse>;
     },
 
-    async createProject(
-      org: string,
-      body: CreateProjectBody
-    ): Promise<ProjectResponse> {
-      return request('POST', `/api/orgs/${encodeURIComponent(org)}/projects`, {
-        body,
+    async createProject(org: string, body: CreateProjectBody): Promise<ProjectResponse> {
+      const res = await client.api.orgs[':org'].projects.$post({
+        param: { org },
+        json: body,
       });
+      return checkResponse(res) as Promise<ProjectResponse>;
     },
 
     async getProject(org: string, project: string): Promise<ProjectResponse> {
-      return request(
-        'GET',
-        `/api/orgs/${encodeURIComponent(org)}/projects/${encodeURIComponent(project)}`
-      );
+      const res = await client.api.orgs[':org'].projects[':project'].$get({
+        param: { org, project },
+      });
+      return checkResponse(res) as Promise<ProjectResponse>;
     },
 
     async updateProject(
@@ -106,23 +122,36 @@ export function createApiClient(credentials?: Credentials) {
       project: string,
       body: UpdateProjectBody
     ): Promise<ProjectResponse> {
-      return request(
-        'PATCH',
-        `/api/orgs/${encodeURIComponent(org)}/projects/${encodeURIComponent(project)}`,
-        { body }
-      );
+      const res = await client.api.orgs[':org'].projects[':project'].$patch({
+        param: { org, project },
+        json: body,
+      });
+      return checkResponse(res) as Promise<ProjectResponse>;
     },
 
+    // Binary upload - manual fetch (Hono RPC doesn't handle raw binary)
     async uploadVersion(
       org: string,
       project: string,
       zipBuffer: ArrayBuffer
     ): Promise<UploadResponse> {
-      return request(
-        'POST',
-        `/api/orgs/${encodeURIComponent(org)}/projects/${encodeURIComponent(project)}/upload`,
-        { body: zipBuffer }
-      );
+      const url = `${baseUrl}/api/orgs/${encodeURIComponent(org)}/projects/${encodeURIComponent(project)}/upload`;
+      log.debug(`[API] POST ${url}`);
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/zip',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: zipBuffer,
+      });
+
+      return checkResponse(response) as Promise<UploadResponse>;
     },
   };
 }
