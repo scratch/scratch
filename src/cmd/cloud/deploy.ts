@@ -72,36 +72,35 @@ export async function deployCommand(
   let projectConfig = await getProjectConfig(resolvedPath);
   const userConfig = await getUserConfig();
 
-  // 3. Prompt for server URL with cascading defaults
-  const defaultServerUrl =
+  // 3. Determine server URL with cascading defaults (no prompt if already configured)
+  let serverUrl =
     projectConfig?.serverUrl ||
     userConfig?.serverUrl ||
-    DEFAULT_SERVER_URL;
+    creds.server;  // Server from credentials file
 
-  const serverUrl = await promptText(
-    'Server URL',
-    defaultServerUrl,
-    (url) => {
-      try {
-        new URL(url);
-        return null;
-      } catch {
-        return 'Invalid URL';
+  // Only prompt if no server URL is configured anywhere
+  if (!serverUrl) {
+    serverUrl = await promptText(
+      'Server URL',
+      DEFAULT_SERVER_URL,
+      (url) => {
+        try {
+          new URL(url);
+          return null;
+        } catch {
+          return 'Invalid URL';
+        }
       }
-    }
-  );
+    );
 
-  // Save server URL to project config if different
-  if (serverUrl !== projectConfig?.serverUrl) {
+    // Save server URL to project config
     projectConfig = {
       ...projectConfig,
       name: projectConfig?.name || '',
       serverUrl,
     };
-  }
 
-  // Update global config with server URL (config command handles this)
-  if (!userConfig?.serverUrl) {
+    // Update global config with server URL
     await configCommand({ server: serverUrl });
   }
 
