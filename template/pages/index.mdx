@@ -78,7 +78,7 @@ A simple Scratch project (created with `scratch create`) looks like this:
 <Files>
 ```
 my-scratch-project/
-  pages/                 # put markdown and components here
+  pages/                 # put markdown pages and components here
     posts/ (collapsed)
       post1.md           # accessible at /posts/post1
       post2.md           # /posts/post2
@@ -93,7 +93,12 @@ my-scratch-project/
       CodeBlock.tsx
       Heading.tsx
       Link.tsx
-    PageWrapper.jsx       # wraps every page
+    template/ (collapsed) # page template components
+      Copyright.jsx
+      Footer.jsx
+      Header.jsx
+      PageWrapper.jsx       # wraps every page
+      ScratchBadge.jsx
     tailwind.css          # global styles
   AGENTS.md              # agent context
   package.json           # dependencies
