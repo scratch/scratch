@@ -5,9 +5,19 @@ import path from 'path';
 import { globSync } from 'fast-glob';
 import JSZip from 'jszip';
 import { createApiClient } from '../../cloud/api';
-import { requireAuth } from '../../cloud/credentials';
+import { getCredentials } from '../../cloud/credentials';
+import { getUserConfig } from '../../cloud/userConfig';
+import {
+  getProjectConfig,
+  saveProjectConfig,
+  validateProjectName,
+  getProjectConfigPath,
+} from '../../cloud/projectConfig';
 import { buildCommand } from '../build';
 import { BuildContext } from '../../build/context';
+import { promptText } from '../../util';
+import { loginCommand } from './auth';
+import { configCommand } from './config';
 import log from '../../logger';
 
 /**
@@ -43,43 +53,78 @@ export async function deployCommand(
   projectPath: string = '.',
   options: DeployOptions = {}
 ): Promise<void> {
-  const creds = await requireAuth();
-  const api = createApiClient(creds);
-
   const resolvedPath = path.resolve(projectPath);
 
-  // Determine project slug
-  let projectSlug = options.project;
-
-  if (!projectSlug) {
-    // Try to read from package.json
-    try {
-      const pkgPath = path.resolve(resolvedPath, 'package.json');
-      const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf-8'));
-      projectSlug = pkg.name;
-    } catch {
-      throw new Error(
-        'Could not determine project name. Use --project option or set name in package.json'
-      );
+  // 1. Ensure logged in (prompt if not)
+  let creds = await getCredentials();
+  if (!creds) {
+    log.info('Not logged in. Starting login flow...\n');
+    await loginCommand();
+    creds = await getCredentials();
+    if (!creds) {
+      throw new Error('Login required to deploy');
     }
   }
 
-  log.info(`Deploying to ${creds.user.org}/${projectSlug}...`);
+  // 2. Ensure server URL configured
+  let userConfig = await getUserConfig();
+  if (!userConfig?.serverUrl) {
+    log.info('Server not configured. Starting setup...\n');
+    await configCommand({});
+    userConfig = await getUserConfig();
+    if (!userConfig?.serverUrl) {
+      throw new Error('Server URL required to deploy');
+    }
+  }
 
-  // Get project info to determine base path, or create if it doesn't exist
-  let basePath: string | undefined;
+  // 3. Load or create project config
+  let projectConfig = await getProjectConfig(resolvedPath);
+  let projectName: string;
+
+  if (options.project) {
+    // CLI option overrides stored config
+    const error = validateProjectName(options.project);
+    if (error) {
+      throw new Error(`Invalid project name: ${error}`);
+    }
+    projectName = options.project;
+    // Update stored config
+    await saveProjectConfig(resolvedPath, { name: projectName });
+    log.debug(`Updated project config: ${getProjectConfigPath(resolvedPath)}`);
+  } else if (projectConfig?.name) {
+    // Use stored config
+    projectName = projectConfig.name;
+    log.debug(`Using project from config: ${projectName}`);
+  } else {
+    // Prompt for project name
+    projectName = await promptText(
+      'Project name',
+      undefined,
+      validateProjectName
+    );
+    await saveProjectConfig(resolvedPath, { name: projectName });
+    log.info(`Saved project config to ${getProjectConfigPath(resolvedPath)}`);
+  }
+
+  log.info(`\nDeploying to ${creds.user.org}/${projectName}...`);
+
+  // 4. Get/create project on server
+  const api = createApiClient(creds);
+  let basePath: string;
+
   try {
-    const { project } = await api.getProject(creds.user.org, projectSlug);
-    // Parse base path from project URL
+    const { project } = await api.getProject(creds.user.org, projectName);
     const url = new URL(project.url);
     basePath = url.pathname;
-    log.info(`Project URL: ${project.url}`);
+    log.debug(`Project exists: ${project.url}`);
   } catch (error: any) {
-    if (error.message?.includes('not found') || error.message?.includes('404')) {
-      // Project doesn't exist, create it
-      log.info(`Project '${projectSlug}' not found. Creating...`);
+    if (
+      error.message?.includes('not found') ||
+      error.message?.includes('404')
+    ) {
+      log.info(`Creating project '${projectName}'...`);
       const { project } = await api.createProject(creds.user.org, {
-        name: projectSlug,
+        name: projectName,
       });
       const url = new URL(project.url);
       basePath = url.pathname;
@@ -89,8 +134,8 @@ export async function deployCommand(
     }
   }
 
-  // Build the project with the correct base path
-  log.info('Building project...');
+  // 5. Build project with correct base path
+  log.info('Building...');
   const ctx = new BuildContext({
     path: resolvedPath,
     base: basePath,
@@ -98,11 +143,10 @@ export async function deployCommand(
 
   await buildCommand(ctx, { base: basePath }, resolvedPath);
 
-  // Zip the dist directory
+  // 6. Zip and upload
   log.info('Creating deployment package...');
   const distDir = path.resolve(resolvedPath, 'dist');
 
-  // Verify dist directory exists
   try {
     await fs.access(distDir);
   } catch {
@@ -115,9 +159,8 @@ export async function deployCommand(
   const zipSizeKb = Math.round(zipBuffer.byteLength / 1024);
   log.info(`Package size: ${zipSizeKb} KB`);
 
-  // Upload
   log.info('Uploading...');
-  const result = await api.uploadVersion(creds.user.org, projectSlug, zipBuffer);
+  const result = await api.uploadVersion(creds.user.org, projectName, zipBuffer);
 
   log.info('');
   log.info(result.message);

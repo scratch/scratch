@@ -246,6 +246,59 @@ export function formatFileTree(files: string[]): string[] {
 }
 
 /**
+ * Prompt user for text input with optional validation.
+ * Auto-returns default value when not running in a TTY (non-interactive).
+ */
+export async function promptText(
+  question: string,
+  defaultValue?: string,
+  validate?: (input: string) => string | null // Returns error message or null if valid
+): Promise<string> {
+  // Auto-return default when not in a TTY (scripts, tests, piped input)
+  if (!process.stdin.isTTY) {
+    if (defaultValue !== undefined) {
+      return defaultValue;
+    }
+    throw new Error(`Cannot prompt for input in non-interactive mode: ${question}`);
+  }
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  const hint = defaultValue ? ` [${defaultValue}]` : '';
+
+  return new Promise((resolve, reject) => {
+    const ask = () => {
+      rl.question(`${question}${hint}: `, (answer) => {
+        const trimmed = answer.trim();
+        const value = trimmed === '' && defaultValue !== undefined ? defaultValue : trimmed;
+
+        if (value === '') {
+          console.log('  Value required. Please enter a value.');
+          ask();
+          return;
+        }
+
+        if (validate) {
+          const error = validate(value);
+          if (error) {
+            console.log(`  ${error}`);
+            ask();
+            return;
+          }
+        }
+
+        rl.close();
+        resolve(value);
+      });
+    };
+    ask();
+  });
+}
+
+/**
  * Prompt user for yes/no confirmation.
  * Auto-confirms with default value when not running in a TTY (non-interactive).
  */
