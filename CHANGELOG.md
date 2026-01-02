@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.9] - 2026-01-02
+
+This release renames the `view` command to `watch` for clearer semantics.
+
+### Changes
+
+- Renamed the `view` command to `watch` (the `view` alias is still available for backwards compatibility)
+
 ## [0.3.8] - 2025-12-31
 
 This release adds expanded social media meta tag support for better sharing on platforms like Twitter/X and Facebook.
