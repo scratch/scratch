@@ -47,7 +47,7 @@ function withErrorHandling(
  */
 export function registerCloudCommands(program: Command): void {
   const cloud = program
-    .command('cloud')
+    .command('cloud', { hidden: true })
     .description('Interact with Scratch Cloud');
 
   // Authentication commands
@@ -193,6 +193,21 @@ export function registerCloudCommands(program: Command): void {
     .action(
       withErrorHandling('Delete token', async (id) => {
         await deleteTokenCommand(id);
+      })
+    );
+
+  // Top-level deploy alias (also hidden for now)
+  program
+    .command('deploy', { hidden: true })
+    .description('Build and deploy project to cloud')
+    .argument('[path]', 'Path to project directory', '.')
+    .option(
+      '-p, --project <name>',
+      'Project name (defaults to package.json name)'
+    )
+    .action(
+      withErrorHandling('Deploy', async (path, options) => {
+        await deployCommand(path, options);
       })
     );
 }
