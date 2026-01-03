@@ -8,6 +8,39 @@ import { getContentType } from '../util';
 import log from '../logger';
 
 /**
+ * Known static file extensions that should be served directly.
+ * Routes without these extensions will try to serve index.html instead.
+ */
+const STATIC_FILE_EXTENSIONS = new Set([
+  // Web assets
+  'html', 'css', 'js', 'mjs', 'json', 'xml', 'txt',
+  // Source files (recognized as extensions even though not typically served)
+  'ts', 'tsx', 'jsx', 'md', 'mdx',
+  // Images
+  'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'avif',
+  // Fonts
+  'woff', 'woff2', 'ttf', 'otf', 'eot',
+  // Media
+  'mp3', 'mp4', 'webm', 'ogg', 'wav',
+  // Documents
+  'pdf', 'zip', 'gz', 'tar',
+  // Maps & data
+  'map', 'wasm',
+]);
+
+/**
+ * Check if a pathname ends with a known static file extension.
+ * Only considers the last path segment, so `/test.file` returns false
+ * but `/style.css` returns true.
+ */
+export function hasStaticFileExtension(pathname: string): boolean {
+  const lastSegment = pathname.split('/').pop() || '';
+  const match = lastSegment.match(/\.([a-zA-Z0-9]+)$/);
+  if (!match || !match[1]) return false;
+  return STATIC_FILE_EXTENSIONS.has(match[1].toLowerCase());
+}
+
+/**
  * Given a build directory, find the best route to open in the dev server.
  * Uses DFS to search recursively for index.html files.
  * Returns '/' if nothing found.
@@ -94,7 +127,9 @@ async function startDevServerWithFallback(
           let filePath = path.join(buildDir, pathname);
 
           // Handle directory index (e.g., /posts -> /posts/index.html)
-          if (!pathname.includes('.')) {
+          // Use allowlist to distinguish routes from static files
+          // e.g., /test.file should try index.html, but /style.css should serve directly
+          if (!hasStaticFileExtension(pathname)) {
             // Try adding /index.html
             const indexPath = path.join(filePath, 'index.html');
             if (await Bun.file(indexPath).exists()) {

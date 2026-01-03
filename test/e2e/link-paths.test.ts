@@ -1,7 +1,215 @@
 import { describe, expect, test } from 'bun:test';
-import { readFile, rm, writeFile } from 'fs/promises';
+import { readFile, rm, writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { runCliSync, mkTempDir } from './util';
+
+describe('Relative link .md/.mdx extension stripping', () => {
+  test('strips .md extension from relative markdown links', async () => {
+    const tempDir = await mkTempDir('link-md-ext-');
+    runCliSync(['create', 'sandbox'], tempDir);
+
+    const sandboxDir = path.join(tempDir, 'sandbox');
+
+    // Create MDX file with relative links using .md extension
+    const mdxPath = path.join(sandboxDir, 'pages', 'index.mdx');
+    await writeFile(
+      mdxPath,
+      `# Link Test
+
+[About page](about.md)
+
+[Contact](contact.md)
+
+Some text.
+`
+    );
+
+    // Create the target pages
+    await writeFile(path.join(sandboxDir, 'pages', 'about.md'), '# About');
+    await writeFile(path.join(sandboxDir, 'pages', 'contact.md'), '# Contact');
+
+    // Build without base path
+    runCliSync(['build', 'sandbox', '--development'], tempDir);
+
+    // Read the generated HTML
+    const html = await readFile(path.join(sandboxDir, 'dist', 'index.html'), 'utf-8');
+
+    // Verify .md extensions are stripped
+    expect(html).toContain('href="about"');
+    expect(html).toContain('href="contact"');
+    expect(html).not.toContain('href="about.md"');
+    expect(html).not.toContain('href="contact.md"');
+
+    await rm(tempDir, { recursive: true, force: true });
+  }, 180_000);
+
+  test('strips .mdx extension from relative markdown links', async () => {
+    const tempDir = await mkTempDir('link-mdx-ext-');
+    runCliSync(['create', 'sandbox'], tempDir);
+
+    const sandboxDir = path.join(tempDir, 'sandbox');
+
+    // Create MDX file with relative links using .mdx extension
+    const mdxPath = path.join(sandboxDir, 'pages', 'index.mdx');
+    await writeFile(
+      mdxPath,
+      `# Link Test
+
+[Guide](guide.mdx)
+
+Some text.
+`
+    );
+
+    // Create the target page
+    await writeFile(path.join(sandboxDir, 'pages', 'guide.mdx'), '# Guide');
+
+    // Build without base path
+    runCliSync(['build', 'sandbox', '--development'], tempDir);
+
+    // Read the generated HTML
+    const html = await readFile(path.join(sandboxDir, 'dist', 'index.html'), 'utf-8');
+
+    // Verify .mdx extension is stripped
+    expect(html).toContain('href="guide"');
+    expect(html).not.toContain('href="guide.mdx"');
+
+    await rm(tempDir, { recursive: true, force: true });
+  }, 180_000);
+
+  test('strips extensions from nested relative links', async () => {
+    const tempDir = await mkTempDir('link-nested-ext-');
+    runCliSync(['create', 'sandbox'], tempDir);
+
+    const sandboxDir = path.join(tempDir, 'sandbox');
+
+    // Create MDX file with nested relative links
+    const mdxPath = path.join(sandboxDir, 'pages', 'index.mdx');
+    await writeFile(
+      mdxPath,
+      `# Link Test
+
+[Nested guide](docs/guide.md)
+
+[Parent](../other.mdx)
+
+Some text.
+`
+    );
+
+    // Create the target pages
+    await mkdir(path.join(sandboxDir, 'pages', 'docs'), { recursive: true });
+    await writeFile(path.join(sandboxDir, 'pages', 'docs', 'guide.md'), '# Guide');
+
+    // Build without base path
+    runCliSync(['build', 'sandbox', '--development'], tempDir);
+
+    // Read the generated HTML
+    const html = await readFile(path.join(sandboxDir, 'dist', 'index.html'), 'utf-8');
+
+    // Verify extensions are stripped from nested paths
+    expect(html).toContain('href="docs/guide"');
+    expect(html).toContain('href="../other"');
+    expect(html).not.toContain('href="docs/guide.md"');
+    expect(html).not.toContain('href="../other.mdx"');
+
+    await rm(tempDir, { recursive: true, force: true });
+  }, 180_000);
+
+  test('does not strip .md from absolute internal paths', async () => {
+    const tempDir = await mkTempDir('link-abs-md-');
+    runCliSync(['create', 'sandbox'], tempDir);
+
+    const sandboxDir = path.join(tempDir, 'sandbox');
+
+    // Create MDX file with absolute path containing .md
+    const mdxPath = path.join(sandboxDir, 'pages', 'index.mdx');
+    await writeFile(
+      mdxPath,
+      `# Link Test
+
+[Absolute link](/about.md)
+
+Some text.
+`
+    );
+
+    // Build without base path
+    runCliSync(['build', 'sandbox', '--development'], tempDir);
+
+    // Read the generated HTML
+    const html = await readFile(path.join(sandboxDir, 'dist', 'index.html'), 'utf-8');
+
+    // Verify absolute paths are NOT transformed
+    expect(html).toContain('href="/about.md"');
+
+    await rm(tempDir, { recursive: true, force: true });
+  }, 180_000);
+
+  test('does not strip .md from external URLs', async () => {
+    const tempDir = await mkTempDir('link-ext-md-');
+    runCliSync(['create', 'sandbox'], tempDir);
+
+    const sandboxDir = path.join(tempDir, 'sandbox');
+
+    // Create MDX file with external URL containing .md
+    const mdxPath = path.join(sandboxDir, 'pages', 'index.mdx');
+    await writeFile(
+      mdxPath,
+      `# Link Test
+
+[External](https://example.com/readme.md)
+
+Some text.
+`
+    );
+
+    // Build without base path
+    runCliSync(['build', 'sandbox', '--development'], tempDir);
+
+    // Read the generated HTML
+    const html = await readFile(path.join(sandboxDir, 'dist', 'index.html'), 'utf-8');
+
+    // Verify external URLs are NOT transformed
+    expect(html).toContain('href="https://example.com/readme.md"');
+
+    await rm(tempDir, { recursive: true, force: true });
+  }, 180_000);
+
+  test('strips .md extension in raw HTML links', async () => {
+    const tempDir = await mkTempDir('link-raw-md-');
+    runCliSync(['create', 'sandbox'], tempDir);
+
+    const sandboxDir = path.join(tempDir, 'sandbox');
+
+    // Create MDX file with raw HTML links containing .md
+    const mdxPath = path.join(sandboxDir, 'pages', 'index.mdx');
+    await writeFile(
+      mdxPath,
+      `# Link Test
+
+<a href="about.md">About page</a>
+
+Some text.
+`
+    );
+
+    // Create the target page
+    await writeFile(path.join(sandboxDir, 'pages', 'about.md'), '# About');
+
+    // Build without base path
+    runCliSync(['build', 'sandbox', '--development'], tempDir);
+
+    // Read the generated HTML
+    const html = await readFile(path.join(sandboxDir, 'dist', 'index.html'), 'utf-8');
+
+    // Verify .md extension is stripped from raw HTML links
+    expect(html).toContain('href="about"');
+    expect(html).not.toContain('href="about.md"');
+
+    await rm(tempDir, { recursive: true, force: true });
+  }, 180_000);
+});
 
 describe('Link path transformation with base path', () => {
   test('transforms markdown internal links', async () => {

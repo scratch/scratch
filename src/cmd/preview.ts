@@ -3,7 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import log from "../logger";
 import { getContentType } from "../util";
-import { findRoute } from "./dev";
+import { findRoute, hasStaticFileExtension } from "./dev";
 
 interface PreviewOptions {
     port?: number;
@@ -31,7 +31,8 @@ async function startServerWithFallback(
                     let filePath = path.join(buildDir, pathname);
 
                     // Handle directory index
-                    if (!pathname.includes('.')) {
+                    // Use allowlist to distinguish routes from static files
+                    if (!hasStaticFileExtension(pathname)) {
                         const indexPath = path.join(filePath, 'index.html');
                         if (await Bun.file(indexPath).exists()) {
                             filePath = indexPath;

@@ -206,7 +206,7 @@ export function formatFileTree(files: string[]): string[] {
     const parts = file.split('/').filter((p) => p !== '');
     let node = tree;
     for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
+      const part = parts[i]!;
       const isLast = i === parts.length - 1;
       // Treat as directory if path ended with '/' or if not the last part
       const isDir = file.endsWith('/') ? true : !isLast;
