@@ -15,10 +15,10 @@ describe("scratch create --no-example", () => {
     const pagesFiles = await readdir(pagesDir);
     expect(pagesFiles).toEqual([]);
 
-    // Verify public/ directory exists but is empty
+    // Verify public/ directory exists with only essential assets
     const publicDir = path.join(projectDir, "public");
     const publicFiles = await readdir(publicDir);
-    expect(publicFiles).toEqual([]);
+    expect(publicFiles.sort()).toEqual(["favicon.svg", "scratch-logo.svg"]);
 
     // Verify src/ directory exists and has content
     const srcDir = path.join(projectDir, "src");

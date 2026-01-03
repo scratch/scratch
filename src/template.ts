@@ -27,6 +27,15 @@ function getWritableContent(file: TemplateFile): string | Buffer {
 const MINIMAL_FILES = new Set(['.gitignore', 'AGENTS.md', 'pages/index.mdx']);
 
 /**
+ * Infrastructure files that are always included, even with --no-example.
+ * These are required by template components (e.g., ScratchBadge needs the logo).
+ */
+const INFRASTRUCTURE_FILES = new Set([
+  'public/favicon.svg',      // Required for browser tab icon
+  'public/scratch-logo.svg', // Required by ScratchBadge component
+]);
+
+/**
  * Check if a file belongs to the minimal tier
  */
 function isMinimalFile(relativePath: string): boolean {
@@ -114,9 +123,11 @@ export async function materializeProjectTemplates(
     }
 
     // Skip pages/ and public/ content unless includeExample is true
+    // (but always include infrastructure files like favicon and logo)
     if (
       !includeExample &&
-      (relativePath.startsWith('pages/') || relativePath.startsWith('public/'))
+      (relativePath.startsWith('pages/') || relativePath.startsWith('public/')) &&
+      !INFRASTRUCTURE_FILES.has(relativePath)
     ) {
       continue;
     }
