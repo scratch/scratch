@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.11] - 2026-01-03
+
+This release fixes several routing and template issues.
+
+### Bug Fixes
+
+- Fixed 404 errors for routes with dots in filenames (e.g., `/test.file` now resolves correctly)
+- Fixed markdown links with `.md`/`.mdx` extensions not being transformed during build
+- Fixed ScratchBadge logo not loading in watch mode
+
+### Changes
+
+- Renamed `--no-example` flag to `--minimal` for clearer semantics
+- Watch mode now uses minimal mode for clean, unbranded preview
+- Fixed sticky footer layout using flexbox
+
 ## [0.3.10] - 2026-01-02
 
 This release introduces new template components for page layouts and reorganizes the template structure for better customization.

@@ -136,6 +136,14 @@ Release notes guidelines:
     process.exit(1);
   }
 
+  // Verify that CHANGELOG.md was actually updated
+  const updatedChangelog = readFileSync(changelogPath, 'utf-8');
+  if (!updatedChangelog.includes(`## [${newVersion}]`)) {
+    console.error('Error: Claude did not update CHANGELOG.md with the new version entry.');
+    console.error('Please run the release script again or manually add the changelog entry.');
+    process.exit(1);
+  }
+
   // Update package.json version (without staging)
   console.log(`\n==> Updating version: ${currentVersion} → ${newVersion}`);
   pkg.version = newVersion;
