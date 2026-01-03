@@ -1,6 +1,7 @@
 // Authentication commands: login, logout, whoami
 
 import { createApiClient } from '../../cloud/api';
+import type { Credentials } from '../../cloud/types';
 import {
   saveCredentials,
   deleteCredentials,
@@ -10,17 +11,58 @@ import { CLOUD_CONFIG } from '../../cloud/config';
 import log from '../../logger';
 
 /**
+ * Ensure user has valid credentials, triggering login if needed.
+ * Validates token with server and auto-re-logins if expired.
+ */
+export async function ensureValidCredentials(): Promise<Credentials> {
+  let creds = await getCredentials();
+
+  if (creds) {
+    // Validate token with server
+    const api = createApiClient(creds);
+    try {
+      await api.me();
+      return creds; // Token is valid
+    } catch {
+      // Token expired/invalid - clear and re-login
+      log.info('Session expired. Starting new login...\n');
+      await deleteCredentials();
+      creds = null;
+    }
+  }
+
+  // No credentials or invalid - start login flow
+  if (!creds) {
+    await loginCommand();
+    creds = await getCredentials();
+    if (!creds) {
+      throw new Error('Login required');
+    }
+  }
+
+  return creds;
+}
+
+/**
  * Login via device flow
  */
 export async function loginCommand(): Promise<void> {
   log.debug(`[Auth] Server URL: ${CLOUD_CONFIG.serverUrl}`);
 
-  // Check if already logged in
+  // Check if already logged in and token is still valid
   const existing = await getCredentials();
   if (existing) {
-    log.info(`Already logged in as ${existing.user.email}`);
-    log.info('Run `scratch cloud logout` first to log in as a different user.');
-    return;
+    const api = createApiClient(existing);
+    try {
+      await api.me();
+      log.info(`Already logged in as ${existing.user.email}`);
+      log.info('Run `scratch cloud logout` first to log in as a different user.');
+      return;
+    } catch {
+      // Token expired/invalid - clear and proceed with login
+      log.info('Session expired. Starting new login...\n');
+      await deleteCredentials();
+    }
   }
 
   const api = createApiClient();
@@ -106,24 +148,8 @@ export async function logoutCommand(): Promise<void> {
  * Show current user info
  */
 export async function whoamiCommand(): Promise<void> {
-  const creds = await getCredentials();
-
-  if (!creds) {
-    log.info('Not logged in. Run `scratch cloud login` to authenticate.');
-    return;
-  }
-
-  // Verify token is still valid
-  const api = createApiClient(creds);
-  try {
-    const { user } = await api.me();
-    log.info(`Logged in as: ${user.email}`);
-    log.info(`Organization: ${user.org}`);
-    log.info(`Server: ${creds.server}`);
-  } catch {
-    log.error(
-      'Session expired or invalid. Please run `scratch cloud login` again.'
-    );
-    await deleteCredentials();
-  }
+  const creds = await ensureValidCredentials();
+  log.info(`Logged in as: ${creds.user.email}`);
+  log.info(`Organization: ${creds.user.org}`);
+  log.info(`Server: ${creds.server}`);
 }

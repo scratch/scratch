@@ -1,7 +1,7 @@
 // Projects commands: list, create, info, update, link, delete
 
 import { createApiClient } from '../../cloud/api';
-import { requireAuth } from '../../cloud/credentials';
+import { ensureValidCredentials } from './auth';
 import {
   getProjectConfig,
   saveProjectConfig,
@@ -14,7 +14,7 @@ import * as readline from 'readline';
  * List projects in user's organization
  */
 export async function listProjectsCommand(): Promise<void> {
-  const creds = await requireAuth();
+  const creds = await ensureValidCredentials();
   const api = createApiClient(creds);
 
   const { projects } = await api.listProjects(creds.user.org);
@@ -46,7 +46,7 @@ export async function createProjectCommand(
   name: string,
   options: { displayName?: string; description?: string; access?: string }
 ): Promise<void> {
-  const creds = await requireAuth();
+  const creds = await ensureValidCredentials();
   const api = createApiClient(creds);
 
   const body: CreateProjectBody = {
@@ -72,7 +72,7 @@ export async function createProjectCommand(
  * Get project details
  */
 export async function projectInfoCommand(projectName: string): Promise<void> {
-  const creds = await requireAuth();
+  const creds = await ensureValidCredentials();
   const api = createApiClient(creds);
 
   const { project } = await api.getProject(creds.user.org, projectName);
@@ -95,7 +95,7 @@ export async function updateProjectCommand(
   projectName: string,
   options: { displayName?: string; description?: string; access?: string }
 ): Promise<void> {
-  const creds = await requireAuth();
+  const creds = await ensureValidCredentials();
   const api = createApiClient(creds);
 
   const body: UpdateProjectBody = {};
@@ -126,7 +126,7 @@ export async function linkProjectCommand(
   projectName: string,
   projectDir: string = '.'
 ): Promise<void> {
-  const creds = await requireAuth();
+  const creds = await ensureValidCredentials();
   const api = createApiClient(creds);
 
   // Fetch project info to verify it exists
@@ -157,7 +157,7 @@ export async function deleteProjectCommand(
   projectName: string,
   options: { force?: boolean }
 ): Promise<void> {
-  const creds = await requireAuth();
+  const creds = await ensureValidCredentials();
   const api = createApiClient(creds);
 
   // First verify the project exists

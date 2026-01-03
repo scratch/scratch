@@ -1,19 +1,14 @@
 // Token management commands: list, create, delete
 
 import { createApiClient } from '../../cloud/api';
-import { getCredentials } from '../../cloud/credentials';
+import { ensureValidCredentials } from './auth';
 import log from '../../logger';
 
 /**
  * List all API tokens
  */
 export async function listTokensCommand(): Promise<void> {
-  const creds = await getCredentials();
-  if (!creds) {
-    log.info('Not logged in. Run `scratch cloud login` to authenticate.');
-    process.exit(1);
-  }
-
+  const creds = await ensureValidCredentials();
   const api = createApiClient(creds);
   const { tokens } = await api.listTokens();
 
@@ -49,12 +44,7 @@ export async function createTokenCommand(options: {
   name?: string;
   expires?: number;
 }): Promise<void> {
-  const creds = await getCredentials();
-  if (!creds) {
-    log.info('Not logged in. Run `scratch cloud login` to authenticate.');
-    process.exit(1);
-  }
-
+  const creds = await ensureValidCredentials();
   const api = createApiClient(creds);
   const body: { name?: string; expires_in_days?: number } = {};
   if (options.name) body.name = options.name;
@@ -77,12 +67,7 @@ export async function createTokenCommand(options: {
  * Delete an API token
  */
 export async function deleteTokenCommand(id: string): Promise<void> {
-  const creds = await getCredentials();
-  if (!creds) {
-    log.info('Not logged in. Run `scratch cloud login` to authenticate.');
-    process.exit(1);
-  }
-
+  const creds = await ensureValidCredentials();
   const api = createApiClient(creds);
   await api.deleteToken(id);
 

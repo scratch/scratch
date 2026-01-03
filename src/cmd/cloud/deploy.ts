@@ -5,7 +5,6 @@ import path from 'path';
 import { globSync } from 'fast-glob';
 import JSZip from 'jszip';
 import { createApiClient } from '../../cloud/api';
-import { getCredentials } from '../../cloud/credentials';
 import { getUserConfig } from '../../cloud/userConfig';
 import {
   getProjectConfig,
@@ -16,7 +15,7 @@ import {
 import { buildCommand } from '../build';
 import { BuildContext } from '../../build/context';
 import { promptText } from '../../util';
-import { loginCommand } from './auth';
+import { ensureValidCredentials } from './auth';
 import { configCommand } from './config';
 import log from '../../logger';
 
@@ -57,16 +56,8 @@ export async function deployCommand(
 ): Promise<void> {
   const resolvedPath = path.resolve(projectPath);
 
-  // 1. Ensure logged in (prompt if not)
-  let creds = await getCredentials();
-  if (!creds) {
-    log.info('Not logged in. Starting login flow...\n');
-    await loginCommand();
-    creds = await getCredentials();
-    if (!creds) {
-      throw new Error('Login required to deploy');
-    }
-  }
+  // 1. Ensure logged in (validates token and auto-re-logins if expired)
+  const creds = await ensureValidCredentials();
 
   // 2. Load project and user configs
   let projectConfig = await getProjectConfig(resolvedPath);
@@ -162,10 +153,13 @@ export async function deployCommand(
       basePath = url.pathname;
       log.info(`Created project: ${project.url}`);
 
+      // Use the server-normalized project name (lowercase)
+      projectName = project.name;
+
       // Save display_name and view_access from the created project
       await saveProjectConfig(resolvedPath, {
         ...projectConfig,
-        name: projectName,
+        name: project.name,
         display_name: project.display_name,
         view_access: project.view_access,
         serverUrl,

@@ -30,7 +30,7 @@ SERVER_URL="${SCRATCH_SERVER:-http://localhost:8788}"
 
 # Generate unique identifiers for this test run
 TIMESTAMP=$(date +%s)
-TEST_EMAIL="delete-test-${TIMESTAMP}@testmail.com"
+TEST_EMAIL="delete-test-${TIMESTAMP}@gmail.com"
 TEST_PROJECT="delete-project-${TIMESTAMP}"
 
 # Will be set after user creation

@@ -33,7 +33,7 @@ PAGES_URL="${SCRATCH_PAGES:-http://localhost:8787}"
 
 # Generate unique identifiers for this test run
 TIMESTAMP=$(date +%s)
-TEST_EMAIL="private-test-${TIMESTAMP}@testmail.com"
+TEST_EMAIL="private-test-${TIMESTAMP}@gmail.com"
 TEST_PROJECT="e2e-private-${TIMESTAMP}"
 TEMP_DIR=""
 
@@ -112,7 +112,7 @@ check_prerequisites() {
     # Check if test endpoints are available (non-production mode)
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
         -H "Content-Type: application/json" \
-        -d '{"email": "probe@test.com"}' \
+        -d '{"email": "probe@gmail.com"}' \
         "$SERVER_URL/api/test/users")
 
     if [ "$HTTP_CODE" = "403" ]; then
@@ -121,7 +121,7 @@ check_prerequisites() {
     fi
 
     # Clean up probe user
-    curl -s -X DELETE "$SERVER_URL/api/test/users/probe%40test.com" > /dev/null 2>&1 || true
+    curl -s -X DELETE "$SERVER_URL/api/test/users/probe%40gmail.com" > /dev/null 2>&1 || true
 
     log_info "Prerequisites check passed"
 }

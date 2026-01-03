@@ -34,7 +34,7 @@ PERSONAL_EMAIL="testuser${TIMESTAMP}@gmail.com"
 HOSTED_EMAIL1="alice${TIMESTAMP}@testcorp.com"
 HOSTED_EMAIL2="bob${TIMESTAMP}@testcorp.com"
 HOSTED_DOMAIN="testcorp.com"
-COLLISION_EMAIL="collision${TIMESTAMP}@example.com"
+COLLISION_EMAIL="collision${TIMESTAMP}@gmail.com"
 
 # Store tokens for cleanup
 PERSONAL_TOKEN=""
@@ -93,7 +93,7 @@ check_prerequisites() {
     # Check if test endpoints are available (non-production mode)
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
         -H "Content-Type: application/json" \
-        -d '{"email": "probe@test.com"}' \
+        -d '{"email": "probe@gmail.com"}' \
         "$SERVER_URL/api/test/users")
 
     if [ "$HTTP_CODE" = "403" ]; then
@@ -103,7 +103,7 @@ check_prerequisites() {
     fi
 
     # Clean up probe user if it was created
-    curl -s -X DELETE "$SERVER_URL/api/test/users/probe%40test.com" > /dev/null 2>&1 || true
+    curl -s -X DELETE "$SERVER_URL/api/test/users/probe%40gmail.com" > /dev/null 2>&1 || true
 
     log_info "Prerequisites check passed"
 }
@@ -232,13 +232,11 @@ test_second_hosted_domain_user_joins_org() {
 }
 
 test_personal_org_collision() {
-    log_test "Testing personal org collision detection..."
+    log_test "Testing duplicate user rejection..."
 
-    # First, create an org that will collide
-    # Create a personal account whose org name would be "collision${TIMESTAMP}.example.com"
+    # Create a personal account
     COLLISION_ORG=$(echo "$COLLISION_EMAIL" | tr '@' '.' | tr '[:upper:]' '[:lower:]')
 
-    # Create first user with this org
     RESPONSE=$(curl -s -X POST \
         -H "Content-Type: application/json" \
         -d "{\"email\": \"$COLLISION_EMAIL\"}" \
@@ -252,52 +250,22 @@ test_personal_org_collision() {
 
     COLLISION_TOKEN=$(echo "$RESPONSE" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
 
-    # Now try to create a HOSTED DOMAIN account with the same org name
-    # This should succeed because hosted domains can join existing orgs
-    # But a second PERSONAL account that would create the same org should fail
-
-    # Create another email that would produce the same org name
-    # collision${TIMESTAMP}.example.com could come from collision${TIMESTAMP}@example.com
-    # Let's try a different collision: create hosted domain first, then personal
-
-    # Actually, the collision we want to test is:
-    # 1. Hosted domain org "collision.test" exists
-    # 2. Personal account "collision@test" tries to sign up
-    # 3. Personal account should fail because org name would be "collision.test"
-
-    # Let's create a new collision scenario
-    COLLISION_HOSTED_DOMAIN="collision${TIMESTAMP}.test"
-    COLLISION_PERSONAL_EMAIL="collision${TIMESTAMP}@test"
-
-    # Create hosted domain org first
-    RESPONSE=$(curl -s -X POST \
+    # Try to create the same user again - should fail with 409
+    HTTP_CODE=$(curl -s -o /tmp/collision-response.txt -w "%{http_code}" -X POST \
         -H "Content-Type: application/json" \
-        -d "{\"email\": \"admin@${COLLISION_HOSTED_DOMAIN}\", \"hd\": \"$COLLISION_HOSTED_DOMAIN\"}" \
+        -d "{\"email\": \"$COLLISION_EMAIL\"}" \
         "$SERVER_URL/api/test/users")
 
-    if echo "$RESPONSE" | grep -q '"error"'; then
-        log_warn "Could not set up collision test (may be expected)"
+    if [ "$HTTP_CODE" = "409" ]; then
+        log_pass "Duplicate user correctly rejected (HTTP 409)"
     else
-        # Now try personal account that would collide
-        HTTP_CODE=$(curl -s -o /tmp/collision-response.txt -w "%{http_code}" -X POST \
-            -H "Content-Type: application/json" \
-            -d "{\"email\": \"$COLLISION_PERSONAL_EMAIL\"}" \
-            "$SERVER_URL/api/test/users")
-
-        if [ "$HTTP_CODE" = "409" ]; then
-            log_pass "Personal org collision correctly rejected (HTTP 409)"
-        else
-            COLLISION_RESPONSE=$(cat /tmp/collision-response.txt)
-            log_warn "Collision test: HTTP $HTTP_CODE (Response: $COLLISION_RESPONSE)"
-            log_warn "This may be acceptable depending on implementation"
-        fi
-
-        # Cleanup collision test users
-        curl -s -X DELETE "$SERVER_URL/api/test/users/admin%40${COLLISION_HOSTED_DOMAIN}" > /dev/null 2>&1 || true
-        curl -s -X DELETE "$SERVER_URL/api/test/users/$(python3 -c "import urllib.parse; print(urllib.parse.quote('$COLLISION_PERSONAL_EMAIL'))")" > /dev/null 2>&1 || true
+        COLLISION_RESPONSE=$(cat /tmp/collision-response.txt)
+        log_fail "Expected 409 for duplicate user, got HTTP $HTTP_CODE"
+        log_fail "Response: $COLLISION_RESPONSE"
+        exit 1
     fi
 
-    log_pass "Personal org collision handling verified"
+    log_pass "Duplicate user handling verified"
 }
 
 test_org_access_control() {
@@ -381,7 +349,7 @@ print_summary() {
     echo "  1. Personal account creates org (email.domain format)"
     echo "  2. Hosted domain account creates org (domain name)"
     echo "  3. Second hosted domain user joins existing org"
-    echo "  4. Personal org collision handling"
+    echo "  4. Duplicate user rejection"
     echo "  5. Org access control (own org vs other org)"
     echo ""
 }
