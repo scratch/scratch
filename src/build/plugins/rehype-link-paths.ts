@@ -1,10 +1,10 @@
 /**
- * Rehype plugin that transforms internal link paths to include the base path.
+ * Rehype plugin that transforms internal link paths:
  *
- * - Only transforms absolute internal links (starting with /)
- * - Prepends the base path for subdirectory deployments
+ * - Strips .md/.mdx extensions from relative links (e.g., about.md -> about)
+ * - Prepends the base path for absolute internal links (when base is set)
  * - Skips external URLs, anchors, mailto, tel, and other special protocols
- * - Handles both HAST elements (from raw HTML) and MDX JSX elements
+ * - Handles HAST elements (from markdown links) and MDX JSX elements (from raw <a> in MDX)
  */
 import type { Plugin } from 'unified';
 import { visit } from 'unist-util-visit';
@@ -13,78 +13,85 @@ import { normalizeBase, isInternalAbsolutePath } from '../util';
 import log from '../../logger';
 
 /**
- * Get the href attribute from an MDX JSX element's attributes array.
+ * Check if a path is relative (not absolute, not external).
  */
-function getJsxHref(attributes: any[]): string | null {
-  if (!attributes) return null;
-  for (const attr of attributes) {
-    if (attr.type === 'mdxJsxAttribute' && attr.name === 'href') {
-      return typeof attr.value === 'string' ? attr.value : null;
+function isRelativePath(href: string): boolean {
+  return !href.startsWith('/') &&
+         !href.startsWith('http://') &&
+         !href.startsWith('https://') &&
+         !href.startsWith('//') &&
+         !href.startsWith('#') &&
+         !href.startsWith('mailto:') &&
+         !href.startsWith('tel:') &&
+         !href.startsWith('data:');
+}
+
+/**
+ * Transform a link href - returns new value or null if no change needed.
+ */
+function transformLinkHref(href: string, base: string): string | null {
+  if (!href || typeof href !== 'string') return null;
+
+  // Strip .md/.mdx extension from relative paths
+  if (isRelativePath(href)) {
+    if (href.endsWith('.md')) {
+      const newHref = href.slice(0, -3);
+      log.debug(`  - link: ${href} -> ${newHref} (stripped extension)`);
+      return newHref;
+    }
+    if (href.endsWith('.mdx')) {
+      const newHref = href.slice(0, -4);
+      log.debug(`  - link: ${href} -> ${newHref} (stripped extension)`);
+      return newHref;
     }
   }
+
+  // Prepend base path to absolute internal paths (only when base is set)
+  if (base && isInternalAbsolutePath(href)) {
+    const newHref = base + href;
+    log.debug(`  - link: ${href} -> ${newHref}`);
+    return newHref;
+  }
+
   return null;
 }
 
 /**
- * Set the href attribute on an MDX JSX element's attributes array.
- */
-function setJsxHref(attributes: any[], newHref: string): void {
-  for (const attr of attributes) {
-    if (attr.type === 'mdxJsxAttribute' && attr.name === 'href') {
-      attr.value = newHref;
-      return;
-    }
-  }
-}
-
-/**
- * Create a rehype plugin that transforms internal link paths to include base path.
+ * Create a rehype plugin that transforms internal link paths.
  */
 export function createLinkPathsPlugin(ctx: BuildContext): Plugin {
   const base = normalizeBase(ctx.options.base);
 
-  // If no base path, return a no-op plugin
-  if (!base) {
-    return () => () => {};
-  }
-
   return () => {
     return (tree: any) => {
-      /**
-       * Transform an internal href to include the base path.
-       */
-      function transformHref(href: string): string | null {
-        if (!href || typeof href !== 'string') return null;
-        if (!isInternalAbsolutePath(href)) return null;
-
-        // Prepend base path
-        const newHref = base + href;
-        log.debug(`  - link: ${href} -> ${newHref}`);
-        return newHref;
-      }
-
-      // Handle HAST element nodes (from raw HTML via rehype-raw)
+      // Handle HAST element nodes (from markdown links after remark-rehype)
       visit(tree, 'element', (node: any) => {
         if (node.tagName !== 'a') return;
 
         const props = node.properties || {};
         const href = props.href;
-        const newHref = transformHref(href);
-        if (newHref) {
+        const newHref = transformLinkHref(href, base);
+        if (newHref !== null) {
           node.properties.href = newHref;
         }
       });
 
-      // Handle MDX JSX elements (from markdown [text](url) syntax)
+      // Handle MDX JSX elements (from raw <a> tags in MDX files)
       visit(tree, ['mdxJsxFlowElement', 'mdxJsxTextElement'], (node: any) => {
         if (node.name !== 'a') return;
 
-        const href = getJsxHref(node.attributes);
-        if (!href) return;
-
-        const newHref = transformHref(href);
-        if (newHref) {
-          setJsxHref(node.attributes, newHref);
+        const attrs = node.attributes || [];
+        for (const attr of attrs) {
+          if (attr.type === 'mdxJsxAttribute' && attr.name === 'href') {
+            const href = typeof attr.value === 'string' ? attr.value : null;
+            if (href) {
+              const newHref = transformLinkHref(href, base);
+              if (newHref !== null) {
+                attr.value = newHref;
+              }
+            }
+            break;
+          }
         }
       });
     };

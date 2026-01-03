@@ -9,9 +9,11 @@ import Footer from './Footer';
  */
 export default function PageWrapper({ children }) {
   return (
-    <div className="min-h-screen bg-white prose max-w-2xl mx-auto px-6 py-8">
-      <Header />
-      {children}
+    <div className="min-h-screen bg-white flex flex-col">
+      <div className="prose w-full max-w-2xl mx-auto px-6 py-8 flex-1">
+        <Header />
+        {children}
+      </div>
       <Footer />
     </div>
   );

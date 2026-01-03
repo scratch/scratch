@@ -27,6 +27,15 @@ function getWritableContent(file: TemplateFile): string | Buffer {
 const MINIMAL_FILES = new Set(['.gitignore', 'AGENTS.md', 'pages/index.mdx']);
 
 /**
+ * Infrastructure files included in --minimal mode.
+ * These are the only public/ files included when using --minimal.
+ */
+const MINIMAL_INFRASTRUCTURE_FILES = new Set([
+  'public/favicon.svg',
+  'public/scratch-logo.svg',
+]);
+
+/**
  * Check if a file belongs to the minimal tier
  */
 function isMinimalFile(relativePath: string): boolean {
@@ -59,8 +68,8 @@ function isSrcFile(relativePath: string): boolean {
 export interface MaterializeOptions {
   /** Include src/ directory (default: true) */
   includeSrc?: boolean;
-  /** Include example pages/ and public/ content (default: true) */
-  includeExample?: boolean;
+  /** Minimal mode: skip example pages/public content, keep infrastructure (default: false) */
+  minimal?: boolean;
   /** Overwrite existing files (default: false) */
   overwrite?: boolean;
 }
@@ -81,21 +90,19 @@ export async function materializeProjectTemplates(
 ): Promise<string[]> {
   const {
     includeSrc = true,
-    includeExample = true,
+    minimal = false,
     overwrite = false,
   } = options;
   const created: string[] = [];
 
   await fs.mkdir(targetDir, { recursive: true });
 
-  // If not including example content, create empty pages/ and public/ directories
-  if (!includeExample) {
+  // In minimal mode, create empty pages/ directory (public/ will have favicon)
+  if (minimal) {
     const pagesDir = path.join(targetDir, 'pages');
-    const publicDir = path.join(targetDir, 'public');
     await fs.mkdir(pagesDir, { recursive: true });
-    await fs.mkdir(publicDir, { recursive: true });
-    created.push('pages/', 'public/');
-    log.debug('Created empty pages/ and public/ directories');
+    created.push('pages/');
+    log.debug('Created empty pages/ directory');
   }
 
   for (const [relativePath, file] of Object.entries(templates)) {
@@ -105,7 +112,7 @@ export async function materializeProjectTemplates(
     }
 
     // Determine if file should be included based on tier
-    const isMinimal = isMinimalFile(relativePath);
+    const isMinimalTier = isMinimalFile(relativePath);
     const isSrc = isSrcFile(relativePath);
 
     // Skip src tier files unless includeSrc is true
@@ -113,16 +120,18 @@ export async function materializeProjectTemplates(
       continue;
     }
 
-    // Skip pages/ and public/ content unless includeExample is true
-    if (
-      !includeExample &&
-      (relativePath.startsWith('pages/') || relativePath.startsWith('public/'))
-    ) {
-      continue;
+    // In minimal mode, skip pages/ and public/ content (except infrastructure files)
+    if (minimal) {
+      if (
+        (relativePath.startsWith('pages/') || relativePath.startsWith('public/')) &&
+        !MINIMAL_INFRASTRUCTURE_FILES.has(relativePath)
+      ) {
+        continue;
+      }
     }
 
     // Skip files that don't belong to any known tier (shouldn't happen)
-    if (!isMinimal && !isSrc) {
+    if (!isMinimalTier && !isSrc) {
       log.debug(`Skipping unknown tier file: ${relativePath}`);
       continue;
     }
