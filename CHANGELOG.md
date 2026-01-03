@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.12] - 2026-01-03
+
+Minor update with template refinements.
+
+### Improvements
+
+- Made the ScratchBadge component smaller for a more subtle appearance
+
 ## [0.3.11] - 2026-01-03
 
 This release fixes several routing and template issues.
