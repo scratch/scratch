@@ -4,10 +4,10 @@ export default function ScratchBadge() {
       href="https://scratch.dev"
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center text-black text-base font-normal no-underline hover:no-underline"
+      className="inline-flex items-center text-black text-sm font-normal no-underline hover:no-underline"
     >
-      <span className="text-lg">Made from</span>
-      <img src="/scratch-logo.svg" alt="Scratch" className="h-13 pb-1" />
+      <span className="text-sm">Made from</span>
+      <img src="/scratch-logo.svg" alt="Scratch" className="h-9 pb-0.5" />
     </a>
   );
 }
