@@ -27,12 +27,31 @@ function getWritableContent(file: TemplateFile): string | Buffer {
 const MINIMAL_FILES = new Set(['.gitignore', 'AGENTS.md', 'pages/index.mdx']);
 
 /**
- * Infrastructure files that are always included, even with --no-example.
- * These are required by template components (e.g., ScratchBadge needs the logo).
+ * Infrastructure files included in --minimal mode.
+ * Only essential files that don't require branding assets.
  */
-const INFRASTRUCTURE_FILES = new Set([
-  'public/favicon.svg',      // Required for browser tab icon
-  'public/scratch-logo.svg', // Required by ScratchBadge component
+const MINIMAL_INFRASTRUCTURE_FILES = new Set([
+  'public/favicon.svg', // Required for browser tab icon
+]);
+
+/**
+ * File overrides for --minimal mode.
+ * Maps standard template files to their minimal alternatives.
+ */
+const MINIMAL_FILE_OVERRIDES: Record<string, string> = {
+  'src/template/PageWrapper.jsx': 'src/template/PageWrapper.minimal.jsx',
+};
+
+/**
+ * Files to skip entirely in --minimal mode (replaced by overrides or not needed).
+ */
+const MINIMAL_SKIP_FILES = new Set([
+  'src/template/PageWrapper.jsx',         // Replaced by PageWrapper.minimal.jsx
+  'src/template/PageWrapper.minimal.jsx', // Written via override, not directly
+  'src/template/Header.jsx',              // Not used in minimal mode
+  'src/template/Footer.jsx',              // Not used in minimal mode
+  'src/template/ScratchBadge.jsx',        // Not used in minimal mode
+  'src/template/Copyright.jsx',           // Not used in minimal mode
 ]);
 
 /**
@@ -68,8 +87,8 @@ function isSrcFile(relativePath: string): boolean {
 export interface MaterializeOptions {
   /** Include src/ directory (default: true) */
   includeSrc?: boolean;
-  /** Include example pages/ and public/ content (default: true) */
-  includeExample?: boolean;
+  /** Minimal mode: skip example content, use minimal PageWrapper (default: false) */
+  minimal?: boolean;
   /** Overwrite existing files (default: false) */
   overwrite?: boolean;
 }
@@ -90,21 +109,19 @@ export async function materializeProjectTemplates(
 ): Promise<string[]> {
   const {
     includeSrc = true,
-    includeExample = true,
+    minimal = false,
     overwrite = false,
   } = options;
   const created: string[] = [];
 
   await fs.mkdir(targetDir, { recursive: true });
 
-  // If not including example content, create empty pages/ and public/ directories
-  if (!includeExample) {
+  // In minimal mode, create empty pages/ directory (public/ will have favicon)
+  if (minimal) {
     const pagesDir = path.join(targetDir, 'pages');
-    const publicDir = path.join(targetDir, 'public');
     await fs.mkdir(pagesDir, { recursive: true });
-    await fs.mkdir(publicDir, { recursive: true });
-    created.push('pages/', 'public/');
-    log.debug('Created empty pages/ and public/ directories');
+    created.push('pages/');
+    log.debug('Created empty pages/ directory');
   }
 
   for (const [relativePath, file] of Object.entries(templates)) {
@@ -114,7 +131,7 @@ export async function materializeProjectTemplates(
     }
 
     // Determine if file should be included based on tier
-    const isMinimal = isMinimalFile(relativePath);
+    const isMinimalTier = isMinimalFile(relativePath);
     const isSrc = isSrcFile(relativePath);
 
     // Skip src tier files unless includeSrc is true
@@ -122,36 +139,76 @@ export async function materializeProjectTemplates(
       continue;
     }
 
-    // Skip pages/ and public/ content unless includeExample is true
-    // (but always include infrastructure files like favicon and logo)
-    if (
-      !includeExample &&
-      (relativePath.startsWith('pages/') || relativePath.startsWith('public/')) &&
-      !INFRASTRUCTURE_FILES.has(relativePath)
-    ) {
-      continue;
+    // In minimal mode, apply special handling
+    if (minimal) {
+      // Skip files that are replaced or not needed in minimal mode
+      if (MINIMAL_SKIP_FILES.has(relativePath)) {
+        continue;
+      }
+
+      // Skip pages/ and public/ content (except infrastructure files)
+      if (
+        (relativePath.startsWith('pages/') || relativePath.startsWith('public/')) &&
+        !MINIMAL_INFRASTRUCTURE_FILES.has(relativePath)
+      ) {
+        continue;
+      }
     }
 
     // Skip files that don't belong to any known tier (shouldn't happen)
-    if (!isMinimal && !isSrc) {
+    if (!isMinimalTier && !isSrc) {
       log.debug(`Skipping unknown tier file: ${relativePath}`);
       continue;
     }
 
-    const targetPath = path.join(targetDir, relativePath);
+    // Determine the actual file path to write (handle overrides in minimal mode)
+    let outputPath = relativePath;
+    if (minimal && relativePath in MINIMAL_FILE_OVERRIDES) {
+      // This shouldn't happen since we skip these files, but just in case
+      continue;
+    }
+
+    const targetPath = path.join(targetDir, outputPath);
     const targetDirPath = path.dirname(targetPath);
 
     await fs.mkdir(targetDirPath, { recursive: true });
 
     const exists = await fs.exists(targetPath);
     if (exists && !overwrite) {
-      log.debug(`Skipped ${relativePath}`);
+      log.debug(`Skipped ${outputPath}`);
       continue;
     }
 
     await fs.writeFile(targetPath, getWritableContent(file));
-    log.debug(`${exists ? 'Overwrote' : 'Wrote'} ${relativePath}`);
-    created.push(relativePath);
+    log.debug(`${exists ? 'Overwrote' : 'Wrote'} ${outputPath}`);
+    created.push(outputPath);
+  }
+
+  // In minimal mode, also write the override files
+  if (minimal) {
+    for (const [originalPath, overridePath] of Object.entries(MINIMAL_FILE_OVERRIDES)) {
+      const file = templates[overridePath];
+      if (!file) {
+        log.debug(`Override template not found: ${overridePath}`);
+        continue;
+      }
+
+      // Write override to the original path location
+      const targetPath = path.join(targetDir, originalPath);
+      const targetDirPath = path.dirname(targetPath);
+
+      await fs.mkdir(targetDirPath, { recursive: true });
+
+      const exists = await fs.exists(targetPath);
+      if (exists && !overwrite) {
+        log.debug(`Skipped ${originalPath} (override)`);
+        continue;
+      }
+
+      await fs.writeFile(targetPath, getWritableContent(file));
+      log.debug(`${exists ? 'Overwrote' : 'Wrote'} ${originalPath} (from ${overridePath})`);
+      created.push(originalPath);
+    }
   }
 
   return created;

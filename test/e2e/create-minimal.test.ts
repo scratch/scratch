@@ -1,24 +1,24 @@
 import { describe, expect, test } from "bun:test";
-import { readdir, rm } from "fs/promises";
+import { readdir, readFile, rm } from "fs/promises";
 import path from "path";
 import { runCliSync, mkTempDir } from "./util";
 
-describe("scratch create --no-example", () => {
-  test("creates empty pages/ and public/ directories", async () => {
-    const projectDir = await mkTempDir("create-no-example-");
+describe("scratch create --minimal", () => {
+  test("creates minimal project with simple PageWrapper", async () => {
+    const projectDir = await mkTempDir("create-minimal-");
 
-    // Run scratch create with --no-example flag
-    runCliSync(["create", ".", "--no-example"], projectDir);
+    // Run scratch create with --minimal flag
+    runCliSync(["create", ".", "--minimal"], projectDir);
 
     // Verify pages/ directory exists but is empty
     const pagesDir = path.join(projectDir, "pages");
     const pagesFiles = await readdir(pagesDir);
     expect(pagesFiles).toEqual([]);
 
-    // Verify public/ directory exists with only essential assets
+    // Verify public/ directory exists with only favicon (no scratch-logo)
     const publicDir = path.join(projectDir, "public");
     const publicFiles = await readdir(publicDir);
-    expect(publicFiles.sort()).toEqual(["favicon.svg", "scratch-logo.svg"]);
+    expect(publicFiles).toEqual(["favicon.svg"]);
 
     // Verify src/ directory exists and has content
     const srcDir = path.join(projectDir, "src");
@@ -27,10 +27,17 @@ describe("scratch create --no-example", () => {
     expect(srcFiles).toContain("tailwind.css");
     expect(srcFiles).toContain("markdown");
 
-    // Verify src/template/ has PageWrapper
+    // Verify src/template/ has only PageWrapper (minimal version, no Header/Footer/etc)
     const templateDir = path.join(projectDir, "src/template");
     const templateFiles = await readdir(templateDir);
-    expect(templateFiles).toContain("PageWrapper.jsx");
+    expect(templateFiles).toEqual(["PageWrapper.jsx"]);
+
+    // Verify PageWrapper is the minimal version (no Header/Footer imports)
+    const pageWrapperPath = path.join(templateDir, "PageWrapper.jsx");
+    const pageWrapperContent = await readFile(pageWrapperPath, "utf-8");
+    expect(pageWrapperContent).not.toContain("import Header");
+    expect(pageWrapperContent).not.toContain("import Footer");
+    expect(pageWrapperContent).toContain("Minimal page wrapper");
 
     // Verify root files exist
     const rootFiles = await readdir(projectDir);

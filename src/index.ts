@@ -53,7 +53,7 @@ program
   .argument('[path]', 'Path to project directory', '.')
   .option('--no-src', 'Skip src/ template directory')
   .option('--no-package', 'Skip package.json template')
-  .option('--no-example', 'Skip example content files')
+  .option('--minimal', 'Minimal mode: skip example content, use simple PageWrapper')
   .action(
     withErrorHandling('Create', async (path, options) => {
       await createCommand(path, options);
