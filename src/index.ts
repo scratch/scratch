@@ -174,6 +174,12 @@ program.hook('preAction', (thisCommand, actionCommand) => {
   }
   const opts = actionCommand.opts() || {};
   opts.path = actionCommand.args[0] || '.';
+
+  // Dev command should always run in development mode
+  if (actionCommand.name() === 'dev') {
+    opts.development = true;
+  }
+
   ctx = new BuildContext(opts);
 });
 

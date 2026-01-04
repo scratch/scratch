@@ -203,7 +203,7 @@ async function startDevServerWithFallback(
  * Run a development server using Bun
  */
 export async function devCommand(ctx: BuildContext, options: DevOptions = {}) {
-  const preferredPort = options.port || 5173;
+  const preferredPort = typeof options.port === 'string' ? parseInt(options.port, 10) : (options.port || 5173);
 
   // Validate port number
   if (isNaN(preferredPort) || preferredPort < 1 || preferredPort > 65535) {
