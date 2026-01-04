@@ -9,6 +9,7 @@ import { previewCommand } from './cmd/preview';
 import { checkoutCommand } from './cmd/checkout';
 import { updateCommand } from './cmd/update';
 import { watchCommand } from './cmd/watch';
+import { registerCloudCommands } from './cmd/cloud';
 import { BuildContext } from './build/context';
 import log, { setLogLevel, setShowBunErrors, shouldShowBunErrors } from './logger';
 import { VERSION } from './version';
@@ -161,6 +162,9 @@ program
       await checkoutCommand(file, options);
     })
   );
+
+// Cloud commands (login, logout, whoami)
+registerCloudCommands(program);
 
 program.hook('preAction', (thisCommand, actionCommand) => {
   const globalOpts = program.opts();
