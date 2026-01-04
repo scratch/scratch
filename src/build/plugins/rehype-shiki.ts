@@ -106,6 +106,12 @@ async function getShikiHighlighter(langs: BundledLanguage[]): Promise<Highlighte
     return highlighterPromise;
   }
 
+  // Dispose old highlighter if languages changed
+  if (cachedHighlighter) {
+    cachedHighlighter.dispose();
+    cachedHighlighter = null;
+  }
+
   // Create new highlighter with detected languages
   const t0 = performance.now();
   const langsToLoad = langs.length > 0 ? langs : ['plaintext' as BundledLanguage];
@@ -168,6 +174,9 @@ export async function getLanguagesForMode(
 export function resetShikiState(): void {
   detectedLanguagesCache = null;
   detectedLanguagesPromise = null;
+  if (cachedHighlighter) {
+    cachedHighlighter.dispose();
+  }
   cachedHighlighter = null;
   cachedHighlighterLangs = null;
   highlighterPromise = null;
