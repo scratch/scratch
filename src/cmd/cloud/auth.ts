@@ -34,10 +34,37 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+// Format connection errors with helpful messages
+function formatConnectionError(error: any, serverUrl: string): Error {
+  const isConnectionError = error.code === 'ConnectionRefused' ||
+    error.code === 'ECONNREFUSED' ||
+    error.message?.includes('Unable to connect') ||
+    error.message?.includes('fetch failed')
+
+  if (isConnectionError) {
+    return new Error(
+      `Could not connect to ${serverUrl}\n` +
+      `  Error: ${error.message}\n` +
+      `  \n` +
+      `  Troubleshooting:\n` +
+      `  - Is the server running?\n` +
+      `  - Check the URL with: scratch cloud config\n` +
+      `  - For local dev, try http://localhost:8788 instead of http://app.localhost:8788`
+    )
+  }
+
+  return error
+}
+
 export async function loginCommand(): Promise<void> {
+  // Get configured server URL
+  const serverUrl = await getServerUrl()
+  log.debug(`Server URL: ${serverUrl}`)
+
   // Check if already logged in by verifying token with server
   const existing = await loadCredentials()
   if (existing) {
+    log.debug('Found existing credentials, verifying...')
     try {
       const { user } = await getCurrentUser(existing.token)
       log.info(`Already logged in as ${user.email}`)
@@ -49,18 +76,23 @@ export async function loginCommand(): Promise<void> {
         await clearCredentials()
         log.info('Session expired, logging in again...')
       } else {
-        throw error
+        throw formatConnectionError(error, serverUrl)
       }
     }
   }
 
   log.info('Logging in to Scratch Cloud...')
-
-  // Get configured server URL
-  const serverUrl = await getServerUrl()
+  log.debug(`Connecting to ${serverUrl}/auth/device`)
 
   // Initiate device flow
-  const { device_code, user_code, verification_url, interval } = await initiateDeviceFlow()
+  let deviceFlowResponse
+  try {
+    deviceFlowResponse = await initiateDeviceFlow()
+  } catch (error: any) {
+    throw formatConnectionError(error, serverUrl)
+  }
+
+  const { device_code, user_code, verification_url, interval } = deviceFlowResponse
 
   // Display code and open browser
   console.log('')
@@ -79,11 +111,22 @@ export async function loginCommand(): Promise<void> {
 
   const startTime = Date.now()
   const timeout = 10 * 60 * 1000 // 10 minutes
+  let pollCount = 0
 
   while (Date.now() - startTime < timeout) {
     await sleep(interval * 1000)
+    pollCount++
 
-    const response = await pollDeviceToken(device_code)
+    log.debug(`Polling for approval (attempt ${pollCount})...`)
+
+    let response
+    try {
+      response = await pollDeviceToken(device_code)
+    } catch (error: any) {
+      throw formatConnectionError(error, serverUrl)
+    }
+
+    log.debug(`Poll response: ${response.status}`)
 
     if (response.status === 'approved' && response.token && response.user) {
       // Save credentials
