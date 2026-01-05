@@ -306,3 +306,30 @@ export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+/**
+ * Open URL in browser (cross-platform).
+ * Validates URL to prevent command injection.
+ */
+export async function openBrowser(url: string): Promise<void> {
+  // Validate URL to prevent command injection
+  try {
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      log.error('Invalid URL protocol, not opening browser');
+      return;
+    }
+  } catch {
+    log.error('Invalid URL, not opening browser');
+    return;
+  }
+
+  const { platform } = process;
+  const proc =
+    platform === 'darwin'
+      ? Bun.spawn(['open', url], { stdout: 'ignore', stderr: 'ignore' })
+      : platform === 'win32'
+        ? Bun.spawn(['cmd', '/c', 'start', '', url], { stdout: 'ignore', stderr: 'ignore' })
+        : Bun.spawn(['xdg-open', url], { stdout: 'ignore', stderr: 'ignore' });
+  await proc.exited;
+}

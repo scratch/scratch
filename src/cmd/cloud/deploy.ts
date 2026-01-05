@@ -4,22 +4,11 @@ import { deploy, ApiError } from '../../cloud/api'
 import { getServerUrl } from '../../cloud/config'
 import { buildCommand } from '../build'
 import { BuildContext } from '../../build/context'
-import { normalizeNamespace } from './namespace'
-import { formatBytes, prompt } from '../../util'
+import { normalizeNamespace, GLOBAL_NAMESPACE } from './namespace'
+import { formatBytes, prompt, openBrowser } from '../../util'
+import { parse as parseToml, stringify as stringifyToml } from 'smol-toml'
 import fs from 'fs/promises'
 import path from 'path'
-
-// Open URL in browser (cross-platform)
-async function openBrowser(url: string): Promise<void> {
-  const { platform } = process
-  const proc =
-    platform === 'darwin'
-      ? Bun.spawn(['open', url], { stdout: 'ignore', stderr: 'ignore' })
-      : platform === 'win32'
-        ? Bun.spawn(['cmd', '/c', 'start', '', url], { stdout: 'ignore', stderr: 'ignore' })
-        : Bun.spawn(['xdg-open', url], { stdout: 'ignore', stderr: 'ignore' })
-  await proc.exited
-}
 
 // Derive pages URL from server URL
 function getPagesUrl(serverUrl: string): string {
@@ -47,7 +36,7 @@ function getPagesUrl(serverUrl: string): string {
 // Project config interface
 interface ProjectConfig {
   name?: string
-  namespace?: string | null
+  namespace?: string
 }
 
 // Load project config from .scratch/project.toml
@@ -56,24 +45,13 @@ async function loadProjectConfig(projectPath: string): Promise<ProjectConfig> {
 
   try {
     const content = await fs.readFile(configPath, 'utf-8')
+    const parsed = parseToml(content) as { name?: string; namespace?: string }
 
-    // Simple TOML parsing for name and namespace
-    const config: ProjectConfig = {}
-
-    for (const line of content.split('\n')) {
-      const trimmed = line.trim()
-      if (trimmed.startsWith('#') || !trimmed) continue
-
-      const match = trimmed.match(/^(\w+)\s*=\s*"([^"]*)"$/)
-      if (match) {
-        const [, key, value] = match
-        if (key === 'name') config.name = value
-        // Normalize namespace: "_" and "global" become null
-        if (key === 'namespace') config.namespace = normalizeNamespace(value || null)
-      }
+    return {
+      name: parsed.name,
+      // Normalize namespace: "_", "global", "" all become 'global'
+      namespace: parsed.namespace ? normalizeNamespace(parsed.namespace) : undefined,
     }
-
-    return config
   } catch (err: any) {
     if (err.code === 'ENOENT') {
       return {}
@@ -90,18 +68,13 @@ async function saveProjectConfig(projectPath: string, config: ProjectConfig): Pr
   // Ensure .scratch directory exists
   await fs.mkdir(scratchDir, { recursive: true })
 
-  // Generate TOML content
-  let content = '# Scratch Cloud project configuration\n\n'
+  // Build config object (only include defined values)
+  const tomlObj: Record<string, string> = {}
+  if (config.name) tomlObj.name = config.name
+  if (config.namespace) tomlObj.namespace = config.namespace
 
-  if (config.name) {
-    content += `name = "${config.name}"\n`
-  }
-
-  // Use "global" for global namespace (null), otherwise use the actual namespace
-  const namespaceValue = config.namespace === null ? 'global' : config.namespace
-  if (namespaceValue) {
-    content += `namespace = "${namespaceValue}"\n`
-  }
+  // Generate TOML content with header comment
+  const content = '# Scratch Cloud project configuration\n\n' + stringifyToml(tomlObj)
 
   await fs.writeFile(configPath, content, 'utf-8')
 }
@@ -169,8 +142,8 @@ export async function deployCommand(projectPath: string = '.', options: DeployOp
 
   // Determine project name (CLI option > config > directory name)
   let projectName = options.name || config.name
-  // Normalize namespace: "_" and "global" from CLI become null (global namespace)
-  let namespace = options.namespace !== undefined ? normalizeNamespace(options.namespace) : config.namespace
+  // Normalize namespace: "_", "global", "" from CLI become 'global'
+  let namespace = options.namespace !== undefined ? normalizeNamespace(options.namespace) : (config.namespace || GLOBAL_NAMESPACE)
 
   // If no valid project name from options or config, run interactive setup
   if (!projectName || !isValidProjectName(projectName)) {
@@ -182,12 +155,13 @@ export async function deployCommand(projectPath: string = '.', options: DeployOp
     // Show config being used
     log.info(`Using project configuration from ${configRelPath}`)
     log.info(`  name:      ${projectName}`)
-    log.info(`  namespace: ${namespace || '_ (global)'}`)
+    log.info(`  namespace: ${namespace === GLOBAL_NAMESPACE ? '_ (global)' : namespace}`)
     log.info('')
   }
 
-  // Build base path: /{namespace}/{projectName}
-  const basePath = `/${namespace || '_'}/${projectName}`
+  // Build base path: /{namespace}/{projectName} (use '_' in URL for global namespace)
+  const urlNamespace = namespace === GLOBAL_NAMESPACE ? '_' : namespace
+  const basePath = `/${urlNamespace}/${projectName}`
 
   // Build unless --no-build
   const distDir = path.join(resolvedPath, 'dist')
@@ -341,7 +315,7 @@ async function runInteractiveSetup(
   }
 
   // Prompt for namespace - simple choice between user's domain or global
-  let namespace: string | null = null
+  let namespace: string = GLOBAL_NAMESPACE
 
   if (userDomain) {
     log.info('')
@@ -351,7 +325,7 @@ async function runInteractiveSetup(
     log.info('')
 
     // Default to user's domain, unless they previously chose global
-    const defaultChoice = existingConfig.namespace === null && existingConfig.name ? '2' : '1'
+    const defaultChoice = existingConfig.namespace === GLOBAL_NAMESPACE && existingConfig.name ? '2' : '1'
 
     while (true) {
       const choice = await prompt('Choice', defaultChoice)
@@ -360,7 +334,7 @@ async function runInteractiveSetup(
         namespace = userDomain
         break
       } else if (choice === '2') {
-        namespace = null
+        namespace = GLOBAL_NAMESPACE
         break
       } else {
         log.error('Please enter 1 or 2')

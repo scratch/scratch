@@ -8,20 +8,7 @@ import {
   getDefaultServerUrl,
   CONFIG_PATH,
 } from '../../cloud/user-config'
-import { prompt } from '../../util'
-
-// Open URL in browser (cross-platform)
-// Uses direct spawn without shell to prevent command injection
-async function openBrowser(url: string): Promise<void> {
-  const { platform } = process
-  const proc =
-    platform === 'darwin'
-      ? Bun.spawn(['open', url], { stdout: 'ignore', stderr: 'ignore' })
-      : platform === 'win32'
-        ? Bun.spawn(['cmd', '/c', 'start', '', url], { stdout: 'ignore', stderr: 'ignore' })
-        : Bun.spawn(['xdg-open', url], { stdout: 'ignore', stderr: 'ignore' })
-  await proc.exited
-}
+import { prompt, openBrowser } from '../../util'
 
 // Sleep helper
 function sleep(ms: number): Promise<void> {
@@ -85,7 +72,7 @@ export async function loginCommand(): Promise<void> {
     throw formatConnectionError(error, serverUrl)
   }
 
-  const { device_code, user_code, verification_url, interval } = deviceFlowResponse
+  const { device_code, user_code, verification_url, interval, expires_in } = deviceFlowResponse
 
   // Display code and open browser
   log.info('')
@@ -103,7 +90,7 @@ export async function loginCommand(): Promise<void> {
   log.info('Waiting for approval...')
 
   const startTime = Date.now()
-  const timeout = 10 * 60 * 1000 // 10 minutes
+  const timeout = (expires_in || 600) * 1000 // Use server value, default 10 min
   let pollCount = 0
 
   while (Date.now() - startTime < timeout) {

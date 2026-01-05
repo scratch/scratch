@@ -1,12 +1,15 @@
 // Namespace utilities for Scratch Cloud
-// Reserved namespace values that mean "global namespace" (stored as NULL)
 
-const GLOBAL_NAMESPACE_ALIASES = ['_', 'global']
+// The global namespace value (stored as 'global' in DB, displayed as '_' in URLs)
+export const GLOBAL_NAMESPACE = 'global'
 
-// Normalize namespace value - converts aliases to null
-export function normalizeNamespace(namespace: string | null | undefined): string | null {
-  if (namespace === null || namespace === undefined) return null
-  if (GLOBAL_NAMESPACE_ALIASES.includes(namespace.toLowerCase())) return null
+// Values that should be normalized to 'global'
+const GLOBAL_NAMESPACE_ALIASES = ['_', 'global', '']
+
+// Normalize namespace value - converts aliases to 'global'
+export function normalizeNamespace(namespace: string | null | undefined): string {
+  if (namespace === null || namespace === undefined) return GLOBAL_NAMESPACE
+  if (GLOBAL_NAMESPACE_ALIASES.includes(namespace.toLowerCase())) return GLOBAL_NAMESPACE
   return namespace
 }
 

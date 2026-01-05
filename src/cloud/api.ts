@@ -20,10 +20,13 @@ export class ApiError extends Error {
   }
 }
 
+const DEFAULT_TIMEOUT = 30000 // 30 seconds
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
-  token?: string
+  token?: string,
+  timeoutMs: number = DEFAULT_TIMEOUT
 ): Promise<T> {
   const serverUrl = await getServerUrl()
   const url = `${serverUrl}${path}`
@@ -36,10 +39,24 @@ async function request<T>(
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
+  let response: Response
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    })
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      throw new ApiError('Request timed out', 0)
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
 
   if (!response.ok) {
     // Read as text first, then try to parse as JSON
@@ -106,10 +123,24 @@ export async function deleteProject(
   const query = namespace ? `?namespace=${encodeURIComponent(namespace)}` : ''
   const url = `${serverUrl}/api/projects/${encodeURIComponent(name)}${query}`
 
-  const response = await fetch(url, {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT)
+
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    })
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      throw new ApiError('Request timed out', 0)
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
 
   if (!response.ok) {
     const text = await response.text()
@@ -138,6 +169,8 @@ export async function listDeploys(
 }
 
 // Deploy a project (upload zip)
+const DEPLOY_TIMEOUT = 120000 // 2 minutes for file uploads
+
 export async function deploy(
   token: string,
   name: string,
@@ -148,14 +181,28 @@ export async function deploy(
   const query = namespace ? `?namespace=${encodeURIComponent(namespace)}` : ''
   const url = `${serverUrl}/api/projects/${encodeURIComponent(name)}/deploy${query}`
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/zip',
-    },
-    body: zipData,
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), DEPLOY_TIMEOUT)
+
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/zip',
+      },
+      body: zipData,
+      signal: controller.signal,
+    })
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      throw new ApiError('Deploy timed out', 0)
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
 
   if (!response.ok) {
     const text = await response.text()

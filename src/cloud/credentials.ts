@@ -21,7 +21,14 @@ export async function saveCredentials(credentials: Credentials): Promise<void> {
 export async function loadCredentials(): Promise<Credentials | null> {
   try {
     const content = await readFile(CREDENTIALS_PATH, 'utf-8')
-    return JSON.parse(content) as Credentials
+    const data = JSON.parse(content)
+
+    // Validate required fields
+    if (!data.token || typeof data.token !== 'string') return null
+    if (!data.user?.id || typeof data.user.id !== 'string') return null
+    if (!data.user?.email || typeof data.user.email !== 'string') return null
+
+    return data as Credentials
   } catch {
     return null
   }
