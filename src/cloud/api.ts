@@ -1,4 +1,4 @@
-import { SERVER_URL } from './config'
+import { getServerUrl } from './config'
 import type { DeviceFlowResponse, DeviceTokenResponse, UserResponse } from './types'
 
 export class ApiError extends Error {
@@ -17,7 +17,8 @@ async function request<T>(
   options: RequestInit = {},
   token?: string
 ): Promise<T> {
-  const url = `${SERVER_URL}${path}`
+  const serverUrl = await getServerUrl()
+  const url = `${serverUrl}${path}`
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),

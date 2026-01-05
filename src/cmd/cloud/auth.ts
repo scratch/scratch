@@ -1,7 +1,13 @@
 import log from '../../logger'
 import { initiateDeviceFlow, pollDeviceToken, getCurrentUser } from '../../cloud/api'
 import { saveCredentials, loadCredentials, clearCredentials } from '../../cloud/credentials'
-import { SERVER_URL } from '../../cloud/config'
+import { getServerUrl } from '../../cloud/config'
+import {
+  loadUserConfig,
+  saveUserConfig,
+  getDefaultServerUrl,
+  CONFIG_PATH,
+} from '../../cloud/user-config'
 
 // Open URL in browser (cross-platform)
 async function openBrowser(url: string): Promise<void> {
@@ -29,15 +35,29 @@ function sleep(ms: number): Promise<void> {
 }
 
 export async function loginCommand(): Promise<void> {
-  // Check if already logged in
+  // Check if already logged in by verifying token with server
   const existing = await loadCredentials()
   if (existing) {
-    log.info(`Already logged in as ${existing.user.email}`)
-    log.info('Use "scratch cloud logout" to log out first')
-    return
+    try {
+      const { user } = await getCurrentUser(existing.token)
+      log.info(`Already logged in as ${user.email}`)
+      log.info('Use "scratch cloud logout" to log out first')
+      return
+    } catch (error: any) {
+      if (error.status === 401) {
+        // Token expired/invalid, clear and proceed with login
+        await clearCredentials()
+        log.info('Session expired, logging in again...')
+      } else {
+        throw error
+      }
+    }
   }
 
   log.info('Logging in to Scratch Cloud...')
+
+  // Get configured server URL
+  const serverUrl = await getServerUrl()
 
   // Initiate device flow
   const { device_code, user_code, verification_url, interval } = await initiateDeviceFlow()
@@ -70,7 +90,7 @@ export async function loginCommand(): Promise<void> {
       await saveCredentials({
         token: response.token,
         user: response.user,
-        server: SERVER_URL,
+        server: serverUrl,
       })
 
       console.log('')
@@ -135,4 +155,64 @@ export async function whoamiCommand(): Promise<void> {
     }
     throw error
   }
+}
+
+export async function configCommand(): Promise<void> {
+  const currentConfig = await loadUserConfig()
+  const defaultUrl = getDefaultServerUrl()
+  const currentUrl = currentConfig.server_url || defaultUrl
+
+  console.log('Scratch Cloud Configuration')
+  console.log('')
+  console.log(`Config file: ${CONFIG_PATH}`)
+  console.log('')
+
+  // Show current value
+  if (currentConfig.server_url) {
+    console.log(`Current server URL: ${currentUrl}`)
+  } else {
+    console.log(`Current server URL: ${currentUrl} (default)`)
+  }
+  console.log('')
+
+  // Prompt for new value
+  process.stdout.write(`Enter server URL [${currentUrl}]: `)
+
+  const reader = (await import('readline')).createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  })
+
+  const answer = await new Promise<string>(resolve => {
+    reader.question('', answer => {
+      reader.close()
+      resolve(answer.trim())
+    })
+  })
+
+  let newUrl = answer || currentUrl
+
+  // Add https:// if no protocol specified, but preserve http:// for localhost
+  if (!newUrl.startsWith('http://') && !newUrl.startsWith('https://')) {
+    newUrl = `https://${newUrl}`
+  }
+
+  // Validate URL format
+  try {
+    new URL(newUrl)
+  } catch {
+    log.error(`Invalid URL: ${newUrl}`)
+    process.exit(1)
+  }
+
+  // Save config
+  await saveUserConfig({ ...currentConfig, server_url: newUrl })
+
+  console.log('')
+  if (newUrl === defaultUrl) {
+    log.info(`Server URL set to ${newUrl} (default)`)
+  } else {
+    log.info(`Server URL set to ${newUrl}`)
+  }
+  console.log(`Configuration saved to ${CONFIG_PATH}`)
 }

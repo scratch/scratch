@@ -1,8 +1,8 @@
 import { homedir } from 'os'
 import { join } from 'path'
 
-// Server URL - can be overridden via environment variable
-export const SERVER_URL = process.env.SCRATCH_SERVER_URL || 'https://app.scratch.dev'
+// Re-export getServerUrl from user-config
+export { getServerUrl } from './user-config'
 
 // Credentials file location
 export const CREDENTIALS_PATH = join(homedir(), '.scratch', 'credentials.json')

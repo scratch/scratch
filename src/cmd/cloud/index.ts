@@ -1,5 +1,5 @@
 import { Command } from 'commander'
-import { loginCommand, logoutCommand, whoamiCommand } from './auth'
+import { loginCommand, logoutCommand, whoamiCommand, configCommand } from './auth'
 
 export function registerCloudCommands(program: Command): void {
   const cloud = program
@@ -38,6 +38,18 @@ export function registerCloudCommands(program: Command): void {
         await whoamiCommand()
       } catch (error: any) {
         console.error('Failed to get user info:', error.message)
+        process.exit(1)
+      }
+    })
+
+  cloud
+    .command('config')
+    .description('Configure Scratch Cloud settings')
+    .action(async () => {
+      try {
+        await configCommand()
+      } catch (error: any) {
+        console.error('Configuration failed:', error.message)
         process.exit(1)
       }
     })
