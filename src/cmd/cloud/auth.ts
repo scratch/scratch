@@ -53,7 +53,6 @@ function formatConnectionError(error: any, serverUrl: string): Error {
 export async function loginCommand(): Promise<void> {
   // Get configured server URL
   const serverUrl = await getServerUrl()
-  log.debug(`Server URL: ${serverUrl}`)
 
   // Check if already logged in by verifying token with server
   const existing = await loadCredentials()
@@ -75,7 +74,7 @@ export async function loginCommand(): Promise<void> {
     }
   }
 
-  log.info('Logging in to Scratch Cloud...')
+  log.info(`Logging in to ${serverUrl}`)
   log.debug(`Connecting to ${serverUrl}/auth/device`)
 
   // Initiate device flow

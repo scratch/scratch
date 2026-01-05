@@ -9,6 +9,18 @@ import { formatBytes, prompt } from '../../util'
 import fs from 'fs/promises'
 import path from 'path'
 
+// Open URL in browser (cross-platform)
+async function openBrowser(url: string): Promise<void> {
+  const { platform } = process
+  const proc =
+    platform === 'darwin'
+      ? Bun.spawn(['open', url], { stdout: 'ignore', stderr: 'ignore' })
+      : platform === 'win32'
+        ? Bun.spawn(['cmd', '/c', 'start', '', url], { stdout: 'ignore', stderr: 'ignore' })
+        : Bun.spawn(['xdg-open', url], { stdout: 'ignore', stderr: 'ignore' })
+  await proc.exited
+}
+
 // Derive pages URL from server URL
 function getPagesUrl(serverUrl: string): string {
   try {
@@ -206,30 +218,77 @@ export async function deployCommand(projectPath: string = '.', options: DeployOp
   const { data: zipData, fileCount, totalBytes } = await createZip(distDir)
   log.info(`  ${fileCount} files, ${formatBytes(totalBytes)}`)
 
-  // Upload
-  log.info('Uploading to server...')
+  // Upload (with retry loop for name conflicts)
+  while (true) {
+    log.info('Uploading to server...')
 
-  try {
-    const result = await deploy(credentials.token, projectName, zipData, namespace)
+    try {
+      const result = await deploy(credentials.token, projectName, zipData, namespace)
 
-    log.info('')
-    if (result.project.created) {
-      log.info(`Created project "${projectName}"`)
-    }
-    log.info(`Deployed v${result.deploy.version} to ${result.url}`)
-  } catch (error) {
-    if (error instanceof ApiError) {
-      if (error.status === 413) {
-        log.error('Deploy too large. Reduce the size of your dist/ directory.')
-      } else if (error.status === 403) {
-        log.error(`Project "${projectName}" is owned by a different user.`)
-      } else {
-        const body = error.body as any
-        log.error(body?.error || error.message)
+      log.info('')
+      if (result.project.created) {
+        log.info(`Created project "${projectName}"`)
       }
-      process.exit(1)
+      log.info(`Deployed v${result.deploy.version} to ${result.url}`)
+
+      // Open the deployed page in browser
+      await openBrowser(result.url)
+      return
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.status === 413) {
+          log.error('Deploy too large. Reduce the size of your dist/ directory.')
+          process.exit(1)
+        } else if (error.status === 403) {
+          // Project name conflict - prompt for new name
+          log.info('')
+          log.info(`Project "${projectName}" is owned by a different user.`)
+          log.info('')
+
+          while (true) {
+            const newName = await prompt('Enter a different project name')
+
+            if (!newName) {
+              log.error('Project name is required')
+              continue
+            }
+
+            if (!isValidProjectName(newName)) {
+              log.error('Invalid name. Must be 3-63 lowercase letters, numbers, and hyphens, starting with a letter.')
+              continue
+            }
+
+            projectName = newName
+            break
+          }
+
+          // Save new config
+          log.info('')
+          log.info('Saving .scratch/project.toml...')
+          await saveProjectConfig(resolvedPath, { name: projectName, namespace })
+          log.info('')
+          log.info('Note: If your site has broken links, run `scratch cloud deploy` again to rebuild with the new name.')
+          log.info('')
+
+          // Retry with new name
+          continue
+        } else {
+          const body = error.body as any
+          log.error(`Deploy failed (${error.status})`)
+          if (body?.error) {
+            log.error(`  ${body.error}`)
+          } else if (body?.message) {
+            log.error(`  ${body.message}`)
+          } else if (typeof body === 'string' && body) {
+            // Show first line of text response (might be error page or stack trace)
+            const firstLine = body.split('\n')[0].substring(0, 200)
+            log.error(`  ${firstLine}`)
+          }
+          process.exit(1)
+        }
+      }
+      throw error
     }
-    throw error
   }
 }
 

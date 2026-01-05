@@ -42,11 +42,13 @@ async function request<T>(
   })
 
   if (!response.ok) {
-    let body: unknown
+    // Read as text first, then try to parse as JSON
+    const text = await response.text()
+    let body: unknown = text
     try {
-      body = await response.json()
+      body = JSON.parse(text)
     } catch {
-      body = await response.text()
+      // Keep as text
     }
     throw new ApiError(
       `Request failed: ${response.status} ${response.statusText}`,
@@ -110,11 +112,12 @@ export async function deleteProject(
   })
 
   if (!response.ok) {
-    let body: unknown
+    const text = await response.text()
+    let body: unknown = text
     try {
-      body = await response.json()
+      body = JSON.parse(text)
     } catch {
-      body = await response.text()
+      // Keep as text
     }
     throw new ApiError(`Delete failed: ${response.status}`, response.status, body)
   }
@@ -155,11 +158,12 @@ export async function deploy(
   })
 
   if (!response.ok) {
-    let body: any
+    const text = await response.text()
+    let body: any = text
     try {
-      body = await response.json()
+      body = JSON.parse(text)
     } catch {
-      body = await response.text()
+      // Keep as text
     }
     throw new ApiError(
       body?.error || `Deploy failed: ${response.status}`,

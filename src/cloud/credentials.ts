@@ -37,19 +37,40 @@ export async function clearCredentials(): Promise<void> {
 
 /**
  * Require authentication, automatically prompting for login if not authenticated.
+ * Verifies the token is still valid with the server.
  * Returns the credentials or throws if login fails.
  */
 export async function requireAuth(): Promise<Credentials> {
   const credentials = await loadCredentials()
+
   if (credentials) {
-    return credentials
+    // Verify token is still valid
+    const { getCurrentUser } = await import('./api')
+
+    try {
+      await getCurrentUser(credentials.token)
+      return credentials
+    } catch (error: any) {
+      if (error.status === 401) {
+        // Token expired/invalid, clear and re-login
+        await clearCredentials()
+        const log = (await import('../logger')).default
+        log.info('Session expired. Starting login flow...')
+      } else {
+        // Other error (network, etc) - let it through, API calls will fail with better error
+        return credentials
+      }
+    }
   }
 
-  // Dynamic import to avoid circular dependency
+  // Not logged in or token expired - run login flow
   const { loginCommand } = await import('../cmd/cloud/auth')
   const log = (await import('../logger')).default
 
-  log.info('Not logged in. Starting login flow...')
+  if (!credentials) {
+    log.info('Not logged in. Starting login flow...')
+  }
+
   await loginCommand()
 
   const newCredentials = await loadCredentials()
