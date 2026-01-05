@@ -19,7 +19,7 @@ let ctx: BuildContext;
 
 const program = new Command();
 
-function withErrorHandling(
+export function withErrorHandling(
   name: string,
   handler: (...args: any[]) => Promise<void>
 ) {

@@ -274,3 +274,35 @@ export async function confirm(question: string, defaultValue: boolean): Promise<
     });
   });
 }
+
+/**
+ * Prompt user for text input.
+ * Returns default value when not running in a TTY (non-interactive).
+ */
+export async function prompt(question: string, defaultValue: string = ''): Promise<string> {
+  // Return default when not in a TTY (scripts, tests, piped input)
+  if (!process.stdin.isTTY) {
+    return defaultValue;
+  }
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim() || defaultValue);
+    });
+  });
+}
+
+/**
+ * Format bytes as human-readable string (e.g., "1.5 MB").
+ */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}

@@ -1,23 +1,28 @@
 import log from '../../logger'
-import { loadCredentials } from '../../cloud/credentials'
+import { requireAuth } from '../../cloud/credentials'
 import { deploy, ApiError } from '../../cloud/api'
 import { getServerUrl } from '../../cloud/config'
 import { buildCommand } from '../build'
 import { BuildContext } from '../../build/context'
 import { normalizeNamespace } from './namespace'
+import { formatBytes, prompt } from '../../util'
 import fs from 'fs/promises'
 import path from 'path'
-import readline from 'readline'
 
 // Derive pages URL from server URL
 function getPagesUrl(serverUrl: string): string {
   try {
     const url = new URL(serverUrl)
-    // Replace 'app' with 'pages' in hostname, or add 'pages.' prefix
+
+    // Local dev: different ports (app=8788, pages=8787)
+    if (url.hostname === 'localhost' && url.port === '8788') {
+      url.port = '8787'
+      return url.origin
+    }
+
+    // Production: different subdomains (app.* -> pages.*)
     if (url.hostname.startsWith('app.')) {
       url.hostname = url.hostname.replace('app.', 'pages.')
-    } else if (url.hostname === 'localhost') {
-      url.hostname = 'pages.localhost'
     } else {
       url.hostname = 'pages.' + url.hostname
     }
@@ -89,23 +94,6 @@ async function saveProjectConfig(projectPath: string, config: ProjectConfig): Pr
   await fs.writeFile(configPath, content, 'utf-8')
 }
 
-// Prompt helper
-async function prompt(question: string, defaultValue?: string): Promise<string> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  })
-
-  const displayDefault = defaultValue ? ` [${defaultValue}]` : ''
-
-  return new Promise((resolve) => {
-    rl.question(`${question}${displayDefault}: `, (answer) => {
-      rl.close()
-      resolve(answer.trim() || defaultValue || '')
-    })
-  })
-}
-
 // Validate project name
 function isValidProjectName(name: string): boolean {
   return /^[a-z][a-z0-9-]{2,62}$/.test(name)
@@ -151,13 +139,6 @@ async function createZip(dirPath: string): Promise<{ data: ArrayBuffer; fileCoun
   return { data, fileCount, totalBytes }
 }
 
-// Format bytes as human-readable string
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
 export interface DeployOptions {
   name?: string
   namespace?: string
@@ -167,12 +148,8 @@ export interface DeployOptions {
 export async function deployCommand(projectPath: string = '.', options: DeployOptions = {}): Promise<void> {
   const resolvedPath = path.resolve(projectPath)
 
-  // Check credentials
-  const credentials = await loadCredentials()
-  if (!credentials) {
-    log.error('Not logged in. Run `scratch cloud login` first.')
-    process.exit(1)
-  }
+  // Check credentials (auto-login if not authenticated)
+  const credentials = await requireAuth()
 
   // Load project config
   let config = await loadProjectConfig(resolvedPath)
@@ -191,10 +168,10 @@ export async function deployCommand(projectPath: string = '.', options: DeployOp
     config = result
   } else if (config.name) {
     // Show config being used
-    console.log(`Using project configuration from ${configRelPath}`)
-    console.log(`  name:      ${projectName}`)
-    console.log(`  namespace: ${namespace || '_ (global)'}`)
-    console.log('')
+    log.info(`Using project configuration from ${configRelPath}`)
+    log.info(`  name:      ${projectName}`)
+    log.info(`  namespace: ${namespace || '_ (global)'}`)
+    log.info('')
   }
 
   // Build base path: /{namespace}/{projectName}
@@ -235,7 +212,7 @@ export async function deployCommand(projectPath: string = '.', options: DeployOp
   try {
     const result = await deploy(credentials.token, projectName, zipData, namespace)
 
-    console.log('')
+    log.info('')
     if (result.project.created) {
       log.info(`Created project "${projectName}"`)
     }
@@ -279,10 +256,10 @@ async function runInteractiveSetup(
   const serverUrl = await getServerUrl()
   const pagesUrl = getPagesUrl(serverUrl)
 
-  console.log('')
-  console.log('Project Setup')
-  console.log('=============')
-  console.log('')
+  log.info('')
+  log.info('Project Setup')
+  log.info('=============')
+  log.info('')
 
   // Prompt for project name
   const defaultName = existingConfig.name || dirName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^-+|-+$/g, '')
@@ -308,11 +285,11 @@ async function runInteractiveSetup(
   let namespace: string | null = null
 
   if (userDomain) {
-    console.log('')
-    console.log('Choose your project URL:')
-    console.log(`  1) ${pagesUrl}/${userDomain}/${projectName}/`)
-    console.log(`  2) ${pagesUrl}/_/${projectName}/`)
-    console.log('')
+    log.info('')
+    log.info('Choose your project URL:')
+    log.info(`  1) ${pagesUrl}/${userDomain}/${projectName}/`)
+    log.info(`  2) ${pagesUrl}/_/${projectName}/`)
+    log.info('')
 
     // Default to user's domain, unless they previously chose global
     const defaultChoice = existingConfig.namespace === null && existingConfig.name ? '2' : '1'
@@ -333,11 +310,11 @@ async function runInteractiveSetup(
   }
 
   // Save config
-  console.log('')
+  log.info('')
   log.info('Saving .scratch/project.toml...')
   const newConfig: ProjectConfig = { name: projectName, namespace }
   await saveProjectConfig(resolvedPath, newConfig)
-  console.log('')
+  log.info('')
 
   return newConfig
 }

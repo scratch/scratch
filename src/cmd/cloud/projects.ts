@@ -1,8 +1,8 @@
 import log from '../../logger'
-import { loadCredentials } from '../../cloud/credentials'
+import { requireAuth } from '../../cloud/credentials'
 import { listProjects, getProject, deleteProject, ApiError } from '../../cloud/api'
 import { normalizeNamespace } from './namespace'
-import readline from 'readline'
+import { prompt } from '../../util'
 
 // Parse project identifier: "namespace/name" or just "name"
 // Treats "_" and "global" as the global namespace (null)
@@ -20,28 +20,18 @@ function parseProjectIdentifier(identifier: string): { name: string; namespace?:
 async function promptProjectChoice(
   projects: { name: string; namespace: string | null }[]
 ): Promise<{ name: string; namespace: string | null }> {
-  console.log('')
-  console.log('Multiple projects found with this name:')
-  console.log('')
+  log.info('')
+  log.info('Multiple projects found with this name:')
+  log.info('')
 
   projects.forEach((p, i) => {
     const ns = p.namespace || '_'
-    console.log(`  ${i + 1}) ${ns}/${p.name}`)
+    log.info(`  ${i + 1}) ${ns}/${p.name}`)
   })
 
-  console.log('')
+  log.info('')
 
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  })
-
-  const answer = await new Promise<string>((resolve) => {
-    rl.question('Select project (number): ', (answer) => {
-      rl.close()
-      resolve(answer.trim())
-    })
-  })
+  const answer = await prompt('Select project (number): ')
 
   const choice = parseInt(answer, 10)
   if (isNaN(choice) || choice < 1 || choice > projects.length) {
@@ -87,13 +77,6 @@ async function resolveProject(
   return promptProjectChoice(matches)
 }
 
-// Format bytes as human-readable string
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
 // Format date for display
 function formatDate(dateString: string): string {
   const date = new Date(dateString)
@@ -105,11 +88,7 @@ function formatDate(dateString: string): string {
 }
 
 export async function listProjectsCommand(): Promise<void> {
-  const credentials = await loadCredentials()
-  if (!credentials) {
-    log.error('Not logged in. Run `scratch cloud login` first.')
-    process.exit(1)
-  }
+  const credentials = await requireAuth()
 
   try {
     const { projects } = await listProjects(credentials.token)
@@ -120,18 +99,18 @@ export async function listProjectsCommand(): Promise<void> {
       return
     }
 
-    console.log('')
-    console.log('Your projects:')
-    console.log('')
+    log.info('')
+    log.info('Your projects:')
+    log.info('')
 
     for (const project of projects) {
       const ns = project.namespace || '_'
       const version = project.live_version !== null ? `v${project.live_version}` : 'no deploy'
-      console.log(`  ${ns}/${project.name}  ${version}  ${project.url}`)
+      log.info(`  ${ns}/${project.name}  ${version}  ${project.url}`)
     }
 
-    console.log('')
-    console.log(`${projects.length} project${projects.length === 1 ? '' : 's'}`)
+    log.info('')
+    log.info(`${projects.length} project${projects.length === 1 ? '' : 's'}`)
   } catch (error) {
     if (error instanceof ApiError) {
       log.error(error.message)
@@ -146,11 +125,7 @@ export interface ProjectInfoOptions {
 }
 
 export async function projectInfoCommand(identifier: string, options: ProjectInfoOptions = {}): Promise<void> {
-  const credentials = await loadCredentials()
-  if (!credentials) {
-    log.error('Not logged in. Run `scratch cloud login` first.')
-    process.exit(1)
-  }
+  const credentials = await requireAuth()
 
   // Resolve project (handles namespace/name format and ambiguity)
   const resolved = await resolveProject(credentials.token, identifier, options.namespace)
@@ -158,17 +133,17 @@ export async function projectInfoCommand(identifier: string, options: ProjectInf
   try {
     const { project } = await getProject(credentials.token, resolved.name, resolved.namespace)
 
-    console.log('')
-    console.log(`Project: ${project.name}`)
-    console.log(`Namespace: ${project.namespace || '_'} (${project.namespace ? 'custom' : 'global'})`)
-    console.log(`URL: ${project.url}`)
-    console.log(`Live Version: ${project.live_version !== null ? project.live_version : 'none'}`)
-    console.log(`Total Deploys: ${project.deploy_count}`)
-    console.log(`Created: ${formatDate(project.created_at)}`)
+    log.info('')
+    log.info(`Project: ${project.name}`)
+    log.info(`Namespace: ${project.namespace || '_'} (${project.namespace ? 'custom' : 'global'})`)
+    log.info(`URL: ${project.url}`)
+    log.info(`Live Version: ${project.live_version !== null ? project.live_version : 'none'}`)
+    log.info(`Total Deploys: ${project.deploy_count}`)
+    log.info(`Created: ${formatDate(project.created_at)}`)
     if (project.last_deploy_at) {
-      console.log(`Last Deploy: ${formatDate(project.last_deploy_at)}`)
+      log.info(`Last Deploy: ${formatDate(project.last_deploy_at)}`)
     }
-    console.log('')
+    log.info('')
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.status === 404) {
@@ -187,11 +162,7 @@ export interface ProjectDeleteOptions {
 }
 
 export async function projectDeleteCommand(identifier: string, options: ProjectDeleteOptions = {}): Promise<void> {
-  const credentials = await loadCredentials()
-  if (!credentials) {
-    log.error('Not logged in. Run `scratch cloud login` first.')
-    process.exit(1)
-  }
+  const credentials = await requireAuth()
 
   // Resolve project (handles namespace/name format and ambiguity)
   const resolved = await resolveProject(credentials.token, identifier, options.namespace)
@@ -213,22 +184,12 @@ export async function projectDeleteCommand(identifier: string, options: ProjectD
   }
 
   // Confirm deletion
-  console.log('')
-  console.log(`This will delete project "${ns}/${resolved.name}" and all its deploys.`)
-  console.log('This action cannot be undone.')
-  console.log('')
+  log.info('')
+  log.info(`This will delete project "${ns}/${resolved.name}" and all its deploys.`)
+  log.info('This action cannot be undone.')
+  log.info('')
 
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  })
-
-  const answer = await new Promise<string>((resolve) => {
-    rl.question(`Type "${resolved.name}" to confirm: `, (answer) => {
-      rl.close()
-      resolve(answer.trim())
-    })
-  })
+  const answer = await prompt(`Type "${resolved.name}" to confirm: `)
 
   if (answer !== resolved.name) {
     log.error('Confirmation did not match. Deletion cancelled.')
@@ -237,7 +198,7 @@ export async function projectDeleteCommand(identifier: string, options: ProjectD
 
   try {
     await deleteProject(credentials.token, resolved.name, resolved.namespace)
-    console.log('')
+    log.info('')
     log.info(`Project "${ns}/${resolved.name}" deleted`)
   } catch (error) {
     if (error instanceof ApiError) {

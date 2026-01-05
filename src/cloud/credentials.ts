@@ -34,3 +34,27 @@ export async function clearCredentials(): Promise<void> {
     // Ignore if file doesn't exist
   }
 }
+
+/**
+ * Require authentication, automatically prompting for login if not authenticated.
+ * Returns the credentials or throws if login fails.
+ */
+export async function requireAuth(): Promise<Credentials> {
+  const credentials = await loadCredentials()
+  if (credentials) {
+    return credentials
+  }
+
+  // Dynamic import to avoid circular dependency
+  const { loginCommand } = await import('../cmd/cloud/auth')
+  const log = (await import('../logger')).default
+
+  log.info('Not logged in. Starting login flow...')
+  await loginCommand()
+
+  const newCredentials = await loadCredentials()
+  if (!newCredentials) {
+    throw new Error('Login failed')
+  }
+  return newCredentials
+}

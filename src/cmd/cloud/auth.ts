@@ -1,6 +1,6 @@
 import log from '../../logger'
 import { initiateDeviceFlow, pollDeviceToken, getCurrentUser } from '../../cloud/api'
-import { saveCredentials, loadCredentials, clearCredentials } from '../../cloud/credentials'
+import { saveCredentials, loadCredentials, clearCredentials, requireAuth } from '../../cloud/credentials'
 import { getServerUrl } from '../../cloud/config'
 import {
   loadUserConfig,
@@ -8,24 +8,18 @@ import {
   getDefaultServerUrl,
   CONFIG_PATH,
 } from '../../cloud/user-config'
+import { prompt } from '../../util'
 
 // Open URL in browser (cross-platform)
+// Uses direct spawn without shell to prevent command injection
 async function openBrowser(url: string): Promise<void> {
   const { platform } = process
-  let command: string
-
-  if (platform === 'darwin') {
-    command = `open "${url}"`
-  } else if (platform === 'win32') {
-    command = `start "" "${url}"`
-  } else {
-    command = `xdg-open "${url}"`
-  }
-
-  const proc = Bun.spawn(['sh', '-c', command], {
-    stdout: 'ignore',
-    stderr: 'ignore',
-  })
+  const proc =
+    platform === 'darwin'
+      ? Bun.spawn(['open', url], { stdout: 'ignore', stderr: 'ignore' })
+      : platform === 'win32'
+        ? Bun.spawn(['cmd', '/c', 'start', '', url], { stdout: 'ignore', stderr: 'ignore' })
+        : Bun.spawn(['xdg-open', url], { stdout: 'ignore', stderr: 'ignore' })
   await proc.exited
 }
 
@@ -95,19 +89,19 @@ export async function loginCommand(): Promise<void> {
   const { device_code, user_code, verification_url, interval } = deviceFlowResponse
 
   // Display code and open browser
-  console.log('')
-  console.log('Your verification code is:')
-  console.log('')
-  console.log(`    ${user_code}`)
-  console.log('')
-  console.log('Opening browser to complete authentication...')
-  console.log(`(If browser doesn't open, visit: ${verification_url})`)
-  console.log('')
+  log.info('')
+  log.info('Your verification code is:')
+  log.info('')
+  log.info(`    ${user_code}`)
+  log.info('')
+  log.info('Opening browser to complete authentication...')
+  log.info(`(If browser doesn't open, visit: ${verification_url})`)
+  log.info('')
 
   await openBrowser(verification_url)
 
   // Poll for approval
-  console.log('Waiting for approval...')
+  log.info('Waiting for approval...')
 
   const startTime = Date.now()
   const timeout = 10 * 60 * 1000 // 10 minutes
@@ -136,19 +130,19 @@ export async function loginCommand(): Promise<void> {
         server: serverUrl,
       })
 
-      console.log('')
+      log.info('')
       log.info(`Logged in as ${response.user.email}`)
       return
     }
 
     if (response.status === 'denied') {
-      console.log('')
+      log.info('')
       log.error('Login denied')
       process.exit(1)
     }
 
     if (response.status === 'expired') {
-      console.log('')
+      log.info('')
       log.error('Login expired. Please try again.')
       process.exit(1)
     }
@@ -173,23 +167,17 @@ export async function logoutCommand(): Promise<void> {
 }
 
 export async function whoamiCommand(): Promise<void> {
-  const credentials = await loadCredentials()
-
-  if (!credentials) {
-    log.info('Not logged in')
-    log.info('Use "scratch cloud login" to log in')
-    return
-  }
+  const credentials = await requireAuth()
 
   try {
     // Verify token is still valid by calling /api/me
     const { user } = await getCurrentUser(credentials.token)
 
-    console.log(`Email: ${user.email}`)
+    log.info(`Email: ${user.email}`)
     if (user.name) {
-      console.log(`Name:  ${user.name}`)
+      log.info(`Name:  ${user.name}`)
     }
-    console.log(`Server: ${credentials.server}`)
+    log.info(`Server: ${credentials.server}`)
   } catch (error: any) {
     if (error.status === 401) {
       log.error('Session expired. Please log in again.')
@@ -205,35 +193,22 @@ export async function configCommand(): Promise<void> {
   const defaultUrl = getDefaultServerUrl()
   const currentUrl = currentConfig.server_url || defaultUrl
 
-  console.log('Scratch Cloud Configuration')
-  console.log('')
-  console.log(`Config file: ${CONFIG_PATH}`)
-  console.log('')
+  log.info('Scratch Cloud Configuration')
+  log.info('')
+  log.info(`Config file: ${CONFIG_PATH}`)
+  log.info('')
 
   // Show current value
   if (currentConfig.server_url) {
-    console.log(`Current server URL: ${currentUrl}`)
+    log.info(`Current server URL: ${currentUrl}`)
   } else {
-    console.log(`Current server URL: ${currentUrl} (default)`)
+    log.info(`Current server URL: ${currentUrl} (default)`)
   }
-  console.log('')
+  log.info('')
 
   // Prompt for new value
-  process.stdout.write(`Enter server URL [${currentUrl}]: `)
-
-  const reader = (await import('readline')).createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  })
-
-  const answer = await new Promise<string>(resolve => {
-    reader.question('', answer => {
-      reader.close()
-      resolve(answer.trim())
-    })
-  })
-
-  let newUrl = answer || currentUrl
+  const answer = await prompt(`Enter server URL [${currentUrl}]: `, currentUrl)
+  let newUrl = answer
 
   // Add https:// if no protocol specified, but preserve http:// for localhost
   if (!newUrl.startsWith('http://') && !newUrl.startsWith('https://')) {
@@ -248,14 +223,20 @@ export async function configCommand(): Promise<void> {
     process.exit(1)
   }
 
+  // Enforce HTTPS for non-localhost URLs
+  if (!newUrl.startsWith('https://') && !newUrl.includes('localhost')) {
+    log.error('Server URL must use HTTPS (except for localhost)')
+    process.exit(1)
+  }
+
   // Save config
   await saveUserConfig({ ...currentConfig, server_url: newUrl })
 
-  console.log('')
+  log.info('')
   if (newUrl === defaultUrl) {
     log.info(`Server URL set to ${newUrl} (default)`)
   } else {
     log.info(`Server URL set to ${newUrl}`)
   }
-  console.log(`Configuration saved to ${CONFIG_PATH}`)
+  log.info(`Configuration saved to ${CONFIG_PATH}`)
 }
