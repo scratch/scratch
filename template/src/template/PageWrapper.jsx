@@ -15,7 +15,7 @@ export default function PageWrapper({ children }) {
     <div className="min-h-screen bg-white flex flex-col">
       <div
         className={`prose w-full mx-auto py-8 flex-1 ${
-          isWide ? 'max-w-none px-16' : 'max-w-2xl px-6'
+          isWide ? 'max-w-none px-16' : 'max-w-3xl px-6'
         }`}
       >
         <Header />
