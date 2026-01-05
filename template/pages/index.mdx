@@ -18,16 +18,16 @@ Scratch was designed for collaborative writing with coding agents like [Claude C
 
 ## Quick Start
 
-Scratch requires no configuration so it's easy to get started:
+Scratch requires no configuration so it's easy to get started. First, install:
 
 ```bash
-# Install scratch
 curl -fsSL https://scratch.dev/install.sh | bash
+```
 
-# Create a new project
+Then create a project and start the dev server:
+
+```bash
 scratch create
-
-# Start the dev server
 scratch dev
 ```
 
@@ -54,7 +54,7 @@ def greet(name: str) -> str:
 print(greet("World"))
 ```
 
-Scratch also supports Github-flavored Markdown features like checklists and tables:
+Scratch also supports GitHub-flavored Markdown features like checklists and tables:
 
 | Feature | Supported? |
 |---------|-----------|
@@ -145,7 +145,7 @@ scratch update
 
 ## Acknowledgements
 
-[Bun](https://bun.com/) for lightning-fast builds, development with HMR, native typescript support, and a portable executable.
+[Bun](https://bun.com/) for lightning-fast builds, development with HMR, native TypeScript support, and a portable executable.
 
 [React](https://react.dev/) and [MDX](https://mdxjs.com/) make it possible to write with Markdown and code. [Tailwind CSS](https://tailwindcss.com/) makes component styling easy.
 

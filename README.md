@@ -100,7 +100,7 @@ scratch update
 
 ## Acknowledgements
 
-[Bun](https://bun.com/) for lightning-fast builds, development with HMR, native typescript support, and a portable executable.
+[Bun](https://bun.com/) for lightning-fast builds, development with HMR, native TypeScript support, and a portable executable.
 
 [React](https://react.dev/) and [MDX](https://mdxjs.com/) make it possible to write with Markdown and code. [Tailwind CSS](https://tailwindcss.com/) makes component styling easy.
 

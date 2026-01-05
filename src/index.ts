@@ -50,7 +50,7 @@ program
 program
   .command('create')
   .description('Create a new Scratch project')
-  .argument('[path]', 'Path to project directory', '.')
+  .argument('[path]', 'Target directory (default: current directory, files created in place)')
   .option('--no-src', 'Skip src/ template directory')
   .option('--no-package', 'Skip package.json template')
   .option('--minimal', 'Minimal mode: skip example content, use simple PageWrapper')

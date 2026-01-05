@@ -98,6 +98,22 @@ interface DevOptions {
 const clients = new Set<ServerWebSocket<unknown>>();
 
 /**
+ * Check if a port is available by attempting to listen on it.
+ */
+async function isPortAvailable(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const net = require('net');
+    const server = net.createServer();
+    server.once('error', () => resolve(false));
+    server.once('listening', () => {
+      server.close();
+      resolve(true);
+    });
+    server.listen(port, '127.0.0.1');
+  });
+}
+
+/**
  * Try to start a dev server on the given port, with fallback to subsequent ports if in use.
  */
 async function startDevServerWithFallback(
@@ -107,6 +123,17 @@ async function startDevServerWithFallback(
 ): Promise<{ server: ReturnType<typeof Bun.serve>; port: number }> {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const port = preferredPort + attempt;
+
+    // Pre-check port availability to avoid Bun's inconsistent error handling
+    if (!(await isPortAvailable(port))) {
+      if (attempt === 0) {
+        log.info(`Port ${port} is in use, trying ${port + 1}...`);
+      } else {
+        log.debug(`Port ${port} also in use, trying ${port + 1}...`);
+      }
+      continue;
+    }
+
     try {
       const server = Bun.serve({
         port,
@@ -186,7 +213,7 @@ async function startDevServerWithFallback(
         err.code === 'EADDRINUSE' ||
         (error instanceof Error && error.message.includes('port'))
       ) {
-        log.debug(`Port ${port} in use, trying ${port + 1}`);
+        log.info(`Port ${port} is in use, trying ${port + 1}...`);
         continue;
       }
       throw error;
