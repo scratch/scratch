@@ -4,6 +4,9 @@ import { MDXProvider } from "@mdx-js/react";
 import Component from "{{entrySourceMdxImportPath}}";
 import { MDXComponents } from "{{markdownComponentsPath}}";
 
+// Set scratch globals on globalThis for SSR access by components
+{{scratchGlobals}}
+
 /**
  * Render the application to an HTML string.
  */

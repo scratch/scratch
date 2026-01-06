@@ -3,6 +3,7 @@ import path from 'path';
 import type { BuildContext } from '../context';
 import type { BuildPipelineState, BuildStep } from '../types';
 import { normalizeBase } from '../util';
+import { buildGlobals, generateGlobalsScript } from '../globals';
 import log from '../../logger';
 
 export const generateHtmlStep: BuildStep = {
@@ -27,14 +28,9 @@ export const generateHtmlStep: BuildStep = {
       ? `<link rel="stylesheet" href="${base}/${cssFilename}" />`
       : '';
 
-    // Inject base path as global variable for client-side access
-    const baseScript = base
-      ? `<script>window.__SCRATCH_BASE__ = '${base}';</script>`
-      : '';
-
-    // Build HTML for each entry
-    const ssgFlagScript =
-      '<script rel="modulepreload" type="module">window.__scratch_ssg = true;</script>';
+    // Build globals script for client-side access (base path, SSG flag, etc.)
+    const globals = buildGlobals({ base, ssg });
+    const globalsScript = generateGlobalsScript(globals);
 
     for (const [name, entry] of Object.entries(entries)) {
       const htmlPath = entry.getArtifactPath('.html', ctx.clientCompiledDir);
@@ -61,8 +57,7 @@ export const generateHtmlStep: BuildStep = {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     ${cssLinkTag}
     ${faviconLinks}
-    ${ssg ? ssgFlagScript : ''}
-    ${baseScript}
+    ${globalsScript}
   </head>
   <body>
     <div id="mdx">${ssgContent}</div>

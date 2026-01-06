@@ -1,4 +1,5 @@
 export default function ScratchBadge() {
+  const base = globalThis.__SCRATCH_BASE__ || '';
   return (
     <a
       href="https://scratch.dev"
@@ -7,7 +8,7 @@ export default function ScratchBadge() {
       className="inline-flex items-center text-black text-sm font-normal no-underline hover:no-underline"
     >
       <span className="text-sm">Made from</span>
-      <img src="/scratch-logo.svg" alt="Scratch" className="h-9 pb-0.5" />
+      <img src={`${base}/scratch-logo.svg`} alt="Scratch" className="h-9 pb-0.5" />
     </a>
   );
 }

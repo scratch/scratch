@@ -17,7 +17,7 @@ const component = React.createElement(
 // If static site generation was used, hydrate the component container. If not,
 // render and insert the component
 const mdxElement = document.getElementById('mdx')!;
-if ((window as any).__scratch_ssg) {
+if ((window as any).__SCRATCH_SSG__) {
   console.log('Hydrating mdx component');
   hydrateRoot(mdxElement, component);
 } else {

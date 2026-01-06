@@ -71,7 +71,7 @@ describe('Base path in HTML shell', () => {
     const html = await fs.readFile(path.join(sandboxDir, 'dist', 'index.html'), 'utf-8');
 
     // Verify global variable is set
-    expect(html).toContain("window.__SCRATCH_BASE__ = '/mysite'");
+    expect(html).toContain('window.__SCRATCH_BASE__ = "/mysite"');
 
     await fs.rm(tempDir, { recursive: true, force: true });
   }, 180_000);
@@ -90,8 +90,8 @@ describe('Base path in HTML shell', () => {
 
     // Verify no base path prefix (CSS should start with just /)
     expect(html).toMatch(/href="\/[^/][^"]*\.css"/);
-    // Verify no global variable
-    expect(html).not.toContain('__SCRATCH_BASE__');
+    // Verify global variable is set to empty string
+    expect(html).toContain('window.__SCRATCH_BASE__ = ""');
 
     await fs.rm(tempDir, { recursive: true, force: true });
   }, 180_000);
@@ -109,7 +109,7 @@ describe('Base path in HTML shell', () => {
     const html = await fs.readFile(path.join(sandboxDir, 'dist', 'index.html'), 'utf-8');
 
     // Verify base is normalized (should start with /)
-    expect(html).toContain("window.__SCRATCH_BASE__ = '/mysite'");
+    expect(html).toContain('window.__SCRATCH_BASE__ = "/mysite"');
     expect(html).toMatch(/href="\/mysite\/[^"]*\.css"/);
 
     await fs.rm(tempDir, { recursive: true, force: true });
@@ -128,7 +128,7 @@ describe('Base path in HTML shell', () => {
     const html = await fs.readFile(path.join(sandboxDir, 'dist', 'index.html'), 'utf-8');
 
     // Verify trailing slash is removed (no double slashes)
-    expect(html).toContain("window.__SCRATCH_BASE__ = '/mysite'");
+    expect(html).toContain('window.__SCRATCH_BASE__ = "/mysite"');
     expect(html).not.toContain('/mysite//');
 
     await fs.rm(tempDir, { recursive: true, force: true });
@@ -157,7 +157,7 @@ describe('--test-base flag', () => {
 
     // Verify the HTML still has correct base path URLs
     const html = await fs.readFile(nestedHtmlPath, 'utf-8');
-    expect(html).toContain("window.__SCRATCH_BASE__ = '/mysite'");
+    expect(html).toContain('window.__SCRATCH_BASE__ = "/mysite"');
     expect(html).toMatch(/href="\/mysite\/[^"]*\.css"/);
 
     await fs.rm(tempDir, { recursive: true, force: true });

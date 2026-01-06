@@ -4,11 +4,15 @@ import type { BuildPipelineState } from '../types';
 import type { BuildStep } from '../types';
 import { render } from '../../util';
 import log from '../../logger';
+import { buildGlobals, generateGlobalsAssignment } from '../globals';
+import { normalizeBase } from '../util';
 
 interface CreateEntriesOptions {
   extension: '.tsx' | '.jsx';
   outDir: string;
   templatePath: string;
+  /** Additional template variables (not converted to relative paths) */
+  variables?: Record<string, string>;
 }
 
 interface CreateEntriesContext {
@@ -22,13 +26,15 @@ async function createEntries(
   options: CreateEntriesOptions
 ): Promise<Record<string, string>> {
   const { ctx, entries, markdownComponentsPath } = context;
-  const { extension, outDir, templatePath } = options;
+  const { extension, outDir, templatePath, variables = {} } = options;
   const entryPts: Record<string, string> = {};
 
   for (const [name, entry] of Object.entries(entries)) {
     const artifactPath = entry.getArtifactPath(extension, outDir);
 
-    await render(templatePath, artifactPath, {}, {
+    // variables: regular template vars (not path-converted)
+    // importPathVariables: converted to relative paths from the rendered file
+    await render(templatePath, artifactPath, variables, {
       entrySourceMdxImportPath: entry.absPath,
       markdownComponentsPath: markdownComponentsPath,
     });
@@ -88,10 +94,18 @@ export const createTsxEntriesStep: BuildStep = {
     // Create server JSX entry files if SSG is enabled
     let serverEntryPts: Record<string, string> | null = null;
     if (state.options.ssg) {
+      // Build globals for SSR - these get set on globalThis before rendering
+      const globals = buildGlobals({
+        base: normalizeBase(ctx.options.base),
+        ssg: state.options.ssg,
+      });
+      const globalsAssignment = generateGlobalsAssignment(globals);
+
       serverEntryPts = await createEntries(createEntriesContext, {
         extension: '.jsx',
         outDir: ctx.serverSrcDir,
         templatePath: await ctx.serverJsxSrcPath(),
+        variables: { scratchGlobals: globalsAssignment },
       });
     }
 

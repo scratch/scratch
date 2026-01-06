@@ -18,7 +18,7 @@ describe("Static Site Generation (SSG)", () => {
     const html = await readFile(path.join(distDir, "index.html"), "utf-8");
 
     // 4. Verify SSG flag script is present
-    expect(html).toContain("window.__scratch_ssg = true");
+    expect(html).toContain("window.__SCRATCH_SSG__ = true");
 
     // 5. Verify the mdx div contains pre-rendered content (not empty)
     const mdxDivMatch = html.match(/<div id="mdx">([\s\S]*?)<\/div>/);
