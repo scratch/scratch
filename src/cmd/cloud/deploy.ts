@@ -35,13 +35,13 @@ function getPagesUrl(serverUrl: string): string {
 }
 
 // Project config interface
-interface ProjectConfig {
+export interface ProjectConfig {
   name?: string
   namespace?: string
 }
 
 // Load project config from .scratch/project.toml
-async function loadProjectConfig(projectPath: string): Promise<ProjectConfig> {
+export async function loadProjectConfig(projectPath: string): Promise<ProjectConfig> {
   const configPath = path.join(projectPath, '.scratch', 'project.toml')
 
   try {

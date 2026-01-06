@@ -153,7 +153,12 @@ export async function logoutCommand(): Promise<void> {
 }
 
 export async function whoamiCommand(): Promise<void> {
-  const credentials = await requireAuth()
+  const credentials = await loadCredentials()
+
+  if (!credentials) {
+    log.info('Not logged in')
+    return
+  }
 
   try {
     // Verify token is still valid by calling /api/me

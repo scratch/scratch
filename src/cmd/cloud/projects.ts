@@ -2,11 +2,12 @@ import log from '../../logger'
 import { requireAuth } from '../../cloud/credentials'
 import { listProjects, getProject, deleteProject, ApiError } from '../../cloud/api'
 import { normalizeNamespace } from './namespace'
+import { loadProjectConfig } from './deploy'
 import { prompt } from '../../util'
 
 // Parse project identifier: "namespace/name" or just "name"
 // Treats "_" and "global" as the global namespace (null)
-function parseProjectIdentifier(identifier: string): { name: string; namespace?: string | null } {
+export function parseProjectIdentifier(identifier: string): { name: string; namespace?: string | null } {
   const parts = identifier.split('/')
   if (parts.length === 2) {
     const [ns, name] = parts
@@ -17,7 +18,7 @@ function parseProjectIdentifier(identifier: string): { name: string; namespace?:
 }
 
 // Prompt user to select from multiple projects
-async function promptProjectChoice(
+export async function promptProjectChoice(
   projects: { name: string; namespace: string | null }[]
 ): Promise<{ name: string; namespace: string | null }> {
   log.info('')
@@ -43,7 +44,7 @@ async function promptProjectChoice(
 }
 
 // Resolve project from identifier, prompting if ambiguous
-async function resolveProject(
+export async function resolveProject(
   token: string,
   identifier: string,
   optionNamespace?: string
@@ -77,13 +78,45 @@ async function resolveProject(
   return promptProjectChoice(matches)
 }
 
+// Resolve project from argument or .scratch/project.toml
+export async function resolveProjectOrConfig(
+  token: string,
+  identifier: string | undefined,
+  optionNamespace?: string
+): Promise<{ name: string; namespace: string | null }> {
+  if (identifier) {
+    return resolveProject(token, identifier, optionNamespace)
+  }
+
+  const config = await loadProjectConfig('.')
+  if (!config.name) {
+    log.error('No project specified and no .scratch/project.toml found')
+    log.error('Run this command from a project directory or specify a project name')
+    process.exit(1)
+  }
+
+  return { name: config.name, namespace: config.namespace || null }
+}
+
 // Format date for display
-function formatDate(dateString: string): string {
+export function formatDate(dateString: string): string {
   const date = new Date(dateString)
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+  })
+}
+
+// Format date with time for display
+export function formatDateTime(dateString: string): string {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   })
 }
 
@@ -124,11 +157,11 @@ export interface ProjectInfoOptions {
   namespace?: string
 }
 
-export async function projectInfoCommand(identifier: string, options: ProjectInfoOptions = {}): Promise<void> {
+export async function projectInfoCommand(identifier?: string, options: ProjectInfoOptions = {}): Promise<void> {
   const credentials = await requireAuth()
 
-  // Resolve project (handles namespace/name format and ambiguity)
-  const resolved = await resolveProject(credentials.token, identifier, options.namespace)
+  // Resolve project (handles namespace/name format, ambiguity, and config fallback)
+  const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace)
 
   try {
     const { project } = await getProject(credentials.token, resolved.name, resolved.namespace)
@@ -161,11 +194,11 @@ export interface ProjectDeleteOptions {
   namespace?: string
 }
 
-export async function projectDeleteCommand(identifier: string, options: ProjectDeleteOptions = {}): Promise<void> {
+export async function projectDeleteCommand(identifier?: string, options: ProjectDeleteOptions = {}): Promise<void> {
   const credentials = await requireAuth()
 
-  // Resolve project (handles namespace/name format and ambiguity)
-  const resolved = await resolveProject(credentials.token, identifier, options.namespace)
+  // Resolve project (handles namespace/name format, ambiguity, and config fallback)
+  const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace)
   const ns = resolved.namespace || '_'
 
   // Verify project exists (resolveProject already checks this, but getProject gives us 404 handling)

@@ -47,9 +47,22 @@ scratch is a CLI tool for building static MDX-based websites using Bun. Users cr
 
 **Project Management**:
 - `cloud projects list` - List all user's projects (default subcommand)
-- `cloud projects info <name>` - Show project details
+- `cloud projects info [name]` - Show project details
+  - Uses `.scratch/project.toml` if no name specified
   - `--namespace <namespace>` - Specify namespace
-- `cloud projects delete <name>` - Delete project (requires confirmation)
+- `cloud projects delete [name]` - Delete project (requires confirmation)
+  - Uses `.scratch/project.toml` if no name specified
+  - `--namespace <namespace>` - Specify namespace
+
+**Share Tokens** (anonymous access):
+- `cloud share [project]` - Create a time-limited share token (default action)
+  - Uses `.scratch/project.toml` if no project specified
+  - `--namespace <namespace>` - Specify namespace
+  - `--name <name>` - Token name
+  - `--duration <duration>` - Token duration (1d, 1w, 1m)
+- `cloud share list [project]` - List share tokens for a project
+  - `--namespace <namespace>` - Specify namespace
+- `cloud share revoke <tokenId> [project]` - Revoke a share token
   - `--namespace <namespace>` - Specify namespace
 
 **Namespace System**: Projects deploy to either global namespace (`_`) or custom domain-based namespaces. URLs follow pattern: `{pagesUrl}/{namespace}/{projectName}/`
@@ -109,8 +122,8 @@ These can be ejected from embedded templates using `scratch checkout`.
 - `src/cmd/cloud/auth.ts` - login, logout, whoami, config commands
 - `src/cmd/cloud/deploy.ts` - Deploy command with build integration
 - `src/cmd/cloud/projects.ts` - Project list, info, delete commands
-- `src/cmd/cloud/client.ts` - API client for Scratch Cloud server
-- `src/cmd/cloud/config.ts` - Cloud configuration management
+- `src/cmd/cloud/share.ts` - Share token create, list, revoke commands
+- `src/cmd/cloud/namespace.ts` - Namespace utilities (re-exports from shared)
 
 **Templates**:
 - `src/template.ts` - Template runtime API (materialize, getContent, list templates)

@@ -7,6 +7,10 @@ import type {
   ProjectResponse,
   DeployListResponse,
   DeployCreateResponse,
+  ShareTokenDuration,
+  ShareTokenCreateResponse,
+  ShareTokenListResponse,
+  ShareTokenResponse,
 } from './types'
 
 export class ApiError extends Error {
@@ -220,4 +224,52 @@ export async function deploy(
   }
 
   return response.json() as Promise<DeployCreateResponse>
+}
+
+// Create a share token for a project
+export async function createShareToken(
+  token: string,
+  projectName: string,
+  name: string,
+  duration: ShareTokenDuration,
+  namespace?: string | null
+): Promise<ShareTokenCreateResponse> {
+  const query = namespace ? `?namespace=${encodeURIComponent(namespace)}` : ''
+  return request<ShareTokenCreateResponse>(
+    `/api/projects/${encodeURIComponent(projectName)}/share-tokens${query}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ name, duration }),
+    },
+    token
+  )
+}
+
+// List share tokens for a project
+export async function listShareTokens(
+  token: string,
+  projectName: string,
+  namespace?: string | null
+): Promise<ShareTokenListResponse> {
+  const query = namespace ? `?namespace=${encodeURIComponent(namespace)}` : ''
+  return request<ShareTokenListResponse>(
+    `/api/projects/${encodeURIComponent(projectName)}/share-tokens${query}`,
+    {},
+    token
+  )
+}
+
+// Revoke a share token
+export async function revokeShareToken(
+  token: string,
+  projectName: string,
+  tokenId: string,
+  namespace?: string | null
+): Promise<ShareTokenResponse> {
+  const query = namespace ? `?namespace=${encodeURIComponent(namespace)}` : ''
+  return request<ShareTokenResponse>(
+    `/api/projects/${encodeURIComponent(projectName)}/share-tokens/${encodeURIComponent(tokenId)}${query}`,
+    { method: 'DELETE' },
+    token
+  )
 }

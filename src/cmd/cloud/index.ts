@@ -3,6 +3,7 @@ import { withErrorHandling } from '../../index'
 import { loginCommand, logoutCommand, whoamiCommand, configCommand } from './auth'
 import { deployCommand } from './deploy'
 import { listProjectsCommand, projectInfoCommand, projectDeleteCommand } from './projects'
+import { shareCreateCommand, shareListCommand, shareRevokeCommand } from './share'
 
 export function registerCloudCommands(program: Command): void {
   const cloud = program
@@ -57,22 +58,61 @@ export function registerCloudCommands(program: Command): void {
     .action(withErrorHandling('cloud projects list', listProjectsCommand))
 
   projects
-    .command('info <name>')
-    .description('Show project details')
+    .command('info [name]')
+    .description('Show project details (uses .scratch/project.toml if no name specified)')
     .option('--namespace <namespace>', 'Specify namespace')
     .action(
-      withErrorHandling('cloud projects info', async (name: string, options: { namespace?: string }) => {
+      withErrorHandling('cloud projects info', async (name: string | undefined, options: { namespace?: string }) => {
         await projectInfoCommand(name, { namespace: options.namespace })
       })
     )
 
   projects
-    .command('delete <name>')
-    .description('Delete a project and all its deploys')
+    .command('delete [name]')
+    .description('Delete a project and all its deploys (uses .scratch/project.toml if no name specified)')
     .option('--namespace <namespace>', 'Specify namespace')
     .action(
-      withErrorHandling('cloud projects delete', async (name: string, options: { namespace?: string }) => {
+      withErrorHandling('cloud projects delete', async (name: string | undefined, options: { namespace?: string }) => {
         await projectDeleteCommand(name, { namespace: options.namespace })
+      })
+    )
+
+  // Share commands - `cloud share [project]` creates a token (default)
+  // If no project specified, uses .scratch/project.toml
+  const share = cloud
+    .command('share')
+    .description('Create and manage share tokens for anonymous access')
+
+  // Default: create a share token
+  share
+    .command('create [project]', { isDefault: true })
+    .description('Create a share token (uses .scratch/project.toml if no project specified)')
+    .option('--namespace <namespace>', 'Specify namespace')
+    .option('--name <name>', 'Token name')
+    .option('--duration <duration>', 'Token duration (1d, 1w, 1m)')
+    .action(
+      withErrorHandling('cloud share', async (project: string | undefined, options: { namespace?: string; name?: string; duration?: string }) => {
+        await shareCreateCommand(project, options)
+      })
+    )
+
+  share
+    .command('list [project]')
+    .description('List share tokens (uses .scratch/project.toml if no project specified)')
+    .option('--namespace <namespace>', 'Specify namespace')
+    .action(
+      withErrorHandling('cloud share list', async (project: string | undefined, options: { namespace?: string }) => {
+        await shareListCommand(project, options)
+      })
+    )
+
+  share
+    .command('revoke <tokenId> [project]')
+    .description('Revoke a share token (uses .scratch/project.toml if no project specified)')
+    .option('--namespace <namespace>', 'Specify namespace')
+    .action(
+      withErrorHandling('cloud share revoke', async (tokenId: string, project: string | undefined, options: { namespace?: string }) => {
+        await shareRevokeCommand(tokenId, project, options)
       })
     )
 }
