@@ -3,10 +3,10 @@ import type {
   DeviceFlowResponse,
   DeviceTokenResponse,
   UserResponse,
-  ProjectsResponse,
+  ProjectListResponse,
   ProjectResponse,
-  DeploysResponse,
-  DeployResponse,
+  DeployListResponse,
+  DeployCreateResponse,
 } from './types'
 
 export class ApiError extends Error {
@@ -99,8 +99,8 @@ export async function getCurrentUser(token: string): Promise<UserResponse> {
 }
 
 // List projects
-export async function listProjects(token: string): Promise<ProjectsResponse> {
-  return request<ProjectsResponse>('/api/projects', {}, token)
+export async function listProjects(token: string): Promise<ProjectListResponse> {
+  return request<ProjectListResponse>('/api/projects', {}, token)
 }
 
 // Get single project
@@ -159,9 +159,9 @@ export async function listDeploys(
   token: string,
   name: string,
   namespace?: string | null
-): Promise<DeploysResponse> {
+): Promise<DeployListResponse> {
   const query = namespace ? `?namespace=${encodeURIComponent(namespace)}` : ''
-  return request<DeploysResponse>(
+  return request<DeployListResponse>(
     `/api/projects/${encodeURIComponent(name)}/deploys${query}`,
     {},
     token
@@ -176,7 +176,7 @@ export async function deploy(
   name: string,
   zipData: ArrayBuffer,
   namespace?: string | null
-): Promise<DeployResponse> {
+): Promise<DeployCreateResponse> {
   const serverUrl = await getServerUrl()
   const query = namespace ? `?namespace=${encodeURIComponent(namespace)}` : ''
   const url = `${serverUrl}/api/projects/${encodeURIComponent(name)}/deploy${query}`
@@ -219,5 +219,5 @@ export async function deploy(
     )
   }
 
-  return response.json() as Promise<DeployResponse>
+  return response.json() as Promise<DeployCreateResponse>
 }

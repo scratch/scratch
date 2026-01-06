@@ -5,6 +5,7 @@ import { getServerUrl } from '../../cloud/config'
 import { buildCommand } from '../build'
 import { BuildContext } from '../../build/context'
 import { normalizeNamespace, GLOBAL_NAMESPACE } from './namespace'
+import { validateProjectName, getEmailDomain } from '../../../../../scratch-monorepo/shared/src/project'
 import { formatBytes, prompt, openBrowser } from '../../util'
 import { parse as parseToml, stringify as stringifyToml } from 'smol-toml'
 import fs from 'fs/promises'
@@ -79,17 +80,6 @@ async function saveProjectConfig(projectPath: string, config: ProjectConfig): Pr
   await fs.writeFile(configPath, content, 'utf-8')
 }
 
-// Validate project name
-function isValidProjectName(name: string): boolean {
-  return /^[a-z][a-z0-9-]{2,62}$/.test(name)
-}
-
-// Validate namespace (must be domain-like or empty)
-function isValidNamespace(ns: string): boolean {
-  if (!ns) return true // Empty is valid (global namespace)
-  return /^[a-z0-9][a-z0-9-]*\.[a-z0-9.-]+$/.test(ns)
-}
-
 // Create zip from directory
 async function createZip(dirPath: string): Promise<{ data: ArrayBuffer; fileCount: number; totalBytes: number }> {
   const JSZipModule = await import('jszip')
@@ -146,7 +136,7 @@ export async function deployCommand(projectPath: string = '.', options: DeployOp
   let namespace = options.namespace !== undefined ? normalizeNamespace(options.namespace) : (config.namespace || GLOBAL_NAMESPACE)
 
   // If no valid project name from options or config, run interactive setup
-  if (!projectName || !isValidProjectName(projectName)) {
+  if (!projectName || !validateProjectName(projectName).valid) {
     const result = await runInteractiveSetup(resolvedPath, credentials, config)
     projectName = result.name
     namespace = result.namespace
@@ -227,8 +217,9 @@ export async function deployCommand(projectPath: string = '.', options: DeployOp
               continue
             }
 
-            if (!isValidProjectName(newName)) {
-              log.error('Invalid name. Must be 3-63 lowercase letters, numbers, and hyphens, starting with a letter.')
+            const nameValidation = validateProjectName(newName)
+            if (!nameValidation.valid) {
+              log.error(nameValidation.error || 'Invalid project name')
               continue
             }
 
@@ -266,13 +257,6 @@ export async function deployCommand(projectPath: string = '.', options: DeployOp
   }
 }
 
-// Extract domain from email address
-function getEmailDomain(email: string): string | null {
-  const parts = email.split('@')
-  if (parts.length !== 2) return null
-  return parts[1].toLowerCase()
-}
-
 /**
  * Interactive setup - prompts user for project config, saves to .scratch/project.toml
  */
@@ -306,8 +290,9 @@ async function runInteractiveSetup(
       continue
     }
 
-    if (!isValidProjectName(projectName)) {
-      log.error('Invalid name. Must be 3-63 lowercase letters, numbers, and hyphens, starting with a letter.')
+    const nameValidation = validateProjectName(projectName)
+    if (!nameValidation.valid) {
+      log.error(nameValidation.error || 'Invalid project name')
       continue
     }
 
