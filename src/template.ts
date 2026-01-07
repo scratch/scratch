@@ -106,8 +106,8 @@ export async function materializeProjectTemplates(
   }
 
   for (const [relativePath, file] of Object.entries(templates)) {
-    // Skip _build/ files (internal build infrastructure)
-    if (relativePath.startsWith('_build/')) {
+    // Skip _build/ files (internal build infrastructure) and _config/ files (config templates)
+    if (relativePath.startsWith('_build/') || relativePath.startsWith('_config/')) {
       continue;
     }
 
@@ -214,8 +214,8 @@ export function listTemplateFiles(): string[] {
 }
 
 /**
- * List user-facing template files (excludes internal _build/ files).
+ * List user-facing template files (excludes internal _build/ and _config/ files).
  */
 export function listUserFacingTemplateFiles(): string[] {
-  return Object.keys(templates).filter((f) => !f.startsWith('_build/'));
+  return Object.keys(templates).filter((f) => !f.startsWith('_build/') && !f.startsWith('_config/'));
 }

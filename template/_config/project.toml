@@ -1,0 +1,28 @@
+# Scratch Cloud Project Configuration
+#
+# This file configures how your project deploys to Scratch Cloud.
+# Run `scratch cloud config` to update these settings interactively.
+
+# Project name (required)
+# Must be 3-63 characters, lowercase letters, numbers, and hyphens.
+# This becomes part of your project URL.
+name = "my-project"
+
+# Namespace (required)
+# Use "global" for the shared namespace, or your email domain (e.g., "acme.com")
+# for a private namespace. Your project URL will be:
+#   https://pages.scratch.dev/{namespace}/{name}/
+namespace = "global"
+
+# Scratch server URL (optional)
+# Override the global default server. Usually you don't need to change this.
+# server_url = "https://app.scratch.dev"
+
+# Visibility (optional, defaults to "private")
+# Controls who can view your deployed site:
+#   "private"  - Only you (the owner)
+#   "public"   - Anyone with the URL
+#   "@acme.com" - Anyone with an @acme.com email
+#   "user@example.com" - Specific email addresses
+#   "user@x.com,@acme.com" - Comma-separated list
+# visibility = "private"

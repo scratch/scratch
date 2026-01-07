@@ -1,0 +1,13 @@
+# Scratch Cloud Global Configuration
+#
+# These are your default settings for all Scratch projects.
+# Run `scratch cloud config` from a non-project directory to update.
+# Project-specific settings in .scratch/project.toml override these.
+
+# Default server URL
+# The Scratch Cloud server to deploy to.
+server_url = "https://app.scratch.dev"
+
+# Default namespace for new projects (optional)
+# Use "global" for the shared namespace, or your email domain.
+# namespace = "global"
