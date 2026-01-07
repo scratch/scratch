@@ -3,7 +3,7 @@ import { requireAuth } from '../../cloud/credentials'
 import { listProjects, getProject, deleteProject, ApiError } from '../../cloud/api'
 import { normalizeNamespace } from './namespace'
 import { loadProjectConfig } from './deploy'
-import { prompt } from '../../util'
+import { prompt, select } from '../../util'
 
 // Parse project identifier: "namespace/name" or just "name"
 // Treats "_" and "global" as the global namespace (null)
@@ -21,26 +21,11 @@ export function parseProjectIdentifier(identifier: string): { name: string; name
 export async function promptProjectChoice(
   projects: { name: string; namespace: string | null }[]
 ): Promise<{ name: string; namespace: string | null }> {
-  log.info('')
-  log.info('Multiple projects found with this name:')
-  log.info('')
-
-  projects.forEach((p, i) => {
-    const ns = p.namespace || '_'
-    log.info(`  ${i + 1}) ${ns}/${p.name}`)
-  })
-
-  log.info('')
-
-  const answer = await prompt('Select project (number): ')
-
-  const choice = parseInt(answer, 10)
-  if (isNaN(choice) || choice < 1 || choice > projects.length) {
-    log.error('Invalid selection')
-    process.exit(1)
-  }
-
-  return projects[choice - 1]
+  const choices = projects.map((p) => ({
+    name: `${p.namespace || '_'}/${p.name}`,
+    value: p,
+  }))
+  return select('Select project:', choices, projects[0])
 }
 
 // Resolve project from identifier, prompting if ambiguous

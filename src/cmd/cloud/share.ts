@@ -3,7 +3,7 @@ import { requireAuth } from '../../cloud/credentials'
 import { createShareToken, listShareTokens, revokeShareToken, ApiError } from '../../cloud/api'
 import { shareTokenDurations, type ShareTokenDuration } from '../../cloud/types'
 import { resolveProjectOrConfig, formatDateTime } from './projects'
-import { prompt } from '../../util'
+import { prompt, select } from '../../util'
 
 // Format duration for display
 function formatDuration(duration: ShareTokenDuration): string {
@@ -71,28 +71,12 @@ export async function shareCreateCommand(
     }
     duration = options.duration as ShareTokenDuration
   } else {
-    log.info('')
-    log.info('Choose token duration:')
-    log.info('  1) 1 day')
-    log.info('  2) 1 week')
-    log.info('  3) 1 month')
-    log.info('')
-
-    const choice = await prompt('Duration (1-3): ', '2')
-    switch (choice) {
-      case '1':
-        duration = '1d'
-        break
-      case '2':
-        duration = '1w'
-        break
-      case '3':
-        duration = '1m'
-        break
-      default:
-        log.error('Invalid selection')
-        process.exit(1)
-    }
+    const durationChoices = [
+      { name: '1 day', value: '1d' as ShareTokenDuration },
+      { name: '1 week', value: '1w' as ShareTokenDuration },
+      { name: '1 month', value: '1m' as ShareTokenDuration },
+    ]
+    duration = await select('Choose token duration:', durationChoices, '1w' as ShareTokenDuration)
   }
 
   try {

@@ -1,7 +1,11 @@
 import path from 'path';
 import fs from 'fs/promises';
-import readline from 'readline';
 import { glob } from 'fast-glob';
+import {
+  select as inquirerSelect,
+  confirm as inquirerConfirm,
+  input as inquirerInput,
+} from '@inquirer/prompts';
 import { spawnSync } from 'child_process';
 import log from './logger';
 
@@ -250,29 +254,10 @@ export function formatFileTree(files: string[]): string[] {
  * Auto-confirms with default value when not running in a TTY (non-interactive).
  */
 export async function confirm(question: string, defaultValue: boolean): Promise<boolean> {
-  // Auto-confirm when not in a TTY (scripts, tests, piped input)
   if (!process.stdin.isTTY) {
     return defaultValue;
   }
-
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  const hint = defaultValue ? '[Y/n]' : '[y/N]';
-
-  return new Promise((resolve) => {
-    rl.question(`${question} ${hint} `, (answer) => {
-      rl.close();
-      const trimmed = answer.trim().toLowerCase();
-      if (trimmed === '') {
-        resolve(defaultValue);
-      } else {
-        resolve(trimmed === 'y' || trimmed === 'yes');
-      }
-    });
-  });
+  return inquirerConfirm({ message: question, default: defaultValue });
 }
 
 /**
@@ -280,22 +265,32 @@ export async function confirm(question: string, defaultValue: boolean): Promise<
  * Returns default value when not running in a TTY (non-interactive).
  */
 export async function prompt(question: string, defaultValue: string = ''): Promise<string> {
-  // Return default when not in a TTY (scripts, tests, piped input)
   if (!process.stdin.isTTY) {
     return defaultValue;
   }
+  const answer = await inquirerInput({ message: question, default: defaultValue || undefined });
+  return answer.trim() || defaultValue;
+}
 
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
+export interface SelectChoice<T> {
+  name: string;
+  value: T;
+  description?: string;
+}
 
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer.trim() || defaultValue);
-    });
-  });
+/**
+ * Prompt user to select from a list of choices.
+ * Returns the default value (or first choice) when not running in a TTY (non-interactive).
+ */
+export async function select<T>(
+  message: string,
+  choices: SelectChoice<T>[],
+  defaultValue?: T
+): Promise<T> {
+  if (!process.stdin.isTTY) {
+    return defaultValue !== undefined ? defaultValue : choices[0].value;
+  }
+  return inquirerSelect({ message, choices, default: defaultValue });
 }
 
 /**

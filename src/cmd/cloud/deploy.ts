@@ -6,7 +6,7 @@ import { buildCommand } from '../build'
 import { BuildContext } from '../../build/context'
 import { normalizeNamespace, GLOBAL_NAMESPACE } from './namespace'
 import { validateProjectName, getEmailDomain } from '../../../../../scratch-monorepo/shared/src/project'
-import { formatBytes, prompt, openBrowser } from '../../util'
+import { formatBytes, prompt, select, openBrowser } from '../../util'
 import { parse as parseToml, stringify as stringifyToml } from 'smol-toml'
 import fs from 'fs/promises'
 import path from 'path'
@@ -303,28 +303,13 @@ async function runInteractiveSetup(
   let namespace: string = GLOBAL_NAMESPACE
 
   if (userDomain) {
-    log.info('')
-    log.info('Choose your project URL:')
-    log.info(`  1) ${pagesUrl}/${userDomain}/${projectName}/`)
-    log.info(`  2) ${pagesUrl}/_/${projectName}/`)
-    log.info('')
-
-    // Default to user's domain, unless they previously chose global
-    const defaultChoice = existingConfig.namespace === GLOBAL_NAMESPACE && existingConfig.name ? '2' : '1'
-
-    while (true) {
-      const choice = await prompt('Choice', defaultChoice)
-
-      if (choice === '1') {
-        namespace = userDomain
-        break
-      } else if (choice === '2') {
-        namespace = GLOBAL_NAMESPACE
-        break
-      } else {
-        log.error('Please enter 1 or 2')
-      }
-    }
+    const namespaceChoices = [
+      { name: `${pagesUrl}/${userDomain}/${projectName}/`, value: userDomain },
+      { name: `${pagesUrl}/_/${projectName}/`, value: GLOBAL_NAMESPACE },
+    ]
+    const defaultNs =
+      existingConfig.namespace === GLOBAL_NAMESPACE && existingConfig.name ? GLOBAL_NAMESPACE : userDomain
+    namespace = await select('Choose your project URL:', namespaceChoices, defaultNs)
   }
 
   // Save config
