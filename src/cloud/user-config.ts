@@ -7,6 +7,8 @@ export const CONFIG_PATH = join(homedir(), '.config', 'scratch', 'config.toml')
 
 export interface UserConfig {
   server_url?: string
+  namespace?: string  // default namespace for new projects
+  cf_access_token?: string  // Format: "client-id:client-secret"
 }
 
 const DEFAULT_SERVER_URL = 'https://app.scratch.dev'
@@ -26,6 +28,10 @@ function parseTOML(content: string): UserConfig {
       const [, key, value] = match
       if (key === 'server_url') {
         config.server_url = value
+      } else if (key === 'namespace') {
+        config.namespace = value
+      } else if (key === 'cf_access_token') {
+        config.cf_access_token = value
       }
     }
   }
@@ -33,19 +39,33 @@ function parseTOML(content: string): UserConfig {
   return config
 }
 
+// Escape string for TOML (handle quotes and backslashes)
+function escapeTomlString(s: string): string {
+  return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+}
+
 // Generate TOML with comments
 function generateTOML(config: UserConfig): string {
-  const serverUrl = config.server_url || DEFAULT_SERVER_URL
+  const lines = [
+    '# Scratch Cloud Global Configuration',
+    '#',
+    '# These are your default settings for all Scratch projects.',
+    '# Run `scratch cloud config` from a non-project directory to update.',
+    '# Project-specific settings in .scratch/project.toml override these.',
+    '',
+    '# Default server URL',
+    `server_url = "${escapeTomlString(config.server_url || DEFAULT_SERVER_URL)}"`,
+  ]
 
-  return `# Scratch Cloud configuration
-#
-# This file is managed by 'scratch cloud config'
-# You can also edit it manually.
+  if (config.namespace) {
+    lines.push('', '# Default namespace for new projects', `namespace = "${escapeTomlString(config.namespace)}"`)
+  }
 
-# The Scratch server URL
-# Default: ${DEFAULT_SERVER_URL}
-server_url = "${serverUrl}"
-`
+  if (config.cf_access_token) {
+    lines.push('', '# Cloudflare Access service token (format: client-id:client-secret)', `cf_access_token = "${escapeTomlString(config.cf_access_token)}"`)
+  }
+
+  return lines.join('\n') + '\n'
 }
 
 export async function loadUserConfig(): Promise<UserConfig> {

@@ -1,4 +1,5 @@
 import { getServerUrl } from './config'
+import { getCfAccessHeaders, isCfAccessDenied } from './cf-access'
 import type {
   DeviceFlowResponse,
   DeviceTokenResponse,
@@ -7,6 +8,7 @@ import type {
   ProjectResponse,
   DeployListResponse,
   DeployCreateResponse,
+  DeployCreateParams,
   ShareTokenDuration,
   ShareTokenCreateResponse,
   ShareTokenListResponse,
@@ -34,7 +36,11 @@ async function request<T>(
 ): Promise<T> {
   const serverUrl = await getServerUrl()
   const url = `${serverUrl}${path}`
+
+  // Include CF Access headers if configured
+  const cfHeaders = await getCfAccessHeaders()
   const headers: Record<string, string> = {
+    ...(cfHeaders || {}),
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   }
@@ -63,6 +69,14 @@ async function request<T>(
   }
 
   if (!response.ok) {
+    // Check for CF Access denial before reading body
+    if (isCfAccessDenied(response)) {
+      throw new ApiError(
+        `Cloudflare Access denied. Run: scratch cloud cf-access <client-id:client-secret>`,
+        403
+      )
+    }
+
     // Read as text first, then try to parse as JSON
     const text = await response.text()
     let body: unknown = text
@@ -130,11 +144,17 @@ export async function deleteProject(
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT)
 
+  // Include CF Access headers if configured
+  const cfHeaders = await getCfAccessHeaders()
+
   let response: Response
   try {
     response = await fetch(url, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        ...(cfHeaders || {}),
+        Authorization: `Bearer ${token}`,
+      },
       signal: controller.signal,
     })
   } catch (error: any) {
@@ -147,6 +167,14 @@ export async function deleteProject(
   }
 
   if (!response.ok) {
+    // Check for CF Access denial before reading body
+    if (isCfAccessDenied(response)) {
+      throw new ApiError(
+        `Cloudflare Access denied. Run: scratch cloud cf-access <client-id:client-secret>`,
+        403
+      )
+    }
+
     const text = await response.text()
     let body: unknown = text
     try {
@@ -173,26 +201,41 @@ export async function listDeploys(
 }
 
 // Deploy a project (upload zip)
+// See DeployCreateParams in shared/src/api/deploys.ts for parameter types
 const DEPLOY_TIMEOUT = 120000 // 2 minutes for file uploads
 
 export async function deploy(
   token: string,
-  name: string,
+  params: DeployCreateParams,
   zipData: ArrayBuffer,
-  namespace?: string | null
+  serverUrlOverride?: string
 ): Promise<DeployCreateResponse> {
-  const serverUrl = await getServerUrl()
-  const query = namespace ? `?namespace=${encodeURIComponent(namespace)}` : ''
-  const url = `${serverUrl}/api/projects/${encodeURIComponent(name)}/deploy${query}`
+  const serverUrl = serverUrlOverride || await getServerUrl()
+
+  // Build query string from params
+  const queryParams = new URLSearchParams()
+  if (params.namespace) {
+    queryParams.set('namespace', params.namespace)
+  }
+  if (params.visibility) {
+    queryParams.set('visibility', params.visibility)
+  }
+  const query = queryParams.toString() ? `?${queryParams.toString()}` : ''
+
+  const url = `${serverUrl}/api/projects/${encodeURIComponent(params.name)}/deploy${query}`
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), DEPLOY_TIMEOUT)
+
+  // Include CF Access headers if configured
+  const cfHeaders = await getCfAccessHeaders()
 
   let response: Response
   try {
     response = await fetch(url, {
       method: 'POST',
       headers: {
+        ...(cfHeaders || {}),
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/zip',
       },
@@ -209,6 +252,14 @@ export async function deploy(
   }
 
   if (!response.ok) {
+    // Check for CF Access denial before reading body
+    if (isCfAccessDenied(response)) {
+      throw new ApiError(
+        `Cloudflare Access denied. Run: scratch cloud cf-access <client-id:client-secret>`,
+        403
+      )
+    }
+
     const text = await response.text()
     let body: any = text
     try {

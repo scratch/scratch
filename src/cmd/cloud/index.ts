@@ -1,6 +1,6 @@
 import { Command } from 'commander'
 import { withErrorHandling } from '../../index'
-import { loginCommand, logoutCommand, whoamiCommand, configCommand } from './auth'
+import { loginCommand, logoutCommand, whoamiCommand, configCommand, cfAccessCommand } from './auth'
 import { deployCommand } from './deploy'
 import { listProjectsCommand, projectInfoCommand, projectDeleteCommand } from './projects'
 import { shareCreateCommand, shareListCommand, shareRevokeCommand } from './share'
@@ -30,6 +30,13 @@ export function registerCloudCommands(program: Command): void {
     .description('Configure Scratch Cloud settings')
     .action(withErrorHandling('cloud config', async (projectPath?: string) => {
       await configCommand(projectPath)
+    }))
+
+  cloud
+    .command('cf-access <token>')
+    .description('Set Cloudflare Access service token (format: client-id:client-secret)')
+    .action(withErrorHandling('cloud cf-access', async (token: string) => {
+      await cfAccessCommand(token)
     }))
 
   // Deploy command
