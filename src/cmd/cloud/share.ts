@@ -2,8 +2,9 @@ import log from '../../logger'
 import { requireAuth } from '../../cloud/credentials'
 import { createShareToken, listShareTokens, revokeShareToken, ApiError } from '../../cloud/api'
 import { shareTokenDurations, type ShareTokenDuration } from '../../cloud/types'
+import { formatNamespace } from './namespace'
 import { resolveProjectOrConfig, formatDateTime } from './projects'
-import { prompt, select } from '../../util'
+import { prompt, select, stripTrailingSlash } from '../../util'
 
 // Format duration for display
 function formatDuration(duration: ShareTokenDuration): string {
@@ -50,7 +51,7 @@ export async function shareCreateCommand(
 ): Promise<void> {
   const credentials = await requireAuth()
   const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace)
-  const ns = resolved.namespace || '_'
+  const ns = formatNamespace(resolved.namespace)
 
   // Get or prompt for token name
   let tokenName = options.name
@@ -96,7 +97,7 @@ export async function shareCreateCommand(
     log.info('')
     log.info('Share URL (copy this - token is shown only once):')
     log.info('')
-    log.info(`  ${result.share_url}`)
+    log.info(`  ${stripTrailingSlash(result.share_url)}`)
     log.info('')
   } catch (error) {
     if (error instanceof ApiError) {
@@ -112,7 +113,7 @@ export async function shareListCommand(
 ): Promise<void> {
   const credentials = await requireAuth()
   const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace)
-  const ns = resolved.namespace || '_'
+  const ns = formatNamespace(resolved.namespace)
 
   try {
     const { share_tokens } = await listShareTokens(
@@ -169,7 +170,7 @@ export async function shareRevokeCommand(
 ): Promise<void> {
   const credentials = await requireAuth()
   const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace)
-  const ns = resolved.namespace || '_'
+  const ns = formatNamespace(resolved.namespace)
 
   try {
     const { share_token } = await revokeShareToken(

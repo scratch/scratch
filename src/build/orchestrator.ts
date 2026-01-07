@@ -20,6 +20,16 @@ import {
 } from './steps';
 
 /**
+ * Progress messages to show at specific steps.
+ * Maps step name to message shown before the step runs.
+ */
+const PROGRESS_MESSAGES: Record<string, string> = {
+  '03-create-tsx-entries': 'Compiling pages...',
+  '07-generate-html': 'Generating HTML...',
+  '09-copy-static': 'Copying assets...',
+};
+
+/**
  * Ordered list of all build steps.
  * Steps in nested arrays run in parallel.
  */
@@ -65,6 +75,12 @@ async function executeStep(
 ): Promise<void> {
   const stepNum = getStepNumber(step.name);
   log.debug(`=== [${stepNum}] ${step.description} ===`);
+
+  // Show progress message if defined for this step
+  const progressMsg = PROGRESS_MESSAGES[step.name];
+  if (progressMsg) {
+    log.info(progressMsg);
+  }
 
   const start = performance.now();
   await step.execute(ctx, state);

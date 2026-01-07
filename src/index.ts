@@ -13,6 +13,7 @@ import { registerCloudCommands } from './cmd/cloud';
 import { BuildContext } from './build/context';
 import log, { setLogLevel, setShowBunErrors, shouldShowBunErrors } from './logger';
 import { VERSION } from './version';
+import { formatBytes } from './util';
 
 // Context created in preAction hook, used by commands
 let ctx: BuildContext;
@@ -77,8 +78,13 @@ program
     withErrorHandling('Build', async (path, options) => {
       const startTime = Date.now();
       log.debug('Options:', options);
-      await buildCommand(ctx, options, path);
-      log.info(`Build completed in ${Date.now() - startTime}ms`);
+      const result = await buildCommand(ctx, options, path);
+      const elapsed = Date.now() - startTime;
+      if (result.fileCount !== undefined && result.totalBytes !== undefined) {
+        log.info(`Built ${result.fileCount} files (${formatBytes(result.totalBytes)}) in ${elapsed}ms`);
+      } else {
+        log.info(`Build completed in ${elapsed}ms`);
+      }
     })
   );
 

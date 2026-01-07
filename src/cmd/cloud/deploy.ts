@@ -4,9 +4,9 @@ import { deploy, ApiError } from '../../cloud/api'
 import { getServerUrl } from '../../cloud/config'
 import { buildCommand } from '../build'
 import { BuildContext } from '../../build/context'
-import { normalizeNamespace, GLOBAL_NAMESPACE } from './namespace'
+import { normalizeNamespace, formatNamespace, GLOBAL_NAMESPACE } from './namespace'
 import { validateProjectName, getEmailDomain } from '../../../../../scratch-monorepo/shared/src/project'
-import { formatBytes, prompt, select, openBrowser } from '../../util'
+import { formatBytes, prompt, select, openBrowser, stripTrailingSlash } from '../../util'
 import { parse as parseToml, stringify as stringifyToml } from 'smol-toml'
 import fs from 'fs/promises'
 import path from 'path'
@@ -38,6 +38,8 @@ function getPagesUrl(serverUrl: string): string {
 export interface ProjectConfig {
   name?: string
   namespace?: string
+  server_url?: string   // overrides global
+  visibility?: string   // Group as string
 }
 
 // Load project config from .scratch/project.toml
@@ -46,12 +48,14 @@ export async function loadProjectConfig(projectPath: string): Promise<ProjectCon
 
   try {
     const content = await fs.readFile(configPath, 'utf-8')
-    const parsed = parseToml(content) as { name?: string; namespace?: string }
+    const parsed = parseToml(content) as { name?: string; namespace?: string; server_url?: string; visibility?: string }
 
     return {
       name: parsed.name,
       // Normalize namespace: "_", "global", "" all become 'global'
       namespace: parsed.namespace ? normalizeNamespace(parsed.namespace) : undefined,
+      server_url: parsed.server_url,
+      visibility: parsed.visibility,
     }
   } catch (err: any) {
     if (err.code === 'ENOENT') {
@@ -61,22 +65,45 @@ export async function loadProjectConfig(projectPath: string): Promise<ProjectCon
   }
 }
 
+// Escape string for TOML (handle quotes and backslashes)
+function escapeTomlString(s: string): string {
+  return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+}
+
 // Save project config to .scratch/project.toml
-async function saveProjectConfig(projectPath: string, config: ProjectConfig): Promise<void> {
+export async function saveProjectConfig(projectPath: string, config: ProjectConfig): Promise<void> {
   const scratchDir = path.join(projectPath, '.scratch')
   const configPath = path.join(scratchDir, 'project.toml')
 
   // Ensure .scratch directory exists
   await fs.mkdir(scratchDir, { recursive: true })
 
-  // Build config object (only include defined values)
-  const tomlObj: Record<string, string> = {}
-  if (config.name) tomlObj.name = config.name
-  if (config.namespace) tomlObj.namespace = config.namespace
+  // Generate TOML content with comments
+  const lines = [
+    '# Scratch Cloud Project Configuration',
+    '#',
+    '# This file configures how your project deploys to Scratch Cloud.',
+    '# Run `scratch cloud config` to update these settings interactively.',
+    '',
+  ]
 
-  // Generate TOML content with header comment
-  const content = '# Scratch Cloud project configuration\n\n' + stringifyToml(tomlObj)
+  if (config.name) {
+    lines.push('# Project name', `name = "${escapeTomlString(config.name)}"`, '')
+  }
 
+  if (config.namespace) {
+    lines.push('# Namespace', `namespace = "${escapeTomlString(config.namespace)}"`, '')
+  }
+
+  if (config.server_url) {
+    lines.push('# Server URL (overrides global default)', `server_url = "${escapeTomlString(config.server_url)}"`, '')
+  }
+
+  if (config.visibility) {
+    lines.push('# Visibility', `visibility = "${escapeTomlString(config.visibility)}"`, '')
+  }
+
+  const content = lines.join('\n')
   await fs.writeFile(configPath, content, 'utf-8')
 }
 
@@ -118,6 +145,7 @@ export interface DeployOptions {
   name?: string
   namespace?: string
   noBuild?: boolean
+  dryRun?: boolean
 }
 
 export async function deployCommand(projectPath: string = '.', options: DeployOptions = {}): Promise<void> {
@@ -138,14 +166,14 @@ export async function deployCommand(projectPath: string = '.', options: DeployOp
   // If no valid project name from options or config, run interactive setup
   if (!projectName || !validateProjectName(projectName).valid) {
     const result = await runInteractiveSetup(resolvedPath, credentials, config)
-    projectName = result.name
-    namespace = result.namespace
+    projectName = result.name!  // runInteractiveSetup guarantees name is set
+    namespace = result.namespace!  // runInteractiveSetup guarantees namespace is set
     config = result
   } else if (config.name) {
     // Show config being used
     log.info(`Using project configuration from ${configRelPath}`)
     log.info(`  name:      ${projectName}`)
-    log.info(`  namespace: ${namespace === GLOBAL_NAMESPACE ? '_ (global)' : namespace}`)
+    log.info(`  namespace: ${formatNamespace(namespace)}`)
     log.info('')
   }
 
@@ -178,22 +206,40 @@ export async function deployCommand(projectPath: string = '.', options: DeployOp
   }
 
   // Create zip
-  log.info('Zipping dist/...')
+  log.info('Packaging for upload...')
   const { data: zipData, fileCount, totalBytes } = await createZip(distDir)
-  log.info(`  ${fileCount} files, ${formatBytes(totalBytes)}`)
+  const compressedBytes = zipData.byteLength
+  log.info(`  ${fileCount} files, ${formatBytes(totalBytes)} -> ${formatBytes(compressedBytes)}`)
+
+  // Dry run - show what would be deployed without uploading
+  if (options.dryRun) {
+    const serverUrl = config.server_url || await getServerUrl()
+    const pagesUrl = getPagesUrl(serverUrl)
+    const urlNamespace = namespace === GLOBAL_NAMESPACE ? '_' : namespace
+    const deployUrl = `${pagesUrl}/${urlNamespace}/${projectName}`
+    log.info('')
+    log.info('Dry run complete. Would deploy to:')
+    log.info(`  ${deployUrl}`)
+    return
+  }
 
   // Upload (with retry loop for name conflicts)
   while (true) {
     log.info('Uploading to server...')
 
     try {
-      const result = await deploy(credentials.token, projectName, zipData, namespace)
+      const result = await deploy(
+        credentials.token,
+        { name: projectName, namespace, visibility: config.visibility },
+        zipData,
+        config.server_url
+      )
 
       log.info('')
       if (result.project.created) {
         log.info(`Created project "${projectName}"`)
       }
-      log.info(`Deployed v${result.deploy.version} to ${result.url}`)
+      log.info(`Deployed v${result.deploy.version} to ${stripTrailingSlash(result.url)}`)
 
       // Open the deployed page in browser
       await openBrowser(result.url)
@@ -227,10 +273,15 @@ export async function deployCommand(projectPath: string = '.', options: DeployOp
             break
           }
 
-          // Save new config
+          // Save new config (preserve visibility and server_url from existing config)
           log.info('')
           log.info('Saving .scratch/project.toml...')
-          await saveProjectConfig(resolvedPath, { name: projectName, namespace })
+          await saveProjectConfig(resolvedPath, {
+            name: projectName,
+            namespace,
+            visibility: config.visibility,
+            server_url: config.server_url,
+          })
           log.info('')
           log.info('Note: If your site has broken links, run `scratch cloud deploy` again to rebuild with the new name.')
           log.info('')
@@ -304,8 +355,8 @@ async function runInteractiveSetup(
 
   if (userDomain) {
     const namespaceChoices = [
-      { name: `${pagesUrl}/${userDomain}/${projectName}/`, value: userDomain },
-      { name: `${pagesUrl}/_/${projectName}/`, value: GLOBAL_NAMESPACE },
+      { name: `${pagesUrl}/${userDomain}/${projectName}`, value: userDomain },
+      { name: `${pagesUrl}/_/${projectName}`, value: GLOBAL_NAMESPACE },
     ]
     const defaultNs =
       existingConfig.namespace === GLOBAL_NAMESPACE && existingConfig.name ? GLOBAL_NAMESPACE : userDomain

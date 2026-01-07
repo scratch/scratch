@@ -1,9 +1,9 @@
 import log from '../../logger'
 import { requireAuth } from '../../cloud/credentials'
 import { listProjects, getProject, deleteProject, ApiError } from '../../cloud/api'
-import { normalizeNamespace } from './namespace'
+import { normalizeNamespace, formatNamespace } from './namespace'
 import { loadProjectConfig } from './deploy'
-import { prompt, select } from '../../util'
+import { prompt, select, stripTrailingSlash } from '../../util'
 
 // Parse project identifier: "namespace/name" or just "name"
 // Treats "_" and "global" as the global namespace (null)
@@ -22,7 +22,7 @@ export async function promptProjectChoice(
   projects: { name: string; namespace: string | null }[]
 ): Promise<{ name: string; namespace: string | null }> {
   const choices = projects.map((p) => ({
-    name: `${p.namespace || '_'}/${p.name}`,
+    name: `${formatNamespace(p.namespace)}/${p.name}`,
     value: p,
   }))
   return select('Select project:', choices, projects[0])
@@ -93,7 +93,7 @@ export function formatDate(dateString: string): string {
   })
 }
 
-// Format date with time for display
+// Format date with time for display (includes timezone)
 export function formatDateTime(dateString: string): string {
   const date = new Date(dateString)
   return date.toLocaleDateString('en-US', {
@@ -102,6 +102,7 @@ export function formatDateTime(dateString: string): string {
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZoneName: 'short',
   })
 }
 
@@ -122,9 +123,9 @@ export async function listProjectsCommand(): Promise<void> {
     log.info('')
 
     for (const project of projects) {
-      const ns = project.namespace || '_'
+      const ns = formatNamespace(project.namespace)
       const version = project.live_version !== null ? `v${project.live_version}` : 'no deploy'
-      log.info(`  ${ns}/${project.name}  ${version}  ${project.url}`)
+      log.info(`  ${ns}/${project.name}  ${version}  ${stripTrailingSlash(project.url)}`)
     }
 
     log.info('')
@@ -153,8 +154,8 @@ export async function projectInfoCommand(identifier?: string, options: ProjectIn
 
     log.info('')
     log.info(`Project: ${project.name}`)
-    log.info(`Namespace: ${project.namespace || '_'} (${project.namespace ? 'custom' : 'global'})`)
-    log.info(`URL: ${project.url}`)
+    log.info(`Namespace: ${formatNamespace(project.namespace)}`)
+    log.info(`URL: ${stripTrailingSlash(project.url)}`)
     log.info(`Live Version: ${project.live_version !== null ? project.live_version : 'none'}`)
     log.info(`Total Deploys: ${project.deploy_count}`)
     log.info(`Created: ${formatDate(project.created_at)}`)
@@ -165,7 +166,7 @@ export async function projectInfoCommand(identifier?: string, options: ProjectIn
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.status === 404) {
-        log.error(`Project "${resolved.namespace || '_'}/${resolved.name}" not found`)
+        log.error(`Project "${formatNamespace(resolved.namespace)}/${resolved.name}" not found`)
       } else {
         log.error(error.message)
       }
@@ -184,7 +185,7 @@ export async function projectDeleteCommand(identifier?: string, options: Project
 
   // Resolve project (handles namespace/name format, ambiguity, and config fallback)
   const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace)
-  const ns = resolved.namespace || '_'
+  const ns = formatNamespace(resolved.namespace)
 
   // Verify project exists (resolveProject already checks this, but getProject gives us 404 handling)
   try {

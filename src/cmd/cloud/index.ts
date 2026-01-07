@@ -26,9 +26,11 @@ export function registerCloudCommands(program: Command): void {
     .action(withErrorHandling('cloud whoami', whoamiCommand))
 
   cloud
-    .command('config')
+    .command('config [path]')
     .description('Configure Scratch Cloud settings')
-    .action(withErrorHandling('cloud config', configCommand))
+    .action(withErrorHandling('cloud config', async (projectPath?: string) => {
+      await configCommand(projectPath)
+    }))
 
   // Deploy command
   cloud
@@ -37,12 +39,14 @@ export function registerCloudCommands(program: Command): void {
     .option('--name <name>', 'Override project name')
     .option('--namespace <namespace>', 'Override namespace')
     .option('--no-build', 'Skip build step')
+    .option('--dry-run', 'Show what would be deployed without uploading')
     .action(
-      withErrorHandling('cloud deploy', async (projectPath: string | undefined, options: { name?: string; namespace?: string; build?: boolean }) => {
+      withErrorHandling('cloud deploy', async (projectPath: string | undefined, options: { name?: string; namespace?: string; build?: boolean; dryRun?: boolean }) => {
         await deployCommand(projectPath, {
           name: options.name,
           namespace: options.namespace,
           noBuild: options.build === false,
+          dryRun: options.dryRun === true,
         })
       })
     )

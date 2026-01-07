@@ -303,6 +303,13 @@ export function formatBytes(bytes: number): string {
 }
 
 /**
+ * Strip trailing slash from a URL or path.
+ */
+export function stripTrailingSlash(url: string): string {
+  return url.endsWith('/') ? url.slice(0, -1) : url;
+}
+
+/**
  * Open URL in browser (cross-platform).
  * Validates URL to prevent command injection.
  */

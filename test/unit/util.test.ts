@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeAll } from "bun:test";
-import { render, buildFileMap, formatFileTree, escapeHtml, getContentType } from "../../src/util";
+import { render, buildFileMap, formatFileTree, escapeHtml, getContentType, stripTrailingSlash } from "../../src/util";
 import fs from "fs/promises";
 import { mkTempDir } from "../test-util";
 import path from "path";
@@ -213,5 +213,35 @@ describe("util.getContentType", () => {
 
     test("handles files with no extension", () => {
         expect(getContentType("Makefile")).toBe("application/octet-stream");
+    });
+});
+
+describe("util.stripTrailingSlash", () => {
+    test("removes trailing slash from URL", () => {
+        expect(stripTrailingSlash("https://example.com/")).toBe("https://example.com");
+    });
+
+    test("removes trailing slash from path", () => {
+        expect(stripTrailingSlash("/path/to/dir/")).toBe("/path/to/dir");
+    });
+
+    test("leaves URL without trailing slash unchanged", () => {
+        expect(stripTrailingSlash("https://example.com")).toBe("https://example.com");
+    });
+
+    test("leaves path without trailing slash unchanged", () => {
+        expect(stripTrailingSlash("/path/to/dir")).toBe("/path/to/dir");
+    });
+
+    test("handles empty string", () => {
+        expect(stripTrailingSlash("")).toBe("");
+    });
+
+    test("handles root slash", () => {
+        expect(stripTrailingSlash("/")).toBe("");
+    });
+
+    test("only removes one trailing slash", () => {
+        expect(stripTrailingSlash("https://example.com//")).toBe("https://example.com/");
     });
 });

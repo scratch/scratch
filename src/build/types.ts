@@ -25,6 +25,7 @@ export interface StepOutputs {
   clientBuildResult?: BunBuildResult;
   jsOutputMap?: Record<string, string>;
   renderedContent?: Map<string, string>;
+  buildStats?: { fileCount: number; totalBytes: number };
 }
 
 /**
