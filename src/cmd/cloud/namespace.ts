@@ -1,9 +1,9 @@
-// Re-export namespace utilities from shared package
+// Re-export namespace utilities from shared
 export {
   GLOBAL_NAMESPACE,
   normalizeNamespace,
   isGlobalNamespace,
-} from '../../../../../scratch-monorepo/shared/src/project'
+} from '../../shared/project'
 
 /**
  * Format namespace for display.

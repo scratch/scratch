@@ -17,8 +17,8 @@ import {
   validateProjectName,
   validateNamespaceForUser,
   getEmailDomain,
-} from '../../../../../scratch-monorepo/shared/src/project'
-import { validateGroupInput } from '../../../../../scratch-monorepo/shared/src/group'
+} from '../../shared/project'
+import { validateGroupInput } from '../../shared/group'
 import { prompt, select, confirm, openBrowser, type SelectChoice } from '../../util'
 
 // Sleep helper

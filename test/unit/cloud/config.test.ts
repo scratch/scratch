@@ -236,8 +236,8 @@ describe("TOML String Escaping", () => {
 
 describe("Validation", () => {
   // Import validators from shared
-  const { validateProjectName, validateNamespace, validateNamespaceForUser } = require('../../../../../scratch-monorepo/shared/src/project');
-  const { validateGroupInput } = require('../../../../../scratch-monorepo/shared/src/group');
+  const { validateProjectName, validateNamespace, validateNamespaceForUser } = require('../../../src/shared/project');
+  const { validateGroupInput } = require('../../../src/shared/group');
 
   describe("Project Name Validation", () => {
     test("accepts valid project names", () => {
