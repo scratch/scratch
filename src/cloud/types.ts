@@ -134,12 +134,4 @@ export interface ShareTokenResponse {
 }
 
 // CLI-specific types
-export interface Credentials {
-  token: string
-  user: {
-    id: string
-    email: string
-    name: string | null
-  }
-  server: string
-}
+// Note: Credentials type is now in src/config/types.ts

@@ -147,8 +147,9 @@ visibility = "@acme.com"
 });
 
 describe("Global Config TOML Generation", () => {
-  // Helper to generate TOML (matches the pattern in user-config.ts)
-  function generateGlobalConfigToml(config: { server_url?: string; namespace?: string; cf_access_client_id?: string; cf_access_client_secret?: string }): string {
+  // Helper to generate TOML (matches the NEW pattern in user-config.ts)
+  // NOTE: CF Access credentials are now stored in secrets.json, NOT in config.toml
+  function generateGlobalConfigToml(config: { server_url?: string; namespace?: string }): string {
     const DEFAULT_SERVER_URL = 'https://app.scratch.dev';
     const escapeTomlString = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
@@ -167,49 +168,74 @@ describe("Global Config TOML Generation", () => {
       lines.push('', '# Default namespace for new projects', `namespace = "${escapeTomlString(config.namespace)}"`);
     }
 
-    if (config.cf_access_client_id && config.cf_access_client_secret) {
-      lines.push(
-        '',
-        '# Cloudflare Access service token',
-        `cf_access_client_id = "${escapeTomlString(config.cf_access_client_id)}"`,
-        `cf_access_client_secret = "${escapeTomlString(config.cf_access_client_secret)}"`
-      );
-    }
+    // NOTE: CF Access credentials are no longer stored in config.toml
+    // They are now stored in ~/.scratch/secrets.json for security
 
     return lines.join('\n') + '\n';
   }
 
-  test("generates config with cf_access credentials", () => {
-    const toml = generateGlobalConfigToml({
-      server_url: "https://app.scratch.dev",
-      cf_access_client_id: "my-client-id",
-      cf_access_client_secret: "my-client-secret"
-    });
-    expect(toml).toContain('cf_access_client_id = "my-client-id"');
-    expect(toml).toContain('cf_access_client_secret = "my-client-secret"');
-  });
-
-  test("generates config without cf_access credentials when not set", () => {
+  test("generates config without cf_access credentials (moved to secrets)", () => {
     const toml = generateGlobalConfigToml({
       server_url: "https://app.scratch.dev"
     });
+    // CF Access credentials should NOT be in config.toml anymore
     expect(toml).not.toContain('cf_access_client_id');
     expect(toml).not.toContain('cf_access_client_secret');
   });
 
-  test("escapes special characters in cf_access credentials", () => {
+  test("includes server_url", () => {
     const toml = generateGlobalConfigToml({
-      cf_access_client_id: 'client-id',
-      cf_access_client_secret: 'secret\\with"quotes'
+      server_url: "https://custom.scratch.dev"
     });
-    expect(toml).toContain('cf_access_client_secret = "secret\\\\with\\"quotes"');
+    expect(toml).toContain('server_url = "https://custom.scratch.dev"');
   });
 
-  test("requires both credentials to include them", () => {
+  test("includes namespace when set", () => {
     const toml = generateGlobalConfigToml({
-      cf_access_client_id: "only-id"
+      server_url: "https://app.scratch.dev",
+      namespace: "acme.com"
     });
-    expect(toml).not.toContain('cf_access_client_id');
+    expect(toml).toContain('namespace = "acme.com"');
+  });
+
+  test("escapes special characters in values", () => {
+    const toml = generateGlobalConfigToml({
+      server_url: 'https://example.com',
+      namespace: 'test\\"domain.com'
+    });
+    expect(toml).toContain('namespace = "test\\\\\\"domain.com"');
+  });
+});
+
+describe("Secrets JSON Format", () => {
+  // CF Access credentials are now stored as JSON in ~/.scratch/secrets.json
+  function generateSecretsJson(secrets: { cf_access_client_id?: string; cf_access_client_secret?: string }): string {
+    return JSON.stringify(secrets, null, 2) + '\n';
+  }
+
+  test("generates secrets JSON with CF Access credentials", () => {
+    const json = generateSecretsJson({
+      cf_access_client_id: "my-client-id",
+      cf_access_client_secret: "my-client-secret"
+    });
+    const parsed = JSON.parse(json);
+    expect(parsed.cf_access_client_id).toBe("my-client-id");
+    expect(parsed.cf_access_client_secret).toBe("my-client-secret");
+  });
+
+  test("handles special characters in secrets", () => {
+    const json = generateSecretsJson({
+      cf_access_client_id: 'client-id',
+      cf_access_client_secret: 'secret+with/special=chars'
+    });
+    const parsed = JSON.parse(json);
+    expect(parsed.cf_access_client_secret).toBe("secret+with/special=chars");
+  });
+
+  test("generates empty object when no credentials", () => {
+    const json = generateSecretsJson({});
+    const parsed = JSON.parse(json);
+    expect(parsed).toEqual({});
   });
 });
 

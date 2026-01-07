@@ -2,16 +2,23 @@ import log from '../../logger'
 import path from 'path'
 import fs from 'fs/promises'
 import { initiateDeviceFlow, pollDeviceToken, getCurrentUser } from '../../cloud/api'
-import { saveCredentials, loadCredentials, clearCredentials, requireAuth } from '../../cloud/credentials'
-import { getServerUrl } from '../../cloud/config'
 import {
+  saveCredentials,
+  loadCredentials,
+  clearCredentials,
+  requireAuth,
+  getServerUrl,
   loadUserConfig,
   saveUserConfig,
   getDefaultServerUrl,
-  CONFIG_PATH,
+  loadProjectConfig,
+  saveProjectConfig,
+  getCfAccessCredentials,
+  saveCfAccessCredentials,
+  PATHS,
   type UserConfig,
-} from '../../cloud/user-config'
-import { loadProjectConfig, saveProjectConfig, type ProjectConfig } from './deploy'
+  type ProjectConfig,
+} from '../../config'
 import { normalizeNamespace, GLOBAL_NAMESPACE } from './namespace'
 import {
   validateProjectName,
@@ -449,11 +456,12 @@ async function runGlobalConfigFlow(
   await saveUserConfig(newConfig)
 
   log.info('')
-  log.info(`Global configuration saved to ${CONFIG_PATH}`)
+  log.info(`Global configuration saved to ${PATHS.userConfig}`)
 }
 
 export async function cfAccessCommand(): Promise<void> {
-  const globalConfig = await loadUserConfig()
+  // Load existing CF Access credentials (if any)
+  const existingCredentials = await getCfAccessCredentials()
 
   log.info('')
   log.info('Configure Cloudflare Access service token')
@@ -461,22 +469,21 @@ export async function cfAccessCommand(): Promise<void> {
   log.info('Access → Service Auth → Service Tokens')
   log.info('')
 
-  const clientId = await prompt('Client ID', globalConfig.cf_access_client_id || '')
+  const clientId = await prompt('Client ID', existingCredentials?.clientId || '')
   if (!clientId) {
     throw new Error('Client ID is required')
   }
 
-  const clientSecret = await prompt('Client Secret', globalConfig.cf_access_client_secret || '')
+  const clientSecret = await prompt('Client Secret', existingCredentials?.clientSecret || '')
   if (!clientSecret) {
     throw new Error('Client Secret is required')
   }
 
-  globalConfig.cf_access_client_id = clientId
-  globalConfig.cf_access_client_secret = clientSecret
-  await saveUserConfig(globalConfig)
+  // Save to secure secrets storage
+  await saveCfAccessCredentials(clientId, clientSecret)
 
   log.info('')
-  log.info('Cloudflare Access credentials saved to global configuration')
+  log.info(`Cloudflare Access credentials saved securely to ${PATHS.secrets}`)
 }
 
 async function runProjectConfigFlow(

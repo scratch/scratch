@@ -1,5 +1,4 @@
-import { getServerUrl } from './config'
-import { getCfAccessHeaders, isCfAccessDenied } from './cf-access'
+import { getServerUrl, getCfAccessHeaders, isCfAccessDenied } from '../config'
 import log from '../logger'
 import type {
   DeviceFlowResponse,

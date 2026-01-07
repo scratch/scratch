@@ -1,4 +1,4 @@
-import { loadUserConfig } from './user-config'
+import { getCfAccessCredentials } from './user-secrets'
 
 export interface CfAccessHeaders {
   'CF-Access-Client-Id': string
@@ -10,15 +10,15 @@ export interface CfAccessHeaders {
  * Returns undefined if no token is configured.
  */
 export async function getCfAccessHeaders(): Promise<CfAccessHeaders | undefined> {
-  const config = await loadUserConfig()
+  const credentials = await getCfAccessCredentials()
 
-  if (!config.cf_access_client_id || !config.cf_access_client_secret) {
+  if (!credentials) {
     return undefined
   }
 
   return {
-    'CF-Access-Client-Id': config.cf_access_client_id,
-    'CF-Access-Client-Secret': config.cf_access_client_secret,
+    'CF-Access-Client-Id': credentials.clientId,
+    'CF-Access-Client-Secret': credentials.clientSecret,
   }
 }
 

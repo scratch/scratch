@@ -1,8 +1,7 @@
 import log from '../../logger'
-import { requireAuth } from '../../cloud/credentials'
+import { requireAuth, loadProjectConfig } from '../../config'
 import { listProjects, getProject, deleteProject, ApiError } from '../../cloud/api'
 import { normalizeNamespace, formatNamespace } from './namespace'
-import { loadProjectConfig } from './deploy'
 import { prompt, select, stripTrailingSlash } from '../../util'
 
 // Parse project identifier: "namespace/name" or just "name"

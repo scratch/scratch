@@ -1,5 +1,5 @@
 import log from '../../logger'
-import { requireAuth } from '../../cloud/credentials'
+import { requireAuth } from '../../config'
 import { createShareToken, listShareTokens, revokeShareToken, ApiError } from '../../cloud/api'
 import { shareTokenDurations, type ShareTokenDuration } from '../../cloud/types'
 import { formatNamespace } from './namespace'
