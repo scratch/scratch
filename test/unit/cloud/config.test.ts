@@ -43,32 +43,27 @@ namespace = "acme.com"
     expect(parsed.namespace).toBe("acme.com");
   });
 
-  test("parses config with cf_access_token field", () => {
+  test("parses config with cf_access fields", () => {
     const content = `
 # Scratch Cloud Global Configuration
 server_url = "https://custom.scratch.dev"
-cf_access_token = "client-id:client-secret"
+cf_access_client_id = "my-client-id"
+cf_access_client_secret = "my-client-secret"
 `;
     const parsed = parseSimpleToml(content);
     expect(parsed.server_url).toBe("https://custom.scratch.dev");
-    expect(parsed.cf_access_token).toBe("client-id:client-secret");
+    expect(parsed.cf_access_client_id).toBe("my-client-id");
+    expect(parsed.cf_access_client_secret).toBe("my-client-secret");
   });
 
-  test("parses config without cf_access_token (undefined)", () => {
+  test("parses config without cf_access fields (undefined)", () => {
     const content = `
 server_url = "https://app.scratch.dev"
 namespace = "acme.com"
 `;
     const parsed = parseSimpleToml(content);
-    expect(parsed.cf_access_token).toBeUndefined();
-  });
-
-  test("parses cf_access_token with colons in secret", () => {
-    const content = `
-cf_access_token = "client-id:secret:with:colons"
-`;
-    const parsed = parseSimpleToml(content);
-    expect(parsed.cf_access_token).toBe("client-id:secret:with:colons");
+    expect(parsed.cf_access_client_id).toBeUndefined();
+    expect(parsed.cf_access_client_secret).toBeUndefined();
   });
 
   test("parses config with missing optional fields", () => {
@@ -153,7 +148,7 @@ visibility = "@acme.com"
 
 describe("Global Config TOML Generation", () => {
   // Helper to generate TOML (matches the pattern in user-config.ts)
-  function generateGlobalConfigToml(config: { server_url?: string; namespace?: string; cf_access_token?: string }): string {
+  function generateGlobalConfigToml(config: { server_url?: string; namespace?: string; cf_access_client_id?: string; cf_access_client_secret?: string }): string {
     const DEFAULT_SERVER_URL = 'https://app.scratch.dev';
     const escapeTomlString = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
@@ -172,40 +167,49 @@ describe("Global Config TOML Generation", () => {
       lines.push('', '# Default namespace for new projects', `namespace = "${escapeTomlString(config.namespace)}"`);
     }
 
-    if (config.cf_access_token) {
-      lines.push('', '# Cloudflare Access service token (format: client-id:client-secret)', `cf_access_token = "${escapeTomlString(config.cf_access_token)}"`);
+    if (config.cf_access_client_id && config.cf_access_client_secret) {
+      lines.push(
+        '',
+        '# Cloudflare Access service token',
+        `cf_access_client_id = "${escapeTomlString(config.cf_access_client_id)}"`,
+        `cf_access_client_secret = "${escapeTomlString(config.cf_access_client_secret)}"`
+      );
     }
 
     return lines.join('\n') + '\n';
   }
 
-  test("generates config with cf_access_token", () => {
+  test("generates config with cf_access credentials", () => {
     const toml = generateGlobalConfigToml({
       server_url: "https://app.scratch.dev",
-      cf_access_token: "client-id:client-secret"
+      cf_access_client_id: "my-client-id",
+      cf_access_client_secret: "my-client-secret"
     });
-    expect(toml).toContain('cf_access_token = "client-id:client-secret"');
+    expect(toml).toContain('cf_access_client_id = "my-client-id"');
+    expect(toml).toContain('cf_access_client_secret = "my-client-secret"');
   });
 
-  test("generates config without cf_access_token when not set", () => {
+  test("generates config without cf_access credentials when not set", () => {
     const toml = generateGlobalConfigToml({
       server_url: "https://app.scratch.dev"
     });
-    expect(toml).not.toContain('cf_access_token');
+    expect(toml).not.toContain('cf_access_client_id');
+    expect(toml).not.toContain('cf_access_client_secret');
   });
 
-  test("escapes special characters in cf_access_token", () => {
+  test("escapes special characters in cf_access credentials", () => {
     const toml = generateGlobalConfigToml({
-      cf_access_token: 'client:secret\\with"quotes'
+      cf_access_client_id: 'client-id',
+      cf_access_client_secret: 'secret\\with"quotes'
     });
-    expect(toml).toContain('cf_access_token = "client:secret\\\\with\\"quotes"');
+    expect(toml).toContain('cf_access_client_secret = "secret\\\\with\\"quotes"');
   });
 
-  test("preserves colons in cf_access_token", () => {
+  test("requires both credentials to include them", () => {
     const toml = generateGlobalConfigToml({
-      cf_access_token: "client-id:secret:with:many:colons"
+      cf_access_client_id: "only-id"
     });
-    expect(toml).toContain('cf_access_token = "client-id:secret:with:many:colons"');
+    expect(toml).not.toContain('cf_access_client_id');
   });
 });
 

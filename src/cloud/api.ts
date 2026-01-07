@@ -72,7 +72,7 @@ async function request<T>(
     // Check for CF Access denial before reading body
     if (isCfAccessDenied(response)) {
       throw new ApiError(
-        `Cloudflare Access denied. Run: scratch cloud cf-access <client-id:client-secret>`,
+        `Cloudflare Access denied. Run: scratch cloud cf-access`,
         403
       )
     }
@@ -170,7 +170,7 @@ export async function deleteProject(
     // Check for CF Access denial before reading body
     if (isCfAccessDenied(response)) {
       throw new ApiError(
-        `Cloudflare Access denied. Run: scratch cloud cf-access <client-id:client-secret>`,
+        `Cloudflare Access denied. Run: scratch cloud cf-access`,
         403
       )
     }
@@ -255,7 +255,7 @@ export async function deploy(
     // Check for CF Access denial before reading body
     if (isCfAccessDenied(response)) {
       throw new ApiError(
-        `Cloudflare Access denied. Run: scratch cloud cf-access <client-id:client-secret>`,
+        `Cloudflare Access denied. Run: scratch cloud cf-access`,
         403
       )
     }

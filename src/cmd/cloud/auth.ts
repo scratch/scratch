@@ -452,16 +452,31 @@ async function runGlobalConfigFlow(
   log.info(`Global configuration saved to ${CONFIG_PATH}`)
 }
 
-export async function cfAccessCommand(token: string): Promise<void> {
-  if (!token.includes(':')) {
-    throw new Error('Invalid token format. Expected: client-id:client-secret')
+export async function cfAccessCommand(): Promise<void> {
+  const globalConfig = await loadUserConfig()
+
+  log.info('')
+  log.info('Configure Cloudflare Access service token')
+  log.info('Get these values from Cloudflare Zero Trust dashboard:')
+  log.info('Access → Service Auth → Service Tokens')
+  log.info('')
+
+  const clientId = await prompt('Client ID', globalConfig.cf_access_client_id || '')
+  if (!clientId) {
+    throw new Error('Client ID is required')
   }
 
-  const globalConfig = await loadUserConfig()
-  globalConfig.cf_access_token = token
+  const clientSecret = await prompt('Client Secret', globalConfig.cf_access_client_secret || '')
+  if (!clientSecret) {
+    throw new Error('Client Secret is required')
+  }
+
+  globalConfig.cf_access_client_id = clientId
+  globalConfig.cf_access_client_secret = clientSecret
   await saveUserConfig(globalConfig)
 
-  log.info('CF Access token saved to global configuration')
+  log.info('')
+  log.info('Cloudflare Access credentials saved to global configuration')
 }
 
 async function runProjectConfigFlow(

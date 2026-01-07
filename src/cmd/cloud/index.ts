@@ -46,11 +46,9 @@ export function registerCloudCommands(program: Command): void {
     .action(withErrorHandling('cloud config user', configUserCommand))
 
   cloud
-    .command('cf-access <token>')
-    .description('Set Cloudflare Access service token (format: client-id:client-secret)')
-    .action(withErrorHandling('cloud cf-access', async (token: string) => {
-      await cfAccessCommand(token)
-    }))
+    .command('cf-access')
+    .description('Configure Cloudflare Access service token')
+    .action(withErrorHandling('cloud cf-access', cfAccessCommand))
 
   // Deploy command
   cloud

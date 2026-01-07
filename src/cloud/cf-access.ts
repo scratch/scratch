@@ -12,26 +12,13 @@ export interface CfAccessHeaders {
 export async function getCfAccessHeaders(): Promise<CfAccessHeaders | undefined> {
   const config = await loadUserConfig()
 
-  if (!config.cf_access_token) {
-    return undefined
-  }
-
-  // Split on first colon only (secret may contain colons)
-  const colonIndex = config.cf_access_token.indexOf(':')
-  if (colonIndex === -1) {
-    return undefined
-  }
-
-  const clientId = config.cf_access_token.slice(0, colonIndex)
-  const clientSecret = config.cf_access_token.slice(colonIndex + 1)
-
-  if (!clientId || !clientSecret) {
+  if (!config.cf_access_client_id || !config.cf_access_client_secret) {
     return undefined
   }
 
   return {
-    'CF-Access-Client-Id': clientId,
-    'CF-Access-Client-Secret': clientSecret,
+    'CF-Access-Client-Id': config.cf_access_client_id,
+    'CF-Access-Client-Secret': config.cf_access_client_secret,
   }
 }
 

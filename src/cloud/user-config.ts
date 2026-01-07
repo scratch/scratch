@@ -8,7 +8,8 @@ export const CONFIG_PATH = join(homedir(), '.config', 'scratch', 'config.toml')
 export interface UserConfig {
   server_url?: string
   namespace?: string  // default namespace for new projects
-  cf_access_token?: string  // Format: "client-id:client-secret"
+  cf_access_client_id?: string  // Cloudflare Access Client ID
+  cf_access_client_secret?: string  // Cloudflare Access Client Secret
 }
 
 const DEFAULT_SERVER_URL = 'https://app.scratch.dev'
@@ -30,8 +31,10 @@ function parseTOML(content: string): UserConfig {
         config.server_url = value
       } else if (key === 'namespace') {
         config.namespace = value
-      } else if (key === 'cf_access_token') {
-        config.cf_access_token = value
+      } else if (key === 'cf_access_client_id') {
+        config.cf_access_client_id = value
+      } else if (key === 'cf_access_client_secret') {
+        config.cf_access_client_secret = value
       }
     }
   }
@@ -61,8 +64,13 @@ function generateTOML(config: UserConfig): string {
     lines.push('', '# Default namespace for new projects', `namespace = "${escapeTomlString(config.namespace)}"`)
   }
 
-  if (config.cf_access_token) {
-    lines.push('', '# Cloudflare Access service token (format: client-id:client-secret)', `cf_access_token = "${escapeTomlString(config.cf_access_token)}"`)
+  if (config.cf_access_client_id && config.cf_access_client_secret) {
+    lines.push(
+      '',
+      '# Cloudflare Access service token',
+      `cf_access_client_id = "${escapeTomlString(config.cf_access_client_id)}"`,
+      `cf_access_client_secret = "${escapeTomlString(config.cf_access_client_secret)}"`
+    )
   }
 
   return lines.join('\n') + '\n'
