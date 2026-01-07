@@ -7,8 +7,11 @@ import { shareCreateCommand, shareListCommand, shareRevokeCommand } from './shar
 
 export function registerCloudCommands(program: Command): void {
   const cloud = program
-    .command('cloud')
+    .command('cloud', { hidden: true })
     .description('Scratch Cloud commands')
+    .hook('preAction', () => {
+      console.warn('\x1b[33mWarning: Cloud commands are not fully implemented yet.\x1b[0m')
+    })
 
   cloud
     .command('login')
