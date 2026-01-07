@@ -1,5 +1,6 @@
 import { getServerUrl } from './config'
 import { getCfAccessHeaders, isCfAccessDenied } from './cf-access'
+import log from '../logger'
 import type {
   DeviceFlowResponse,
   DeviceTokenResponse,
@@ -49,6 +50,15 @@ async function request<T>(
     headers['Authorization'] = `Bearer ${token}`
   }
 
+  // Log request details
+  log.debug(`API request: ${options.method || 'GET'} ${url}`)
+  log.debug(`CF Access headers configured: ${cfHeaders ? 'yes' : 'no'}`)
+  if (cfHeaders) {
+    log.debug(`CF-Access-Client-Id: ${cfHeaders['CF-Access-Client-Id'].slice(0, 8)}...`)
+    log.debug(`CF-Access-Client-Secret: ${cfHeaders['CF-Access-Client-Secret'].slice(0, 4)}...`)
+  }
+  log.debug(`Request headers: ${Object.keys(headers).join(', ')}`)
+
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
@@ -68,6 +78,10 @@ async function request<T>(
     clearTimeout(timeout)
   }
 
+  // Log response details
+  log.debug(`Response status: ${response.status}`)
+  log.debug(`Response content-type: ${response.headers.get('content-type')}`)
+
   if (!response.ok) {
     // Check for CF Access denial before reading body
     if (isCfAccessDenied(response)) {
@@ -79,6 +93,7 @@ async function request<T>(
 
     // Read as text first, then try to parse as JSON
     const text = await response.text()
+    log.debug(`Response body (first 500 chars): ${text.slice(0, 500)}`)
     let body: unknown = text
     try {
       body = JSON.parse(text)
@@ -92,7 +107,15 @@ async function request<T>(
     )
   }
 
-  return response.json() as Promise<T>
+  // Read response as text first to enable logging on parse failure
+  const text = await response.text()
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    log.debug(`Failed to parse JSON response. Content-type: ${response.headers.get('content-type')}`)
+    log.debug(`Response body (first 500 chars): ${text.slice(0, 500)}`)
+    throw new ApiError('Failed to parse JSON', response.status, text)
+  }
 }
 
 // Device flow: initiate
