@@ -36,6 +36,7 @@ describe("scratch create --minimal", () => {
       "Header.jsx",
       "PageWrapper.jsx",
       "ScratchBadge.jsx",
+      "WidthToggle.jsx",
     ]);
 
     // Verify PageWrapper is the full version (with Header/Footer imports)

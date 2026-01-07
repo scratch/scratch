@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import { globSync } from 'fast-glob';
 import { materializeTemplate } from '../template';
 import { normalizeBase } from './util';
+import log from '../logger';
 
 export type HighlightMode = 'off' | 'popular' | 'auto' | 'all';
 
@@ -125,7 +126,20 @@ export class BuildContext {
    * Reset the temp directory and clear caches.
    */
   async resetTempDir(): Promise<void> {
+    log.debug(`Removing temp directory: ${this.tempDir}`);
     await rmWithRetry(this.tempDir, { recursive: true, force: true });
+
+    // Verify directory was actually removed (filesystem sync issue workaround)
+    if (await fs.exists(this.tempDir)) {
+      log.debug(`Directory still exists after rm, waiting for filesystem sync...`);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      if (await fs.exists(this.tempDir)) {
+        log.debug(`Directory still exists, forcing removal...`);
+        await rmWithRetry(this.tempDir, { recursive: true, force: true });
+      }
+    }
+
+    log.debug(`Creating temp directory: ${this.tempDir}`);
     await fs.mkdir(this.tempDir, { recursive: true });
     this.clearCaches();
   }

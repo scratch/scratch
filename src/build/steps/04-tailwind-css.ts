@@ -43,9 +43,24 @@ export const tailwindCssStep: BuildStep = {
     });
 
     const exitCode = await proc.exited;
+    const stderr = await new Response(proc.stderr).text();
     if (exitCode !== 0) {
-      const stderr = await new Response(proc.stderr).text();
       throw new Error(`Tailwind CSS build failed: ${stderr}`);
+    }
+
+    // Verify the output file was created (with brief retry for filesystem flush)
+    let fileExists = await fs.exists(outputCss);
+    if (!fileExists) {
+      // Brief delay and retry in case of filesystem flush delay
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      fileExists = await fs.exists(outputCss);
+    }
+    if (!fileExists) {
+      throw new Error(
+        `Tailwind CSS build completed but output file was not created.\n` +
+          `Expected: ${outputCss}\n` +
+          (stderr ? `Tailwind output: ${stderr}` : '')
+      );
     }
 
     // Hash the CSS content and rename file for cache busting
