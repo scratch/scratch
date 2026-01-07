@@ -8,10 +8,21 @@ const STORAGE_KEY = 'scratch-width-mode';
  */
 export default function WidthToggle({ isWide, onToggle }) {
   const [mounted, setMounted] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   // Only show after mount to avoid hydration mismatch
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // Track scroll position
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   if (!mounted) return null;
@@ -19,22 +30,24 @@ export default function WidthToggle({ isWide, onToggle }) {
   return (
     <button
       onClick={onToggle}
-      className="fixed bottom-4 right-4 flex items-center bg-gray-100 rounded-full p-1 shadow-sm border border-gray-200 hover:bg-gray-150 transition-colors z-50"
+      className={`fixed top-4 left-1/2 -translate-x-1/2 flex items-center rounded overflow-hidden shadow-sm border border-gray-200 transition-all duration-200 z-50 ${
+        scrolled ? 'opacity-30 hover:opacity-100' : ''
+      }`}
       aria-label={isWide ? 'Switch to narrow width' : 'Switch to wide width'}
       title={isWide ? 'Switch to narrow width' : 'Switch to wide width'}
     >
       {/* Narrow mode icon */}
       <div
-        className={`w-6 h-5 rounded flex items-center justify-center transition-colors ${
-          !isWide ? 'bg-white shadow-sm' : ''
+        className={`w-6 h-5 flex items-center justify-center transition-colors ${
+          !isWide ? 'bg-white' : 'bg-gray-100'
         }`}
       >
         <NarrowIcon active={!isWide} />
       </div>
       {/* Wide mode icon */}
       <div
-        className={`w-6 h-5 rounded flex items-center justify-center transition-colors ${
-          isWide ? 'bg-white shadow-sm' : ''
+        className={`w-6 h-5 flex items-center justify-center transition-colors ${
+          isWide ? 'bg-white' : 'bg-gray-100'
         }`}
       >
         <WideIcon active={isWide} />
