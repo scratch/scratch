@@ -1,6 +1,6 @@
 import { Command } from 'commander'
 import { withErrorHandling } from '../../index'
-import { loginCommand, logoutCommand, whoamiCommand, configCommand, cfAccessCommand } from './auth'
+import { loginCommand, logoutCommand, whoamiCommand, configCommand, configUserCommand, cfAccessCommand } from './auth'
 import { deployCommand } from './deploy'
 import { listProjectsCommand, projectInfoCommand, projectDeleteCommand } from './projects'
 import { shareCreateCommand, shareListCommand, shareRevokeCommand } from './share'
@@ -28,12 +28,22 @@ export function registerCloudCommands(program: Command): void {
     .description('Show current user info')
     .action(withErrorHandling('cloud whoami', whoamiCommand))
 
-  cloud
-    .command('config [path]')
+  // Config commands
+  const config = cloud
+    .command('config')
     .description('Configure Scratch Cloud settings')
+
+  config
+    .command('project [path]', { isDefault: true })
+    .description('Configure project settings (default)')
     .action(withErrorHandling('cloud config', async (projectPath?: string) => {
       await configCommand(projectPath)
     }))
+
+  config
+    .command('user')
+    .description('Configure global user settings')
+    .action(withErrorHandling('cloud config user', configUserCommand))
 
   cloud
     .command('cf-access <token>')

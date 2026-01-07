@@ -360,10 +360,6 @@ export async function configCommand(projectPath?: string): Promise<void> {
   // Resolve path to absolute
   const resolvedPath = path.resolve(projectPath || '.')
 
-  // Require authentication
-  const credentials = await requireAuth()
-  const userEmail = credentials.user.email
-
   // Check if pages/ directory exists
   const pagesDir = path.join(resolvedPath, 'pages')
   let hasPages = false
@@ -375,38 +371,79 @@ export async function configCommand(projectPath?: string): Promise<void> {
   }
 
   // Load existing configs
-  const globalConfig = await loadUserConfig()
+  let globalConfig = await loadUserConfig()
   const defaultUrl = getDefaultServerUrl()
 
+  // 1. First, prompt for server URL
+  log.info('')
   if (!hasPages) {
-    // Global config flow
-    await runGlobalConfigFlow(resolvedPath, globalConfig, defaultUrl, userEmail)
+    log.info(`No pages/ directory found at ${resolvedPath}`)
+    log.info('Configuring global Scratch Cloud settings.')
+  } else {
+    log.info(`Configuring project: ${resolvedPath}`)
+  }
+  log.info('')
+
+  const serverUrl = await promptServerUrl(globalConfig.server_url || '', defaultUrl)
+
+  // Save server URL immediately so login uses it
+  globalConfig.server_url = serverUrl
+  await saveUserConfig(globalConfig)
+
+  // 2. Then, require authentication
+  const credentials = await requireAuth()
+  const userEmail = credentials.user.email
+
+  // Reload config in case login modified it
+  globalConfig = await loadUserConfig()
+
+  if (!hasPages) {
+    // Global config flow (just namespace now, server URL already done)
+    await runGlobalConfigFlow(resolvedPath, globalConfig, userEmail)
   } else {
     // Project config flow
-    await runProjectConfigFlow(resolvedPath, globalConfig, defaultUrl, userEmail)
+    await runProjectConfigFlow(resolvedPath, globalConfig, serverUrl, userEmail)
   }
+}
+
+export async function configUserCommand(): Promise<void> {
+  // Load existing config
+  let globalConfig = await loadUserConfig()
+  const defaultUrl = getDefaultServerUrl()
+
+  log.info('')
+  log.info('Configuring global Scratch Cloud settings.')
+  log.info('')
+
+  // 1. First, prompt for server URL
+  const serverUrl = await promptServerUrl(globalConfig.server_url || '', defaultUrl)
+
+  // Save server URL immediately so login uses it
+  globalConfig.server_url = serverUrl
+  await saveUserConfig(globalConfig)
+
+  // 2. Then, require authentication
+  const credentials = await requireAuth()
+  const userEmail = credentials.user.email
+
+  // Reload config in case login modified it
+  globalConfig = await loadUserConfig()
+
+  // 3. Continue with rest of global config
+  await runGlobalConfigFlow('.', globalConfig, userEmail)
 }
 
 async function runGlobalConfigFlow(
   resolvedPath: string,
   globalConfig: UserConfig,
-  defaultUrl: string,
   userEmail: string
 ): Promise<void> {
-  log.info('')
-  log.info(`No pages/ directory found at ${resolvedPath}`)
-  log.info('Configuring global Scratch Cloud settings.')
-  log.info('')
-
-  // Prompt for server URL
-  const serverUrl = await promptServerUrl(globalConfig.server_url || '', defaultUrl)
-
   // Prompt for default namespace
   const namespace = await promptNamespace(userEmail, globalConfig.namespace, GLOBAL_NAMESPACE)
 
-  // Save global config
+  // Save global config (preserve existing server_url)
   const newConfig: UserConfig = {
-    server_url: serverUrl,
+    ...globalConfig,
     namespace: namespace !== GLOBAL_NAMESPACE ? namespace : undefined,
   }
   await saveUserConfig(newConfig)
@@ -430,15 +467,11 @@ export async function cfAccessCommand(token: string): Promise<void> {
 async function runProjectConfigFlow(
   resolvedPath: string,
   globalConfig: UserConfig,
-  defaultUrl: string,
+  serverUrl: string,
   userEmail: string
 ): Promise<void> {
   const projectConfig = await loadProjectConfig(resolvedPath)
   const dirName = path.basename(resolvedPath)
-
-  log.info('')
-  log.info(`Configuring project: ${resolvedPath}`)
-  log.info('')
 
   // 1. Project name
   const defaultName = projectConfig.name || dirName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^-+|-+$/g, '')
@@ -475,20 +508,14 @@ async function runProjectConfigFlow(
     process.exit(1)
   }
 
-  // 3. Server URL
-  const serverUrl = await promptServerUrl(
-    projectConfig.server_url || globalConfig.server_url || '',
-    defaultUrl
-  )
-
-  // 4. Visibility
+  // 3. Visibility
   const visibility = await promptVisibility(userEmail, projectConfig.visibility)
 
-  // Save project config
+  // Save project config (don't store server_url if it matches global)
   const newProjectConfig: ProjectConfig = {
     name: projectName,
     namespace: namespace,
-    server_url: serverUrl !== defaultUrl && serverUrl !== globalConfig.server_url ? serverUrl : undefined,
+    server_url: serverUrl !== globalConfig.server_url ? serverUrl : undefined,
     visibility: visibility,
   }
   await saveProjectConfig(resolvedPath, newProjectConfig)
@@ -504,30 +531,14 @@ async function runProjectConfigFlow(
   log.info(`  ${pagesUrl}/${urlNamespace}/${projectName}/`)
   log.info('')
 
-  // Offer to update global defaults
-  let globalUpdated = false
-
-  // Namespace update prompt
+  // Offer to update global namespace default
   if (namespace !== GLOBAL_NAMESPACE && globalConfig.namespace !== namespace) {
     const updateNs = await confirm(`Set ${namespace} as your default namespace for new projects?`, false)
     if (updateNs) {
       globalConfig.namespace = namespace
-      globalUpdated = true
+      await saveUserConfig(globalConfig)
+      log.info('')
+      log.info('Global configuration updated.')
     }
-  }
-
-  // Server URL update prompt
-  if (serverUrl !== defaultUrl && globalConfig.server_url !== serverUrl) {
-    const updateUrl = await confirm(`Set ${serverUrl} as your default server?`, false)
-    if (updateUrl) {
-      globalConfig.server_url = serverUrl
-      globalUpdated = true
-    }
-  }
-
-  if (globalUpdated) {
-    await saveUserConfig(globalConfig)
-    log.info('')
-    log.info('Global configuration updated.')
   }
 }
