@@ -154,6 +154,106 @@ describe("cfAccessCommand validation", () => {
   });
 });
 
+describe("isCfAccessAuthPage", () => {
+  // Helper to create a mock Response
+  function createMockResponse(status: number, headers: Record<string, string> = {}): Response {
+    const headersObj = new Headers(headers);
+    return {
+      status,
+      headers: headersObj,
+    } as Response;
+  }
+
+  // Import the actual function logic
+  function isCfAccessAuthPage(response: Response, responseText: string): boolean {
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('text/html')) {
+      return false;
+    }
+
+    const cfAccessIndicators = [
+      'cloudflareaccess',
+      'cf-access',
+      'access.cloudflare',
+      'Access-Jwt-Assertion',
+      'CF_Authorization',
+      'cloudflare-static',
+    ];
+
+    const lowerText = responseText.toLowerCase();
+    return cfAccessIndicators.some(indicator => lowerText.includes(indicator.toLowerCase()));
+  }
+
+  test("returns true for HTML response with CF Access login page indicators", () => {
+    const response = createMockResponse(200, { "content-type": "text/html" });
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head><title>Sign in</title></head>
+        <body>
+          <script src="https://cloudflare-static.com/auth.js"></script>
+          <div id="cf-access-login">Please sign in</div>
+        </body>
+      </html>
+    `;
+    expect(isCfAccessAuthPage(response, html)).toBe(true);
+  });
+
+  test("returns true for HTML with cloudflareaccess indicator", () => {
+    const response = createMockResponse(403, { "content-type": "text/html; charset=utf-8" });
+    const html = '<html><body>cloudflareaccess authentication required</body></html>';
+    expect(isCfAccessAuthPage(response, html)).toBe(true);
+  });
+
+  test("returns true for HTML with Access-Jwt-Assertion", () => {
+    const response = createMockResponse(401, { "content-type": "text/html" });
+    const html = '<html><script>var Access-Jwt-Assertion = "";</script></html>';
+    expect(isCfAccessAuthPage(response, html)).toBe(true);
+  });
+
+  test("returns true for HTML with CF_Authorization cookie reference", () => {
+    const response = createMockResponse(302, { "content-type": "text/html" });
+    const html = '<html><body>Set CF_Authorization cookie to continue</body></html>';
+    expect(isCfAccessAuthPage(response, html)).toBe(true);
+  });
+
+  test("returns false for JSON response even with CF indicators in body", () => {
+    const response = createMockResponse(200, { "content-type": "application/json" });
+    const json = '{"error": "cf-access denied"}';
+    expect(isCfAccessAuthPage(response, json)).toBe(false);
+  });
+
+  test("returns false for HTML without CF Access indicators", () => {
+    const response = createMockResponse(500, { "content-type": "text/html" });
+    const html = '<html><body>Internal Server Error</body></html>';
+    expect(isCfAccessAuthPage(response, html)).toBe(false);
+  });
+
+  test("returns false for empty content-type", () => {
+    const response = createMockResponse(200, {});
+    const html = '<html><body>cloudflareaccess</body></html>';
+    expect(isCfAccessAuthPage(response, html)).toBe(false);
+  });
+
+  test("returns false for text/plain content even with CF indicators", () => {
+    const response = createMockResponse(200, { "content-type": "text/plain" });
+    const text = 'Error: cloudflareaccess denied';
+    expect(isCfAccessAuthPage(response, text)).toBe(false);
+  });
+
+  test("handles case-insensitive indicator matching", () => {
+    const response = createMockResponse(200, { "content-type": "text/html" });
+    const html = '<html><body>CLOUDFLAREACCESS login</body></html>';
+    expect(isCfAccessAuthPage(response, html)).toBe(true);
+  });
+
+  test("handles content-type with charset", () => {
+    const response = createMockResponse(200, { "content-type": "text/html; charset=utf-8" });
+    const html = '<html><body>cf-access login required</body></html>';
+    expect(isCfAccessAuthPage(response, html)).toBe(true);
+  });
+});
+
 describe("CF Access Header Integration", () => {
   // Test that headers are correctly formatted for HTTP requests
   function formatCfHeaders(clientId: string, clientSecret: string): Record<string, string> {

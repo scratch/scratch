@@ -1,4 +1,4 @@
-import { getServerUrl, getCfAccessHeaders, isCfAccessDenied } from '../config'
+import { getServerUrl, getCfAccessHeaders, isCfAccessDenied, isCfAccessAuthPage } from '../config'
 import log from '../logger'
 import type {
   DeviceFlowResponse,
@@ -28,11 +28,32 @@ export class ApiError extends Error {
 
 const DEFAULT_TIMEOUT = 30000 // 30 seconds
 
+/**
+ * Handle CF Access authentication issues by prompting for credentials.
+ * @param hadCredentials - Whether CF Access credentials were configured before the request
+ * Returns true if credentials were set/refreshed and request should be retried.
+ */
+async function handleCfAccessAuth(hadCredentials: boolean): Promise<boolean> {
+  if (hadCredentials) {
+    log.info('Cloudflare Access token expired. Please update your credentials.')
+  } else {
+    log.info('This server requires Cloudflare Access authentication.')
+  }
+
+  // Dynamically import to avoid circular dependencies
+  const { cfAccessCommand } = await import('../cmd/cloud/auth')
+  await cfAccessCommand()
+
+  log.info('Credentials saved. Retrying request...')
+  return true
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
   token?: string,
-  timeoutMs: number = DEFAULT_TIMEOUT
+  timeoutMs: number = DEFAULT_TIMEOUT,
+  _isRetry: boolean = false
 ): Promise<T> {
   const serverUrl = await getServerUrl()
   const url = `${serverUrl}${path}`
@@ -93,6 +114,14 @@ async function request<T>(
     // Read as text first, then try to parse as JSON
     const text = await response.text()
     log.debug(`Response body (first 500 chars): ${text.slice(0, 500)}`)
+
+    // Check for CF Access auth page (HTML response with CF Access indicators)
+    if (!_isRetry && isCfAccessAuthPage(response, text)) {
+      await handleCfAccessAuth(cfHeaders !== undefined)
+      // Retry the request with new credentials
+      return request<T>(path, options, token, timeoutMs, true)
+    }
+
     let body: unknown = text
     try {
       body = JSON.parse(text)
@@ -113,6 +142,14 @@ async function request<T>(
   } catch {
     log.debug(`Failed to parse JSON response. Content-type: ${response.headers.get('content-type')}`)
     log.debug(`Response body (first 500 chars): ${text.slice(0, 500)}`)
+
+    // Check for CF Access auth page (HTML response instead of expected JSON)
+    if (!_isRetry && isCfAccessAuthPage(response, text)) {
+      await handleCfAccessAuth(cfHeaders !== undefined)
+      // Retry the request with new credentials
+      return request<T>(path, options, token, timeoutMs, true)
+    }
+
     throw new ApiError('Failed to parse JSON', response.status, text)
   }
 }
@@ -157,7 +194,8 @@ export async function getProject(
 export async function deleteProject(
   token: string,
   name: string,
-  namespace?: string | null
+  namespace?: string | null,
+  _isRetry: boolean = false
 ): Promise<void> {
   const serverUrl = await getServerUrl()
   const query = namespace ? `?namespace=${encodeURIComponent(namespace)}` : ''
@@ -198,6 +236,13 @@ export async function deleteProject(
     }
 
     const text = await response.text()
+
+    // Check for CF Access auth page
+    if (!_isRetry && isCfAccessAuthPage(response, text)) {
+      await handleCfAccessAuth(cfHeaders !== undefined)
+      return deleteProject(token, name, namespace, true)
+    }
+
     let body: unknown = text
     try {
       body = JSON.parse(text)
@@ -230,7 +275,8 @@ export async function deploy(
   token: string,
   params: DeployCreateParams,
   zipData: ArrayBuffer,
-  serverUrlOverride?: string
+  serverUrlOverride?: string,
+  _isRetry: boolean = false
 ): Promise<DeployCreateResponse> {
   const serverUrl = serverUrlOverride || await getServerUrl()
 
@@ -283,6 +329,13 @@ export async function deploy(
     }
 
     const text = await response.text()
+
+    // Check for CF Access auth page
+    if (!_isRetry && isCfAccessAuthPage(response, text)) {
+      await handleCfAccessAuth(cfHeaders !== undefined)
+      return deploy(token, params, zipData, serverUrlOverride, true)
+    }
+
     let body: any = text
     try {
       body = JSON.parse(text)

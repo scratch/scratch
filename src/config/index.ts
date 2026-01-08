@@ -35,5 +35,5 @@ export { loadCredentials, saveCredentials, clearCredentials, requireAuth } from 
 export { loadProjectConfig, saveProjectConfig } from './project-config'
 
 // CF Access utilities
-export { getCfAccessHeaders, isCfAccessDenied } from './cf-access'
+export { getCfAccessHeaders, isCfAccessDenied, isCfAccessAuthPage } from './cf-access'
 export type { CfAccessHeaders } from './cf-access'
