@@ -38,3 +38,23 @@ export {
   isCfAccessAuthPage,
 } from './cf-access'
 export type { CfAccessHeaders } from './cf-access'
+
+// Prompts for interactive configuration
+export {
+  // Server URL
+  validateServerUrl,
+  normalizeServerUrlInput,
+  promptServerUrl,
+  // Namespace
+  formatNamespace,
+  promptNamespace,
+  promptNamespaceAsUrl,
+  // Project name
+  deriveProjectName,
+  promptProjectName,
+  // Visibility
+  promptVisibility,
+  promptCustomVisibility,
+  // Re-exported constants
+  GLOBAL_NAMESPACE,
+} from './prompts'

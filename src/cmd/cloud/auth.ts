@@ -7,27 +7,25 @@ import {
   saveCredentials,
   loadCredentials,
   clearCredentials,
-  getServerUrl,
   loadUserConfig,
   saveUserConfig,
-  getDefaultServerUrl,
   loadProjectConfig,
   saveProjectConfig,
   saveCfAccessCredentials,
   getCfAccessHeaders,
   PATHS,
+  // Prompts
+  promptServerUrl,
+  promptNamespace,
+  promptProjectName,
+  promptVisibility,
+  GLOBAL_NAMESPACE,
   type UserConfig,
   type ProjectConfig,
 } from '../../config'
-import { CloudContext, normalizeServerUrl } from './context'
-import { normalizeNamespace, GLOBAL_NAMESPACE } from './namespace'
-import {
-  validateProjectName,
-  validateNamespaceForUser,
-  getEmailDomain,
-} from '../../shared/project'
-import { validateGroupInput } from '../../shared/group'
-import { prompt, select, confirm, openBrowser, type SelectChoice } from '../../util'
+import { CloudContext } from './context'
+import { validateNamespaceForUser } from '../../shared/project'
+import { prompt, confirm, openBrowser } from '../../util'
 
 // Sleep helper
 function sleep(ms: number): Promise<void> {
@@ -274,151 +272,6 @@ function getPagesUrl(serverUrl: string): string {
   }
 }
 
-// Validate server URL
-function validateServerUrl(url: string): string | null {
-  try {
-    new URL(url)
-  } catch {
-    return `Invalid URL: ${url}`
-  }
-
-  // Enforce HTTPS for non-localhost URLs
-  if (!url.startsWith('https://') && !url.includes('localhost')) {
-    return 'Server URL must use HTTPS (except for localhost)'
-  }
-
-  return null
-}
-
-// Prompt for server URL with validation
-async function promptServerUrl(currentValue: string, defaultUrl: string): Promise<string> {
-  while (true) {
-    const answer = await prompt('Server URL', currentValue || defaultUrl)
-
-    // Normalize: add https:// and app. subdomain if needed
-    const { url, modified } = normalizeServerUrl(answer)
-
-    const error = validateServerUrl(url)
-    if (error) {
-      log.error(error)
-      continue
-    }
-
-    if (modified) {
-      log.info(`Using ${url}`)
-    }
-
-    return url
-  }
-}
-
-// Prompt for namespace selection
-async function promptNamespace(
-  userEmail: string,
-  currentValue: string | undefined,
-  globalDefault: string | undefined
-): Promise<string> {
-  const userDomain = getEmailDomain(userEmail)
-  const defaultValue = currentValue || globalDefault || GLOBAL_NAMESPACE
-
-  const choices: SelectChoice<string>[] = []
-
-  // User's domain first (if available)
-  if (userDomain) {
-    choices.push({
-      name: `${userDomain} (your domain)`,
-      value: userDomain,
-    })
-  }
-
-  // Global namespace
-  choices.push({
-    name: 'global (shared namespace)',
-    value: GLOBAL_NAMESPACE,
-  })
-
-  return select('Namespace:', choices, defaultValue)
-}
-
-// Prompt for visibility selection
-async function promptVisibility(
-  userEmail: string,
-  currentValue: string | undefined
-): Promise<string> {
-  const userDomain = getEmailDomain(userEmail)
-  const defaultValue = currentValue || 'private'
-
-  // Build choices
-  const choices: SelectChoice<string>[] = [
-    { name: 'private (only you)', value: 'private' },
-    { name: 'public (anyone with the URL)', value: 'public' },
-  ]
-
-  // Add domain option if user has one
-  if (userDomain) {
-    choices.push({
-      name: `@${userDomain} (anyone at ${userDomain})`,
-      value: `@${userDomain}`,
-    })
-  }
-
-  // If current value is custom (not private, public, or domain), show it as an option
-  const isCustomVisibility = currentValue &&
-    currentValue !== 'private' &&
-    currentValue !== 'public' &&
-    currentValue !== `@${userDomain}`
-
-  if (isCustomVisibility) {
-    choices.push({
-      name: `${currentValue} (current)`,
-      value: currentValue,
-    })
-  }
-
-  // Always add "custom" option
-  choices.push({
-    name: 'Share with specific people...',
-    value: '__custom__',
-  })
-
-  const selected = await select('Visibility:', choices, defaultValue)
-
-  // Handle custom visibility selection
-  if (selected === '__custom__') {
-    return promptCustomVisibility('')
-  }
-
-  // Handle editing current custom visibility
-  if (selected === currentValue && isCustomVisibility) {
-    const edit = await confirm('Edit current visibility?', true)
-    if (edit) {
-      return promptCustomVisibility(currentValue)
-    }
-  }
-
-  return selected
-}
-
-// Prompt for custom visibility (comma-separated emails/@domains)
-async function promptCustomVisibility(currentValue: string): Promise<string> {
-  while (true) {
-    const answer = await prompt('Enter emails and/or @domains (comma-separated)', currentValue)
-
-    if (!answer) {
-      log.error('Visibility is required')
-      continue
-    }
-
-    const error = validateGroupInput(answer)
-    if (error) {
-      log.error(error)
-      continue
-    }
-
-    return answer
-  }
-}
-
 export async function configCommand(projectPath?: string): Promise<void> {
   // Resolve path to absolute
   const resolvedPath = path.resolve(projectPath || '.')
@@ -435,7 +288,6 @@ export async function configCommand(projectPath?: string): Promise<void> {
 
   // Load existing configs
   let globalConfig = await loadUserConfig()
-  const defaultUrl = getDefaultServerUrl()
 
   // 1. First, prompt for server URL
   log.info('')
@@ -447,7 +299,7 @@ export async function configCommand(projectPath?: string): Promise<void> {
   }
   log.info('')
 
-  const serverUrl = await promptServerUrl(globalConfig.server_url || '', defaultUrl)
+  const serverUrl = await promptServerUrl(globalConfig.server_url)
 
   // Save server URL immediately so login uses it
   globalConfig.server_url = serverUrl
@@ -473,14 +325,13 @@ export async function configCommand(projectPath?: string): Promise<void> {
 export async function configUserCommand(): Promise<void> {
   // Load existing config
   let globalConfig = await loadUserConfig()
-  const defaultUrl = getDefaultServerUrl()
 
   log.info('')
   log.info('Configuring global Scratch Cloud settings.')
   log.info('')
 
   // 1. First, prompt for server URL
-  const serverUrl = await promptServerUrl(globalConfig.server_url || '', defaultUrl)
+  const serverUrl = await promptServerUrl(globalConfig.server_url)
 
   // Save server URL immediately so login uses it
   globalConfig.server_url = serverUrl
@@ -554,25 +405,7 @@ async function runProjectConfigFlow(
   const dirName = path.basename(resolvedPath)
 
   // 1. Project name
-  const defaultName = projectConfig.name || dirName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^-+|-+$/g, '')
-  let projectName: string
-
-  while (true) {
-    projectName = await prompt('Project name', defaultName)
-
-    if (!projectName) {
-      log.error('Project name is required')
-      continue
-    }
-
-    const nameValidation = validateProjectName(projectName)
-    if (!nameValidation.valid) {
-      log.error(nameValidation.error || 'Invalid project name')
-      continue
-    }
-
-    break
-  }
+  const projectName = await promptProjectName(projectConfig.name, dirName)
 
   // 2. Namespace
   const namespace = await promptNamespace(

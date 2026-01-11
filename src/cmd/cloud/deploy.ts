@@ -2,12 +2,17 @@ import log from '../../logger'
 import { deploy, ApiError } from '../../cloud/api'
 import { buildCommand } from '../build'
 import { BuildContext } from '../../build/context'
-import { normalizeNamespace, formatNamespace, GLOBAL_NAMESPACE } from './namespace'
-import { validateProjectName, getEmailDomain } from '../../shared/project'
-import { formatBytes, prompt, select, openBrowser, stripTrailingSlash } from '../../util'
+import { normalizeNamespace, validateProjectName } from '../../shared/project'
+import { formatBytes, openBrowser, stripTrailingSlash } from '../../util'
 import {
   loadProjectConfig,
   saveProjectConfig,
+  // Prompts
+  promptProjectName,
+  promptNamespaceAsUrl,
+  promptVisibility,
+  formatNamespace,
+  GLOBAL_NAMESPACE,
   type ProjectConfig,
 } from '../../config'
 import { CloudContext } from './context'
@@ -187,23 +192,7 @@ export async function deployCommand(ctx: CloudContext, projectPath: string = '.'
           log.info(`Project "${projectName}" is owned by a different user.`)
           log.info('')
 
-          while (true) {
-            const newName = await prompt('Enter a different project name')
-
-            if (!newName) {
-              log.error('Project name is required')
-              continue
-            }
-
-            const nameValidation = validateProjectName(newName)
-            if (!nameValidation.valid) {
-              log.error(nameValidation.error || 'Invalid project name')
-              continue
-            }
-
-            projectName = newName
-            break
-          }
+          projectName = await promptProjectName(undefined, undefined)
 
           // Save new config (preserve visibility and server_url from existing config)
           log.info('')
@@ -249,11 +238,7 @@ async function runInteractiveSetup(
   existingConfig: ProjectConfig,
   serverUrl: string
 ): Promise<ProjectConfig> {
-  // Get user's email domain for namespace option
-  const userDomain = getEmailDomain(credentials.user.email)
   const dirName = path.basename(resolvedPath)
-
-  // Get pages URL for display
   const pagesUrl = getPagesUrl(serverUrl)
 
   log.info('')
@@ -261,44 +246,24 @@ async function runInteractiveSetup(
   log.info('=============')
   log.info('')
 
-  // Prompt for project name
-  const defaultName = existingConfig.name || dirName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^-+|-+$/g, '')
-  let projectName: string
+  // 1. Prompt for project name
+  const projectName = await promptProjectName(existingConfig.name, dirName)
 
-  while (true) {
-    projectName = await prompt('Project name', defaultName)
+  // 2. Prompt for namespace (as URL choice)
+  const namespace = await promptNamespaceAsUrl(
+    credentials.user.email,
+    projectName,
+    pagesUrl,
+    existingConfig.namespace
+  )
 
-    if (!projectName) {
-      log.error('Project name is required')
-      continue
-    }
-
-    const nameValidation = validateProjectName(projectName)
-    if (!nameValidation.valid) {
-      log.error(nameValidation.error || 'Invalid project name')
-      continue
-    }
-
-    break
-  }
-
-  // Prompt for namespace - simple choice between user's domain or global
-  let namespace: string = GLOBAL_NAMESPACE
-
-  if (userDomain) {
-    const namespaceChoices = [
-      { name: `${pagesUrl}/${userDomain}/${projectName}`, value: userDomain },
-      { name: `${pagesUrl}/_/${projectName}`, value: GLOBAL_NAMESPACE },
-    ]
-    const defaultNs =
-      existingConfig.namespace === GLOBAL_NAMESPACE && existingConfig.name ? GLOBAL_NAMESPACE : userDomain
-    namespace = await select('Choose your project URL:', namespaceChoices, defaultNs)
-  }
+  // 3. Prompt for visibility
+  const visibility = await promptVisibility(credentials.user.email, existingConfig.visibility)
 
   // Save config
   log.info('')
   log.info('Saving .scratch/project.toml...')
-  const newConfig: ProjectConfig = { name: projectName, namespace }
+  const newConfig: ProjectConfig = { name: projectName, namespace, visibility }
   await saveProjectConfig(resolvedPath, newConfig)
   log.info('')
 
