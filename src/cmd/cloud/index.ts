@@ -135,11 +135,12 @@ export function registerCloudCommands(program: Command): void {
     .command('delete [name]')
     .description('Delete a project and all its deploys (uses .scratch/project.toml if no name specified)')
     .option('--namespace <namespace>', 'Specify namespace')
+    .option('-f, --force', 'Skip confirmation prompt')
     .action(
       withErrorHandling('cloud projects delete', async (name: string | undefined, _options: unknown, cmd: Command) => {
         const opts = cmd.optsWithGlobals()
         const ctx = createContext(opts.serverUrl)
-        await projectDeleteCommand(ctx, name, { namespace: opts.namespace })
+        await projectDeleteCommand(ctx, name, { namespace: opts.namespace, force: opts.force })
       })
     )
 

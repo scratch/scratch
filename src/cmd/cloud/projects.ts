@@ -182,6 +182,7 @@ export async function projectInfoCommand(ctx: CloudContext, identifier?: string,
 
 export interface ProjectDeleteOptions {
   namespace?: string
+  force?: boolean
 }
 
 export async function projectDeleteCommand(ctx: CloudContext, identifier?: string, options: ProjectDeleteOptions = {}): Promise<void> {
@@ -207,22 +208,23 @@ export async function projectDeleteCommand(ctx: CloudContext, identifier?: strin
     throw error
   }
 
-  // Confirm deletion
-  log.info('')
-  log.info(`This will delete project "${ns}/${resolved.name}" and all its deploys.`)
-  log.info('This action cannot be undone.')
-  log.info('')
+  // Confirm deletion (unless --force)
+  if (!options.force) {
+    log.info('')
+    log.info(`This will delete project "${ns}/${resolved.name}" and all its deploys.`)
+    log.info('This action cannot be undone.')
+    log.info('')
 
-  const answer = await prompt(`Type "${resolved.name}" to confirm: `)
+    const answer = await prompt(`Type "${resolved.name}" to confirm: `)
 
-  if (answer !== resolved.name) {
-    log.error('Confirmation did not match. Deletion cancelled.')
-    process.exit(1)
+    if (answer !== resolved.name) {
+      log.error('Confirmation did not match. Deletion cancelled.')
+      process.exit(1)
+    }
   }
 
   try {
     await deleteProject(credentials.token, resolved.name, resolved.namespace, serverUrl)
-    log.info('')
     log.info(`Project "${ns}/${resolved.name}" deleted`)
   } catch (error) {
     if (error instanceof ApiError) {
