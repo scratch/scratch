@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^8.1.0",
+    "better-auth": "^1.2.5",
     "@mdx-js/esbuild": "^3.1.0",
     "@shikijs/rehype": "^3.20.0",
     "@types/mdast": "^4.0.4",

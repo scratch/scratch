@@ -1,25 +1,6 @@
 // API Types for Scratch Cloud
 // These match the actual JSON responses from the server
 
-// Device flow types (for CLI authentication)
-export interface DeviceFlowResponse {
-  device_code: string
-  user_code: string
-  verification_url: string
-  expires_in: number
-  interval: number
-}
-
-export interface DeviceTokenResponse {
-  status: 'pending' | 'approved' | 'denied' | 'expired'
-  token?: string
-  user?: {
-    id: string
-    email: string
-    name: string | null
-  }
-}
-
 // User
 export interface User {
   id: string

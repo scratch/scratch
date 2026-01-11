@@ -1,8 +1,6 @@
 import { getServerUrl, getCfAccessHeaders, isCfAccessDenied, isCfAccessAuthPage } from '../config'
 import log from '../logger'
 import type {
-  DeviceFlowResponse,
-  DeviceTokenResponse,
   UserResponse,
   ProjectListResponse,
   ProjectResponse,
@@ -156,22 +154,6 @@ async function request<T>(
 
     throw new ApiError('Failed to parse JSON', response.status, text)
   }
-}
-
-// Device flow: initiate
-export async function initiateDeviceFlow(serverUrl?: string): Promise<DeviceFlowResponse> {
-  return request<DeviceFlowResponse>('/auth/device', {
-    method: 'POST',
-    body: JSON.stringify({}),
-  }, undefined, serverUrl)
-}
-
-// Device flow: poll for token
-export async function pollDeviceToken(deviceCode: string, serverUrl?: string): Promise<DeviceTokenResponse> {
-  return request<DeviceTokenResponse>('/auth/device/token', {
-    method: 'POST',
-    body: JSON.stringify({ device_code: deviceCode }),
-  }, undefined, serverUrl)
 }
 
 // Get current user info

@@ -1,7 +1,8 @@
 import log from '../../logger'
 import path from 'path'
 import fs from 'fs/promises'
-import { initiateDeviceFlow, pollDeviceToken, getCurrentUser } from '../../cloud/api'
+import { getCurrentUser } from '../../cloud/api'
+import { createBetterAuthClient } from '../../cloud/auth-client'
 import {
   saveCredentials,
   loadCredentials,
@@ -13,6 +14,7 @@ import {
   loadProjectConfig,
   saveProjectConfig,
   saveCfAccessCredentials,
+  getCfAccessHeaders,
   PATHS,
   type UserConfig,
   type ProjectConfig,
@@ -83,82 +85,123 @@ export async function loginCommand(ctxOrServerUrl: CloudContext | string): Promi
   }
 
   log.info(`Logging in to ${serverUrl}`)
-  log.debug(`Connecting to ${serverUrl}/auth/device`)
+  log.debug(`Connecting to ${serverUrl}/auth/device/code`)
 
-  // Initiate device flow
-  let deviceFlowResponse
+  // Get CF Access headers if configured
+  const cfHeaders = await getCfAccessHeaders(serverUrl)
+  const client = createBetterAuthClient(
+    serverUrl,
+    cfHeaders ? { ...cfHeaders } : undefined
+  )
+
+  // 1. Request device code
+  let codeResponse
   try {
-    deviceFlowResponse = await initiateDeviceFlow(serverUrl)
+    codeResponse = await client.device.code({
+      client_id: 'scratch-cli',
+    })
   } catch (error: any) {
     throw formatConnectionError(error, serverUrl)
   }
 
-  const { device_code, user_code, verification_url, interval, expires_in } = deviceFlowResponse
+  if (codeResponse.error) {
+    throw new Error(`Failed to initiate login: ${codeResponse.error.error_description || codeResponse.error.error}`)
+  }
 
-  // Display code and open browser
+  const {
+    device_code,
+    user_code,
+    verification_uri,
+    verification_uri_complete,
+    interval = 5,
+  } = codeResponse.data
+
+  // 2. Display code and open browser
+  const verifyUrl = verification_uri_complete ?? verification_uri
   log.info('')
   log.info('Your verification code is:')
   log.info('')
   log.info(`    ${user_code}`)
   log.info('')
   log.info('Opening browser to complete authentication...')
-  log.info(`(If browser doesn't open, visit: ${verification_url})`)
+  log.info(`(If browser doesn't open, visit: ${verifyUrl})`)
   log.info('')
 
-  await openBrowser(verification_url)
+  await openBrowser(verifyUrl)
 
-  // Poll for approval
+  // 3. Poll for approval
   log.info('Waiting for approval...')
 
-  const startTime = Date.now()
-  const timeout = (expires_in || 600) * 1000 // Use server value, default 10 min
-  let pollCount = 0
+  let pollInterval = interval * 1000
+  const maxAttempts = Math.ceil((10 * 60 * 1000) / pollInterval) // ~10 minutes max
 
-  while (Date.now() - startTime < timeout) {
-    await sleep(interval * 1000)
-    pollCount++
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await sleep(pollInterval)
 
-    log.debug(`Polling for approval (attempt ${pollCount})...`)
+    log.debug(`Polling for approval (attempt ${attempt + 1})...`)
 
-    let response
+    let tokenResponse
     try {
-      response = await pollDeviceToken(device_code, serverUrl)
+      tokenResponse = await client.device.token({
+        grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+        device_code,
+        client_id: 'scratch-cli',
+      })
     } catch (error: any) {
       throw formatConnectionError(error, serverUrl)
     }
 
-    log.debug(`Poll response: ${response.status}`)
+    if (tokenResponse.error) {
+      const errCode = tokenResponse.error.error
 
-    if (response.status === 'approved' && response.token && response.user) {
-      // Save credentials for this server
-      await saveCredentials({
-        token: response.token,
-        user: response.user,
-      }, serverUrl)
-
-      log.info('')
-      log.info(`Logged in as ${response.user.email}`)
-
-      // Clear context cache if using CloudContext
-      if (typeof ctxOrServerUrl !== 'string') {
-        ctxOrServerUrl.clearCache()
+      if (errCode === 'authorization_pending') {
+        log.debug('Authorization pending, continuing to poll...')
+        continue
       }
-      return
+
+      if (errCode === 'slow_down') {
+        pollInterval += 5000 // Increase interval per RFC 8628
+        log.debug(`Rate limited, increasing poll interval to ${pollInterval}ms`)
+        continue
+      }
+
+      if (errCode === 'access_denied') {
+        log.info('')
+        log.error('Login denied')
+        process.exit(1)
+      }
+
+      if (errCode === 'expired_token') {
+        log.info('')
+        log.error('Login expired. Please try again.')
+        process.exit(1)
+      }
+
+      throw new Error(`Login failed: ${tokenResponse.error.error_description || errCode}`)
     }
 
-    if (response.status === 'denied') {
-      log.info('')
-      log.error('Login denied')
-      process.exit(1)
-    }
+    // 4. Success! Fetch user info (BetterAuth only returns access_token)
+    const accessToken = tokenResponse.data.access_token
+    const { user } = await getCurrentUser(accessToken, serverUrl)
 
-    if (response.status === 'expired') {
-      log.info('')
-      log.error('Login expired. Please try again.')
-      process.exit(1)
-    }
+    // 5. Save credentials (preserve existing format)
+    await saveCredentials({
+      token: accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+    }, serverUrl)
 
-    // Still pending, continue polling
+    log.info('')
+    log.info(`Logged in as ${user.email}`)
+
+    // Clear context cache if using CloudContext
+    if (typeof ctxOrServerUrl !== 'string') {
+      ctxOrServerUrl.clearCache()
+    }
+    return
   }
 
   log.error('Login timed out. Please try again.')
