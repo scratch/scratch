@@ -1,10 +1,10 @@
 import log from '../../logger'
-import { requireAuth, getServerUrl } from '../../config'
 import { createShareToken, listShareTokens, revokeShareToken, ApiError } from '../../cloud/api'
 import { shareTokenDurations, type ShareTokenDuration } from '../../cloud/types'
 import { formatNamespace } from './namespace'
 import { resolveProjectOrConfig, formatDateTime } from './projects'
 import { prompt, select, stripTrailingSlash } from '../../util'
+import { CloudContext } from './context'
 
 // Format duration for display
 function formatDuration(duration: ShareTokenDuration): string {
@@ -41,17 +41,17 @@ function handleApiError(error: ApiError, ns: string, projectName: string, tokenI
 
 export interface ShareOptions {
   namespace?: string
-  serverUrl?: string
   duration?: string
   name?: string
 }
 
 export async function shareCreateCommand(
+  ctx: CloudContext,
   identifier?: string,
   options: ShareOptions = {}
 ): Promise<void> {
-  const serverUrl = options.serverUrl || await getServerUrl()
-  const credentials = await requireAuth(serverUrl)
+  const serverUrl = await ctx.getServerUrl()
+  const credentials = await ctx.requireAuth()
   const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace, serverUrl)
   const ns = formatNamespace(resolved.namespace)
 
@@ -111,11 +111,12 @@ export async function shareCreateCommand(
 }
 
 export async function shareListCommand(
+  ctx: CloudContext,
   identifier?: string,
-  options: ShareOptions = {}
+  options: { namespace?: string } = {}
 ): Promise<void> {
-  const serverUrl = options.serverUrl || await getServerUrl()
-  const credentials = await requireAuth(serverUrl)
+  const serverUrl = await ctx.getServerUrl()
+  const credentials = await ctx.requireAuth()
   const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace, serverUrl)
   const ns = formatNamespace(resolved.namespace)
 
@@ -169,12 +170,13 @@ export async function shareListCommand(
 }
 
 export async function shareRevokeCommand(
+  ctx: CloudContext,
   tokenId: string,
   identifier?: string,
-  options: ShareOptions = {}
+  options: { namespace?: string } = {}
 ): Promise<void> {
-  const serverUrl = options.serverUrl || await getServerUrl()
-  const credentials = await requireAuth(serverUrl)
+  const serverUrl = await ctx.getServerUrl()
+  const credentials = await ctx.requireAuth()
   const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace, serverUrl)
   const ns = formatNamespace(resolved.namespace)
 

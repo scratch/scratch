@@ -1,8 +1,9 @@
 import log from '../../logger'
-import { requireAuth, loadProjectConfig, getServerUrl } from '../../config'
+import { loadProjectConfig } from '../../config'
 import { listProjects, getProject, deleteProject, ApiError } from '../../cloud/api'
 import { normalizeNamespace, formatNamespace } from './namespace'
 import { prompt, select, stripTrailingSlash } from '../../util'
+import { CloudContext } from './context'
 
 // Parse project identifier: "namespace/name" or just "name"
 // Treats "_" and "global" as the global namespace (null)
@@ -107,9 +108,9 @@ export function formatDateTime(dateString: string): string {
   })
 }
 
-export async function listProjectsCommand(serverUrlOverride?: string): Promise<void> {
-  const serverUrl = serverUrlOverride || await getServerUrl()
-  const credentials = await requireAuth(serverUrl)
+export async function listProjectsCommand(ctx: CloudContext): Promise<void> {
+  const serverUrl = await ctx.getServerUrl()
+  const credentials = await ctx.requireAuth()
 
   try {
     const { projects } = await listProjects(credentials.token, serverUrl)
@@ -143,12 +144,11 @@ export async function listProjectsCommand(serverUrlOverride?: string): Promise<v
 
 export interface ProjectInfoOptions {
   namespace?: string
-  serverUrl?: string
 }
 
-export async function projectInfoCommand(identifier?: string, options: ProjectInfoOptions = {}): Promise<void> {
-  const serverUrl = options.serverUrl || await getServerUrl()
-  const credentials = await requireAuth(serverUrl)
+export async function projectInfoCommand(ctx: CloudContext, identifier?: string, options: ProjectInfoOptions = {}): Promise<void> {
+  const serverUrl = await ctx.getServerUrl()
+  const credentials = await ctx.requireAuth()
 
   // Resolve project (handles namespace/name format, ambiguity, and config fallback)
   const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace, serverUrl)
@@ -182,12 +182,11 @@ export async function projectInfoCommand(identifier?: string, options: ProjectIn
 
 export interface ProjectDeleteOptions {
   namespace?: string
-  serverUrl?: string
 }
 
-export async function projectDeleteCommand(identifier?: string, options: ProjectDeleteOptions = {}): Promise<void> {
-  const serverUrl = options.serverUrl || await getServerUrl()
-  const credentials = await requireAuth(serverUrl)
+export async function projectDeleteCommand(ctx: CloudContext, identifier?: string, options: ProjectDeleteOptions = {}): Promise<void> {
+  const serverUrl = await ctx.getServerUrl()
+  const credentials = await ctx.requireAuth()
 
   // Resolve project (handles namespace/name format, ambiguity, and config fallback)
   const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace, serverUrl)

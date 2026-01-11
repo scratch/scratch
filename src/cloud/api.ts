@@ -30,10 +30,11 @@ const DEFAULT_TIMEOUT = 30000 // 30 seconds
 
 /**
  * Handle CF Access authentication issues by prompting for credentials.
+ * @param serverUrl - The server URL to configure CF Access for
  * @param hadCredentials - Whether CF Access credentials were configured before the request
  * Returns true if credentials were set/refreshed and request should be retried.
  */
-async function handleCfAccessAuth(hadCredentials: boolean): Promise<boolean> {
+async function handleCfAccessAuth(serverUrl: string, hadCredentials: boolean): Promise<boolean> {
   if (hadCredentials) {
     log.info('Cloudflare Access token expired. Please update your credentials.')
   } else {
@@ -41,8 +42,10 @@ async function handleCfAccessAuth(hadCredentials: boolean): Promise<boolean> {
   }
 
   // Dynamically import to avoid circular dependencies
+  const { CloudContext } = await import('../cmd/cloud/context')
   const { cfAccessCommand } = await import('../cmd/cloud/auth')
-  await cfAccessCommand()
+  const ctx = new CloudContext({ serverUrl })
+  await cfAccessCommand(ctx)
 
   log.info('Credentials saved. Retrying request...')
   return true
@@ -59,8 +62,8 @@ async function request<T>(
   const serverUrl = serverUrlOverride || await getServerUrl()
   const url = `${serverUrl}${path}`
 
-  // Include CF Access headers if configured
-  const cfHeaders = await getCfAccessHeaders()
+  // Include CF Access headers if configured (keyed by server URL)
+  const cfHeaders = await getCfAccessHeaders(serverUrl)
   const headers: Record<string, string> = {
     ...(cfHeaders || {}),
     'Content-Type': 'application/json',
@@ -118,7 +121,7 @@ async function request<T>(
 
     // Check for CF Access auth page (HTML response with CF Access indicators)
     if (!_isRetry && isCfAccessAuthPage(response, text)) {
-      await handleCfAccessAuth(cfHeaders !== undefined)
+      await handleCfAccessAuth(serverUrl, cfHeaders !== undefined)
       // Retry the request with new credentials
       return request<T>(path, options, token, serverUrlOverride, timeoutMs, true)
     }
@@ -146,7 +149,7 @@ async function request<T>(
 
     // Check for CF Access auth page (HTML response instead of expected JSON)
     if (!_isRetry && isCfAccessAuthPage(response, text)) {
-      await handleCfAccessAuth(cfHeaders !== undefined)
+      await handleCfAccessAuth(serverUrl, cfHeaders !== undefined)
       // Retry the request with new credentials
       return request<T>(path, options, token, serverUrlOverride, timeoutMs, true)
     }
@@ -207,8 +210,8 @@ export async function deleteProject(
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT)
 
-  // Include CF Access headers if configured
-  const cfHeaders = await getCfAccessHeaders()
+  // Include CF Access headers if configured (keyed by server URL)
+  const cfHeaders = await getCfAccessHeaders(serverUrl)
 
   let response: Response
   try {
@@ -242,7 +245,7 @@ export async function deleteProject(
 
     // Check for CF Access auth page
     if (!_isRetry && isCfAccessAuthPage(response, text)) {
-      await handleCfAccessAuth(cfHeaders !== undefined)
+      await handleCfAccessAuth(serverUrl, cfHeaders !== undefined)
       return deleteProject(token, name, namespace, serverUrlOverride, true)
     }
 
@@ -300,8 +303,8 @@ export async function deploy(
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), DEPLOY_TIMEOUT)
 
-  // Include CF Access headers if configured
-  const cfHeaders = await getCfAccessHeaders()
+  // Include CF Access headers if configured (keyed by server URL)
+  const cfHeaders = await getCfAccessHeaders(serverUrl)
 
   let response: Response
   try {
@@ -337,7 +340,7 @@ export async function deploy(
 
     // Check for CF Access auth page
     if (!_isRetry && isCfAccessAuthPage(response, text)) {
-      await handleCfAccessAuth(cfHeaders !== undefined)
+      await handleCfAccessAuth(serverUrl, cfHeaders !== undefined)
       return deploy(token, params, zipData, serverUrlOverride, true)
     }
 

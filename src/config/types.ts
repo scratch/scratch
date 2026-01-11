@@ -8,8 +8,25 @@ export interface UserConfig {
 }
 
 /**
+ * Per-server CF Access credentials entry
+ */
+export interface CfAccessEntry {
+  client_id: string
+  client_secret: string
+}
+
+/**
+ * CF Access credentials file structure - keyed by normalized server URL
+ * Stored in ~/.scratch/cf-access.json (0o600)
+ */
+export interface CfAccessFile {
+  [serverUrl: string]: CfAccessEntry
+}
+
+/**
  * User secrets - sensitive data that should never be shared
  * Stored in ~/.scratch/secrets.json (0o600)
+ * @deprecated Use CfAccessFile for CF Access credentials (keyed by server)
  */
 export interface UserSecrets {
   cf_access_client_id?: string

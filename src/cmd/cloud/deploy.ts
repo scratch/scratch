@@ -6,12 +6,11 @@ import { normalizeNamespace, formatNamespace, GLOBAL_NAMESPACE } from './namespa
 import { validateProjectName, getEmailDomain } from '../../shared/project'
 import { formatBytes, prompt, select, openBrowser, stripTrailingSlash } from '../../util'
 import {
-  requireAuth,
-  getServerUrl,
   loadProjectConfig,
   saveProjectConfig,
   type ProjectConfig,
 } from '../../config'
+import { CloudContext } from './context'
 import fs from 'fs/promises'
 import path from 'path'
 
@@ -75,23 +74,21 @@ async function createZip(dirPath: string): Promise<{ data: ArrayBuffer; fileCoun
 export interface DeployOptions {
   name?: string
   namespace?: string
-  serverUrl?: string
   noBuild?: boolean
   dryRun?: boolean
 }
 
-export async function deployCommand(projectPath: string = '.', options: DeployOptions = {}): Promise<void> {
+export async function deployCommand(ctx: CloudContext, projectPath: string = '.', options: DeployOptions = {}): Promise<void> {
   const resolvedPath = path.resolve(projectPath)
 
-  // Determine server URL (CLI option > project config > global config)
-  const projectConfig = await loadProjectConfig(resolvedPath)
-  const effectiveServerUrl = options.serverUrl || projectConfig.server_url || await getServerUrl()
+  // Get server URL from context (already resolved from CLI flag → project config → global config)
+  const effectiveServerUrl = await ctx.getServerUrl()
 
   // Check credentials (auto-login if not authenticated)
-  const credentials = await requireAuth(effectiveServerUrl)
+  const credentials = await ctx.requireAuth()
 
   // Load project config
-  let config = projectConfig
+  let config = await loadProjectConfig(resolvedPath)
   const configRelPath = '.scratch/project.toml'
 
   // Determine project name (CLI option > config > directory name)
@@ -122,8 +119,8 @@ export async function deployCommand(projectPath: string = '.', options: DeployOp
 
   if (!options.noBuild) {
     log.info('Building project...')
-    const ctx = new BuildContext({ path: resolvedPath, base: basePath })
-    await buildCommand(ctx, { ssg: true }, resolvedPath)
+    const buildCtx = new BuildContext({ path: resolvedPath, base: basePath })
+    await buildCommand(buildCtx, { ssg: true }, resolvedPath)
   }
 
   // Check dist/ exists

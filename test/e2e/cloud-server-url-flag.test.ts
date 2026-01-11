@@ -9,7 +9,7 @@ import { mkTempDir, scratchPath } from "./util";
  * E2E tests for the --server-url flag on cloud commands.
  *
  * These tests verify that:
- * 1. The --server-url flag is available on all cloud commands
+ * 1. The --server-url flag is available as a global option on the cloud parent command
  * 2. The CLI correctly parses and passes the flag
  * 3. Help text shows the flag option
  *
@@ -35,56 +35,20 @@ describe("cloud --server-url flag", () => {
     };
   }
 
-  describe("Help output shows --server-url option", () => {
-    test("cloud login --help includes --server-url", () => {
-      const result = runCli(["cloud", "login", "--help"]);
+  describe("Help output shows --server-url as global option", () => {
+    test("cloud --help includes --server-url", () => {
+      const result = runCli(["cloud", "--help"]);
       expect(result.stdout).toContain("--server-url");
       expect(result.stdout).toContain("Override server URL");
     });
 
-    test("cloud logout --help includes --server-url", () => {
-      const result = runCli(["cloud", "logout", "--help"]);
-      expect(result.stdout).toContain("--server-url");
-    });
-
-    test("cloud whoami --help includes --server-url", () => {
-      const result = runCli(["cloud", "whoami", "--help"]);
-      expect(result.stdout).toContain("--server-url");
-    });
-
-    test("cloud deploy --help includes --server-url", () => {
-      const result = runCli(["cloud", "deploy", "--help"]);
-      expect(result.stdout).toContain("--server-url");
-    });
-
-    test("cloud projects list --help includes --server-url", () => {
-      const result = runCli(["cloud", "projects", "list", "--help"]);
-      expect(result.stdout).toContain("--server-url");
-    });
-
-    test("cloud projects info --help includes --server-url", () => {
-      const result = runCli(["cloud", "projects", "info", "--help"]);
-      expect(result.stdout).toContain("--server-url");
-    });
-
-    test("cloud projects delete --help includes --server-url", () => {
-      const result = runCli(["cloud", "projects", "delete", "--help"]);
-      expect(result.stdout).toContain("--server-url");
-    });
-
-    test("cloud share create --help includes --server-url", () => {
-      const result = runCli(["cloud", "share", "create", "--help"]);
-      expect(result.stdout).toContain("--server-url");
-    });
-
-    test("cloud share list --help includes --server-url", () => {
-      const result = runCli(["cloud", "share", "list", "--help"]);
-      expect(result.stdout).toContain("--server-url");
-    });
-
-    test("cloud share revoke --help includes --server-url", () => {
-      const result = runCli(["cloud", "share", "revoke", "--help"]);
-      expect(result.stdout).toContain("--server-url");
+    test("--server-url is inherited by subcommands", () => {
+      // Verify that using --server-url on the parent command doesn't error
+      // Even though login would fail without a server, the flag should be parsed
+      const result = runCli(["cloud", "--server-url", "http://localhost:9999", "whoami"]);
+      // The command should fail because we're not logged in, but the flag should parse
+      expect(result.stdout).toContain("Not logged in");
+      expect(result.stderr).not.toContain("unknown option");
     });
   });
 });
@@ -140,6 +104,33 @@ describe("Multi-server credentials storage", () => {
     expect(parsed["https://staging.scratch.dev"]).toBeDefined();
     expect(parsed["https://app.scratch.dev"].token).toBe("prod-token-123");
     expect(parsed["https://staging.scratch.dev"].token).toBe("staging-token-456");
+  });
+
+  test("cf-access credentials file supports multiple servers", async () => {
+    // Simulate the multi-server CF Access credentials format
+    const cfAccessPath = path.join(tempDir, ".scratch", "cf-access.json");
+
+    const multiServerCfAccess = {
+      "https://app.scratch.dev": {
+        client_id: "prod-client-id",
+        client_secret: "prod-client-secret",
+      },
+      "https://staging.scratch.dev": {
+        client_id: "staging-client-id",
+        client_secret: "staging-client-secret",
+      },
+    };
+
+    await fs.writeFile(cfAccessPath, JSON.stringify(multiServerCfAccess, null, 2) + "\n");
+
+    // Verify file was written correctly
+    const content = await fs.readFile(cfAccessPath, "utf-8");
+    const parsed = JSON.parse(content);
+
+    expect(parsed["https://app.scratch.dev"]).toBeDefined();
+    expect(parsed["https://staging.scratch.dev"]).toBeDefined();
+    expect(parsed["https://app.scratch.dev"].client_id).toBe("prod-client-id");
+    expect(parsed["https://staging.scratch.dev"].client_id).toBe("staging-client-id");
   });
 
   test("credentials file permissions should be restrictive", async () => {

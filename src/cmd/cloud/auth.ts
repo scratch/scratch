@@ -6,19 +6,18 @@ import {
   saveCredentials,
   loadCredentials,
   clearCredentials,
-  requireAuth,
   getServerUrl,
   loadUserConfig,
   saveUserConfig,
   getDefaultServerUrl,
   loadProjectConfig,
   saveProjectConfig,
-  getCfAccessCredentials,
   saveCfAccessCredentials,
   PATHS,
   type UserConfig,
   type ProjectConfig,
 } from '../../config'
+import { CloudContext } from './context'
 import { normalizeNamespace, GLOBAL_NAMESPACE } from './namespace'
 import {
   validateProjectName,
@@ -55,9 +54,13 @@ function formatConnectionError(error: any, serverUrl: string): Error {
   return error
 }
 
-export async function loginCommand(serverUrlOverride?: string): Promise<void> {
-  // Get configured server URL (override takes precedence)
-  const serverUrl = serverUrlOverride || await getServerUrl()
+export async function loginCommand(ctx: CloudContext): Promise<void>
+export async function loginCommand(serverUrlOverride: string): Promise<void>
+export async function loginCommand(ctxOrServerUrl: CloudContext | string): Promise<void> {
+  // Support both CloudContext and direct serverUrl for backward compatibility
+  const serverUrl = typeof ctxOrServerUrl === 'string'
+    ? ctxOrServerUrl
+    : await ctxOrServerUrl.getServerUrl()
 
   // Check if already logged in by verifying token with server
   const existing = await loadCredentials(serverUrl)
@@ -135,6 +138,11 @@ export async function loginCommand(serverUrlOverride?: string): Promise<void> {
 
       log.info('')
       log.info(`Logged in as ${response.user.email}`)
+
+      // Clear context cache if using CloudContext
+      if (typeof ctxOrServerUrl !== 'string') {
+        ctxOrServerUrl.clearCache()
+      }
       return
     }
 
@@ -157,8 +165,8 @@ export async function loginCommand(serverUrlOverride?: string): Promise<void> {
   process.exit(1)
 }
 
-export async function logoutCommand(serverUrlOverride?: string): Promise<void> {
-  const serverUrl = serverUrlOverride || await getServerUrl()
+export async function logoutCommand(ctx: CloudContext): Promise<void> {
+  const serverUrl = await ctx.getServerUrl()
   const credentials = await loadCredentials(serverUrl)
 
   if (!credentials) {
@@ -167,11 +175,12 @@ export async function logoutCommand(serverUrlOverride?: string): Promise<void> {
   }
 
   await clearCredentials(serverUrl)
+  ctx.clearCache()
   log.info(`Logged out from ${serverUrl}`)
 }
 
-export async function whoamiCommand(serverUrlOverride?: string): Promise<void> {
-  const serverUrl = serverUrlOverride || await getServerUrl()
+export async function whoamiCommand(ctx: CloudContext): Promise<void> {
+  const serverUrl = await ctx.getServerUrl()
   const credentials = await loadCredentials(serverUrl)
 
   if (!credentials) {
@@ -192,6 +201,7 @@ export async function whoamiCommand(serverUrlOverride?: string): Promise<void> {
     if (error.status === 401) {
       log.error('Session expired. Please log in again.')
       await clearCredentials(serverUrl)
+      ctx.clearCache()
       process.exit(1)
     }
     throw error
@@ -398,8 +408,9 @@ export async function configCommand(projectPath?: string): Promise<void> {
   globalConfig.server_url = serverUrl
   await saveUserConfig(globalConfig)
 
-  // 2. Then, require authentication
-  const credentials = await requireAuth()
+  // 2. Then, require authentication (use CloudContext for consistent behavior)
+  const ctx = new CloudContext({ serverUrl })
+  const credentials = await ctx.requireAuth()
   const userEmail = credentials.user.email
 
   // Reload config in case login modified it
@@ -431,7 +442,8 @@ export async function configUserCommand(): Promise<void> {
   await saveUserConfig(globalConfig)
 
   // 2. Then, require authentication
-  const credentials = await requireAuth()
+  const ctx = new CloudContext({ serverUrl })
+  const credentials = await ctx.requireAuth()
   const userEmail = credentials.user.email
 
   // Reload config in case login modified it
@@ -460,31 +472,31 @@ async function runGlobalConfigFlow(
   log.info(`Global configuration saved to ${PATHS.userConfig}`)
 }
 
-export async function cfAccessCommand(): Promise<void> {
-  // Load existing CF Access credentials (if any)
-  const existingCredentials = await getCfAccessCredentials()
+export async function cfAccessCommand(ctx: CloudContext): Promise<void> {
+  const serverUrl = await ctx.getServerUrl()
 
   log.info('')
-  log.info('Configure Cloudflare Access service token')
+  log.info(`Configure Cloudflare Access service token for ${serverUrl}`)
   log.info('Get these values from Cloudflare Zero Trust dashboard:')
   log.info('Access → Service Auth → Service Tokens')
   log.info('')
 
-  const clientId = await prompt('Client ID', existingCredentials?.clientId || '')
+  const clientId = await prompt('Client ID')
   if (!clientId) {
     throw new Error('Client ID is required')
   }
 
-  const clientSecret = await prompt('Client Secret', existingCredentials?.clientSecret || '')
+  const clientSecret = await prompt('Client Secret')
   if (!clientSecret) {
     throw new Error('Client Secret is required')
   }
 
-  // Save to secure secrets storage
-  await saveCfAccessCredentials(clientId, clientSecret)
+  // Save to secure secrets storage (keyed by server URL)
+  await saveCfAccessCredentials(clientId, clientSecret, serverUrl)
+  ctx.clearCache()
 
   log.info('')
-  log.info(`Cloudflare Access credentials saved securely to ${PATHS.secrets}`)
+  log.info(`Cloudflare Access credentials saved for ${serverUrl}`)
 }
 
 async function runProjectConfigFlow(

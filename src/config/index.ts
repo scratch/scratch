@@ -7,7 +7,7 @@
 // - .scratch/project.toml - Project config (0o644)
 
 // Types
-export type { Credentials, CredentialEntry, CredentialsFile, UserConfig, UserSecrets, ProjectConfig } from './types'
+export type { Credentials, CredentialEntry, CredentialsFile, UserConfig, UserSecrets, ProjectConfig, CfAccessEntry, CfAccessFile } from './types'
 
 // Paths
 export { PATHS, DEFAULT_SERVER_URL } from './paths'
@@ -19,21 +19,22 @@ export type { TomlField } from './toml'
 // User config (preferences, safe to share)
 export { loadUserConfig, saveUserConfig, getServerUrl, getDefaultServerUrl } from './user-config'
 
-// User secrets (sensitive, 0o600 permissions)
-export {
-  loadUserSecrets,
-  saveUserSecrets,
-  getCfAccessCredentials,
-  saveCfAccessCredentials,
-  clearCfAccessCredentials,
-} from './user-secrets'
+// User secrets (deprecated, kept for migration)
+export { loadUserSecrets, saveUserSecrets } from './user-secrets'
 
 // Auth credentials
-export { loadCredentials, saveCredentials, clearCredentials, requireAuth } from './credentials'
+export { loadCredentials, saveCredentials, clearCredentials, requireAuth, normalizeServerUrl } from './credentials'
 
 // Project config
 export { loadProjectConfig, saveProjectConfig } from './project-config'
 
-// CF Access utilities
-export { getCfAccessHeaders, isCfAccessDenied, isCfAccessAuthPage } from './cf-access'
+// CF Access utilities (all functions now require serverUrl parameter)
+export {
+  getCfAccessCredentials,
+  saveCfAccessCredentials,
+  clearCfAccessCredentials,
+  getCfAccessHeaders,
+  isCfAccessDenied,
+  isCfAccessAuthPage,
+} from './cf-access'
 export type { CfAccessHeaders } from './cf-access'
