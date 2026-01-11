@@ -44,6 +44,7 @@ export function registerCloudCommands(program: Command): void {
   cloud
     .command('login')
     .description('Log in to Scratch Cloud')
+    .option('--server-url <url>', 'Override server URL')
     .action(withErrorHandling('cloud login', async function(this: Command) {
       const ctx = createContext(this)
       await loginCommand(ctx)
@@ -52,6 +53,7 @@ export function registerCloudCommands(program: Command): void {
   cloud
     .command('logout')
     .description('Log out from Scratch Cloud')
+    .option('--server-url <url>', 'Override server URL')
     .action(withErrorHandling('cloud logout', async function(this: Command) {
       const ctx = createContext(this)
       await logoutCommand(ctx)
@@ -60,6 +62,7 @@ export function registerCloudCommands(program: Command): void {
   cloud
     .command('whoami')
     .description('Show current user info')
+    .option('--server-url <url>', 'Override server URL')
     .action(withErrorHandling('cloud whoami', async function(this: Command) {
       const ctx = createContext(this)
       await whoamiCommand(ctx)
@@ -85,6 +88,7 @@ export function registerCloudCommands(program: Command): void {
   cloud
     .command('cf-access')
     .description('Configure Cloudflare Access service token')
+    .option('--server-url <url>', 'Override server URL')
     .action(withErrorHandling('cloud cf-access', async function(this: Command) {
       const ctx = createContext(this)
       await cfAccessCommand(ctx)
@@ -96,6 +100,7 @@ export function registerCloudCommands(program: Command): void {
     .description('Deploy a project to Scratch Cloud')
     .option('--name <name>', 'Override project name')
     .option('--namespace <namespace>', 'Override namespace')
+    .option('--server-url <url>', 'Override server URL')
     .option('--no-build', 'Skip build step')
     .option('--dry-run', 'Show what would be deployed without uploading')
     .action(
@@ -118,6 +123,7 @@ export function registerCloudCommands(program: Command): void {
   projects
     .command('list', { isDefault: true })
     .description('List all projects')
+    .option('--server-url <url>', 'Override server URL')
     .action(withErrorHandling('cloud projects list', async function(this: Command) {
       const ctx = createContext(this)
       await listProjectsCommand(ctx)
@@ -127,6 +133,7 @@ export function registerCloudCommands(program: Command): void {
     .command('info [name]')
     .description('Show project details (uses .scratch/project.toml if no name specified)')
     .option('--namespace <namespace>', 'Specify namespace')
+    .option('--server-url <url>', 'Override server URL')
     .action(
       withErrorHandling('cloud projects info', async function(this: Command, name: string | undefined, options: { namespace?: string }) {
         const ctx = createContext(this)
@@ -138,6 +145,7 @@ export function registerCloudCommands(program: Command): void {
     .command('delete [name]')
     .description('Delete a project and all its deploys (uses .scratch/project.toml if no name specified)')
     .option('--namespace <namespace>', 'Specify namespace')
+    .option('--server-url <url>', 'Override server URL')
     .action(
       withErrorHandling('cloud projects delete', async function(this: Command, name: string | undefined, options: { namespace?: string }) {
         const ctx = createContext(this)
@@ -156,6 +164,7 @@ export function registerCloudCommands(program: Command): void {
     .command('create [project]', { isDefault: true })
     .description('Create a share token (uses .scratch/project.toml if no project specified)')
     .option('--namespace <namespace>', 'Specify namespace')
+    .option('--server-url <url>', 'Override server URL')
     .option('--name <name>', 'Token name')
     .option('--duration <duration>', 'Token duration (1d, 1w, 1m)')
     .action(
@@ -169,6 +178,7 @@ export function registerCloudCommands(program: Command): void {
     .command('list [project]')
     .description('List share tokens (uses .scratch/project.toml if no project specified)')
     .option('--namespace <namespace>', 'Specify namespace')
+    .option('--server-url <url>', 'Override server URL')
     .action(
       withErrorHandling('cloud share list', async function(this: Command, project: string | undefined, options: { namespace?: string }) {
         const ctx = createContext(this)
@@ -180,6 +190,7 @@ export function registerCloudCommands(program: Command): void {
     .command('revoke <tokenId> [project]')
     .description('Revoke a share token (uses .scratch/project.toml if no project specified)')
     .option('--namespace <namespace>', 'Specify namespace')
+    .option('--server-url <url>', 'Override server URL')
     .action(
       withErrorHandling('cloud share revoke', async function(this: Command, tokenId: string, project: string | undefined, options: { namespace?: string }) {
         const ctx = createContext(this)

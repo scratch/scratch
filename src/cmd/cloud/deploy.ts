@@ -157,7 +157,7 @@ export async function deployCommand(ctx: CloudContext, projectPath: string = '.'
 
   // Upload (with retry loop for name conflicts)
   while (true) {
-    log.info('Uploading to server...')
+    log.info(`Uploading to ${effectiveServerUrl}...`)
 
     try {
       const result = await deploy(

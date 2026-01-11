@@ -42,13 +42,20 @@ describe("cloud --server-url flag", () => {
       expect(result.stdout).toContain("Override server URL");
     });
 
-    test("--server-url is inherited by subcommands", () => {
-      // Verify that using --server-url on the parent command doesn't error
-      // Even though login would fail without a server, the flag should be parsed
+    test("--server-url can be used on parent command", () => {
+      // Verify that --server-url on the parent command is parsed without "unknown option" error
       const result = runCli(["cloud", "--server-url", "http://localhost:9999", "whoami"]);
-      // The command should fail because we're not logged in, but the flag should parse
-      expect(result.stdout).toContain("Not logged in");
+      // The flag should be recognized (no "unknown option" error)
       expect(result.stderr).not.toContain("unknown option");
+      expect(result.stderr).not.toContain("error: unknown option");
+    });
+
+    test("--server-url can be used on subcommands", () => {
+      // Verify that --server-url on the subcommand is also parsed
+      const result = runCli(["cloud", "whoami", "--server-url", "http://localhost:9999"]);
+      // The flag should be recognized (no "unknown option" error)
+      expect(result.stderr).not.toContain("unknown option");
+      expect(result.stderr).not.toContain("error: unknown option");
     });
   });
 });
