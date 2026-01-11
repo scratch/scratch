@@ -10,6 +10,7 @@ import { deviceAuthorizationClient } from 'better-auth/client/plugins'
 export function createBetterAuthClient(baseURL: string, headers?: Record<string, string>) {
   return createAuthClient({
     baseURL,
+    basePath: '/auth',  // Must match server's basePath
     plugins: [deviceAuthorizationClient()],
     fetchOptions: headers ? { headers } : undefined,
   })
