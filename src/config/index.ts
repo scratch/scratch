@@ -7,7 +7,7 @@
 // - .scratch/project.toml - Project config (0o644)
 
 // Types
-export type { Credentials, UserConfig, UserSecrets, ProjectConfig } from './types'
+export type { Credentials, CredentialEntry, CredentialsFile, UserConfig, UserSecrets, ProjectConfig } from './types'
 
 // Paths
 export { PATHS, DEFAULT_SERVER_URL } from './paths'

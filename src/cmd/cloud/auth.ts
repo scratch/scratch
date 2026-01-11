@@ -55,23 +55,23 @@ function formatConnectionError(error: any, serverUrl: string): Error {
   return error
 }
 
-export async function loginCommand(): Promise<void> {
-  // Get configured server URL
-  const serverUrl = await getServerUrl()
+export async function loginCommand(serverUrlOverride?: string): Promise<void> {
+  // Get configured server URL (override takes precedence)
+  const serverUrl = serverUrlOverride || await getServerUrl()
 
   // Check if already logged in by verifying token with server
-  const existing = await loadCredentials()
+  const existing = await loadCredentials(serverUrl)
   if (existing) {
     log.debug('Found existing credentials, verifying...')
     try {
-      const { user } = await getCurrentUser(existing.token)
+      const { user } = await getCurrentUser(existing.token, serverUrl)
       log.info(`Already logged in as ${user.email}`)
       log.info('Use "scratch cloud logout" to log out first')
       return
     } catch (error: any) {
       if (error.status === 401) {
         // Token expired/invalid, clear and proceed with login
-        await clearCredentials()
+        await clearCredentials(serverUrl)
         log.info('Session expired, logging in again...')
       } else {
         throw formatConnectionError(error, serverUrl)
@@ -85,7 +85,7 @@ export async function loginCommand(): Promise<void> {
   // Initiate device flow
   let deviceFlowResponse
   try {
-    deviceFlowResponse = await initiateDeviceFlow()
+    deviceFlowResponse = await initiateDeviceFlow(serverUrl)
   } catch (error: any) {
     throw formatConnectionError(error, serverUrl)
   }
@@ -119,7 +119,7 @@ export async function loginCommand(): Promise<void> {
 
     let response
     try {
-      response = await pollDeviceToken(device_code)
+      response = await pollDeviceToken(device_code, serverUrl)
     } catch (error: any) {
       throw formatConnectionError(error, serverUrl)
     }
@@ -127,12 +127,11 @@ export async function loginCommand(): Promise<void> {
     log.debug(`Poll response: ${response.status}`)
 
     if (response.status === 'approved' && response.token && response.user) {
-      // Save credentials
+      // Save credentials for this server
       await saveCredentials({
         token: response.token,
         user: response.user,
-        server: serverUrl,
-      })
+      }, serverUrl)
 
       log.info('')
       log.info(`Logged in as ${response.user.email}`)
@@ -158,39 +157,41 @@ export async function loginCommand(): Promise<void> {
   process.exit(1)
 }
 
-export async function logoutCommand(): Promise<void> {
-  const credentials = await loadCredentials()
+export async function logoutCommand(serverUrlOverride?: string): Promise<void> {
+  const serverUrl = serverUrlOverride || await getServerUrl()
+  const credentials = await loadCredentials(serverUrl)
 
   if (!credentials) {
-    log.info('Not logged in')
+    log.info(`Not logged in to ${serverUrl}`)
     return
   }
 
-  await clearCredentials()
-  log.info('Logged out')
+  await clearCredentials(serverUrl)
+  log.info(`Logged out from ${serverUrl}`)
 }
 
-export async function whoamiCommand(): Promise<void> {
-  const credentials = await loadCredentials()
+export async function whoamiCommand(serverUrlOverride?: string): Promise<void> {
+  const serverUrl = serverUrlOverride || await getServerUrl()
+  const credentials = await loadCredentials(serverUrl)
 
   if (!credentials) {
-    log.info('Not logged in')
+    log.info(`Not logged in to ${serverUrl}`)
     return
   }
 
   try {
     // Verify token is still valid by calling /api/me
-    const { user } = await getCurrentUser(credentials.token)
+    const { user } = await getCurrentUser(credentials.token, serverUrl)
 
     log.info(`Email: ${user.email}`)
     if (user.name) {
       log.info(`Name:  ${user.name}`)
     }
-    log.info(`Server: ${credentials.server}`)
+    log.info(`Server: ${serverUrl}`)
   } catch (error: any) {
     if (error.status === 401) {
       log.error('Session expired. Please log in again.')
-      await clearCredentials()
+      await clearCredentials(serverUrl)
       process.exit(1)
     }
     throw error

@@ -1,5 +1,5 @@
 import log from '../../logger'
-import { requireAuth } from '../../config'
+import { requireAuth, getServerUrl } from '../../config'
 import { createShareToken, listShareTokens, revokeShareToken, ApiError } from '../../cloud/api'
 import { shareTokenDurations, type ShareTokenDuration } from '../../cloud/types'
 import { formatNamespace } from './namespace'
@@ -41,6 +41,7 @@ function handleApiError(error: ApiError, ns: string, projectName: string, tokenI
 
 export interface ShareOptions {
   namespace?: string
+  serverUrl?: string
   duration?: string
   name?: string
 }
@@ -49,8 +50,9 @@ export async function shareCreateCommand(
   identifier?: string,
   options: ShareOptions = {}
 ): Promise<void> {
-  const credentials = await requireAuth()
-  const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace)
+  const serverUrl = options.serverUrl || await getServerUrl()
+  const credentials = await requireAuth(serverUrl)
+  const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace, serverUrl)
   const ns = formatNamespace(resolved.namespace)
 
   // Get or prompt for token name
@@ -86,7 +88,8 @@ export async function shareCreateCommand(
       resolved.name,
       tokenName,
       duration,
-      resolved.namespace
+      resolved.namespace,
+      serverUrl
     )
 
     log.info('')
@@ -111,15 +114,17 @@ export async function shareListCommand(
   identifier?: string,
   options: ShareOptions = {}
 ): Promise<void> {
-  const credentials = await requireAuth()
-  const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace)
+  const serverUrl = options.serverUrl || await getServerUrl()
+  const credentials = await requireAuth(serverUrl)
+  const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace, serverUrl)
   const ns = formatNamespace(resolved.namespace)
 
   try {
     const { share_tokens } = await listShareTokens(
       credentials.token,
       resolved.name,
-      resolved.namespace
+      resolved.namespace,
+      serverUrl
     )
 
     if (share_tokens.length === 0) {
@@ -168,8 +173,9 @@ export async function shareRevokeCommand(
   identifier?: string,
   options: ShareOptions = {}
 ): Promise<void> {
-  const credentials = await requireAuth()
-  const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace)
+  const serverUrl = options.serverUrl || await getServerUrl()
+  const credentials = await requireAuth(serverUrl)
+  const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace, serverUrl)
   const ns = formatNamespace(resolved.namespace)
 
   try {
@@ -177,7 +183,8 @@ export async function shareRevokeCommand(
       credentials.token,
       resolved.name,
       tokenId,
-      resolved.namespace
+      resolved.namespace,
+      serverUrl
     )
 
     log.info('')

@@ -16,17 +16,26 @@ export function registerCloudCommands(program: Command): void {
   cloud
     .command('login')
     .description('Log in to Scratch Cloud')
-    .action(withErrorHandling('cloud login', loginCommand))
+    .option('--server-url <url>', 'Override server URL')
+    .action(withErrorHandling('cloud login', async (options: { serverUrl?: string }) => {
+      await loginCommand(options.serverUrl)
+    }))
 
   cloud
     .command('logout')
     .description('Log out from Scratch Cloud')
-    .action(withErrorHandling('cloud logout', logoutCommand))
+    .option('--server-url <url>', 'Override server URL')
+    .action(withErrorHandling('cloud logout', async (options: { serverUrl?: string }) => {
+      await logoutCommand(options.serverUrl)
+    }))
 
   cloud
     .command('whoami')
     .description('Show current user info')
-    .action(withErrorHandling('cloud whoami', whoamiCommand))
+    .option('--server-url <url>', 'Override server URL')
+    .action(withErrorHandling('cloud whoami', async (options: { serverUrl?: string }) => {
+      await whoamiCommand(options.serverUrl)
+    }))
 
   // Config commands
   const config = cloud
@@ -56,13 +65,15 @@ export function registerCloudCommands(program: Command): void {
     .description('Deploy a project to Scratch Cloud')
     .option('--name <name>', 'Override project name')
     .option('--namespace <namespace>', 'Override namespace')
+    .option('--server-url <url>', 'Override server URL')
     .option('--no-build', 'Skip build step')
     .option('--dry-run', 'Show what would be deployed without uploading')
     .action(
-      withErrorHandling('cloud deploy', async (projectPath: string | undefined, options: { name?: string; namespace?: string; build?: boolean; dryRun?: boolean }) => {
+      withErrorHandling('cloud deploy', async (projectPath: string | undefined, options: { name?: string; namespace?: string; serverUrl?: string; build?: boolean; dryRun?: boolean }) => {
         await deployCommand(projectPath, {
           name: options.name,
           namespace: options.namespace,
+          serverUrl: options.serverUrl,
           noBuild: options.build === false,
           dryRun: options.dryRun === true,
         })
@@ -77,15 +88,19 @@ export function registerCloudCommands(program: Command): void {
   projects
     .command('list', { isDefault: true })
     .description('List all projects')
-    .action(withErrorHandling('cloud projects list', listProjectsCommand))
+    .option('--server-url <url>', 'Override server URL')
+    .action(withErrorHandling('cloud projects list', async (options: { serverUrl?: string }) => {
+      await listProjectsCommand(options.serverUrl)
+    }))
 
   projects
     .command('info [name]')
     .description('Show project details (uses .scratch/project.toml if no name specified)')
     .option('--namespace <namespace>', 'Specify namespace')
+    .option('--server-url <url>', 'Override server URL')
     .action(
-      withErrorHandling('cloud projects info', async (name: string | undefined, options: { namespace?: string }) => {
-        await projectInfoCommand(name, { namespace: options.namespace })
+      withErrorHandling('cloud projects info', async (name: string | undefined, options: { namespace?: string; serverUrl?: string }) => {
+        await projectInfoCommand(name, { namespace: options.namespace, serverUrl: options.serverUrl })
       })
     )
 
@@ -93,9 +108,10 @@ export function registerCloudCommands(program: Command): void {
     .command('delete [name]')
     .description('Delete a project and all its deploys (uses .scratch/project.toml if no name specified)')
     .option('--namespace <namespace>', 'Specify namespace')
+    .option('--server-url <url>', 'Override server URL')
     .action(
-      withErrorHandling('cloud projects delete', async (name: string | undefined, options: { namespace?: string }) => {
-        await projectDeleteCommand(name, { namespace: options.namespace })
+      withErrorHandling('cloud projects delete', async (name: string | undefined, options: { namespace?: string; serverUrl?: string }) => {
+        await projectDeleteCommand(name, { namespace: options.namespace, serverUrl: options.serverUrl })
       })
     )
 
@@ -110,10 +126,11 @@ export function registerCloudCommands(program: Command): void {
     .command('create [project]', { isDefault: true })
     .description('Create a share token (uses .scratch/project.toml if no project specified)')
     .option('--namespace <namespace>', 'Specify namespace')
+    .option('--server-url <url>', 'Override server URL')
     .option('--name <name>', 'Token name')
     .option('--duration <duration>', 'Token duration (1d, 1w, 1m)')
     .action(
-      withErrorHandling('cloud share', async (project: string | undefined, options: { namespace?: string; name?: string; duration?: string }) => {
+      withErrorHandling('cloud share', async (project: string | undefined, options: { namespace?: string; serverUrl?: string; name?: string; duration?: string }) => {
         await shareCreateCommand(project, options)
       })
     )
@@ -122,8 +139,9 @@ export function registerCloudCommands(program: Command): void {
     .command('list [project]')
     .description('List share tokens (uses .scratch/project.toml if no project specified)')
     .option('--namespace <namespace>', 'Specify namespace')
+    .option('--server-url <url>', 'Override server URL')
     .action(
-      withErrorHandling('cloud share list', async (project: string | undefined, options: { namespace?: string }) => {
+      withErrorHandling('cloud share list', async (project: string | undefined, options: { namespace?: string; serverUrl?: string }) => {
         await shareListCommand(project, options)
       })
     )
@@ -132,8 +150,9 @@ export function registerCloudCommands(program: Command): void {
     .command('revoke <tokenId> [project]')
     .description('Revoke a share token (uses .scratch/project.toml if no project specified)')
     .option('--namespace <namespace>', 'Specify namespace')
+    .option('--server-url <url>', 'Override server URL')
     .action(
-      withErrorHandling('cloud share revoke', async (tokenId: string, project: string | undefined, options: { namespace?: string }) => {
+      withErrorHandling('cloud share revoke', async (tokenId: string, project: string | undefined, options: { namespace?: string; serverUrl?: string }) => {
         await shareRevokeCommand(tokenId, project, options)
       })
     )

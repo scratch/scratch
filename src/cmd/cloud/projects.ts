@@ -1,5 +1,5 @@
 import log from '../../logger'
-import { requireAuth, loadProjectConfig } from '../../config'
+import { requireAuth, loadProjectConfig, getServerUrl } from '../../config'
 import { listProjects, getProject, deleteProject, ApiError } from '../../cloud/api'
 import { normalizeNamespace, formatNamespace } from './namespace'
 import { prompt, select, stripTrailingSlash } from '../../util'
@@ -31,7 +31,8 @@ export async function promptProjectChoice(
 export async function resolveProject(
   token: string,
   identifier: string,
-  optionNamespace?: string
+  optionNamespace?: string,
+  serverUrl?: string
 ): Promise<{ name: string; namespace: string | null }> {
   const parsed = parseProjectIdentifier(identifier)
 
@@ -46,7 +47,7 @@ export async function resolveProject(
   }
 
   // Otherwise, search for projects with this name
-  const { projects } = await listProjects(token)
+  const { projects } = await listProjects(token, serverUrl)
   const matches = projects.filter((p) => p.name === parsed.name)
 
   if (matches.length === 0) {
@@ -66,10 +67,11 @@ export async function resolveProject(
 export async function resolveProjectOrConfig(
   token: string,
   identifier: string | undefined,
-  optionNamespace?: string
+  optionNamespace?: string,
+  serverUrl?: string
 ): Promise<{ name: string; namespace: string | null }> {
   if (identifier) {
-    return resolveProject(token, identifier, optionNamespace)
+    return resolveProject(token, identifier, optionNamespace, serverUrl)
   }
 
   const config = await loadProjectConfig('.')
@@ -105,11 +107,12 @@ export function formatDateTime(dateString: string): string {
   })
 }
 
-export async function listProjectsCommand(): Promise<void> {
-  const credentials = await requireAuth()
+export async function listProjectsCommand(serverUrlOverride?: string): Promise<void> {
+  const serverUrl = serverUrlOverride || await getServerUrl()
+  const credentials = await requireAuth(serverUrl)
 
   try {
-    const { projects } = await listProjects(credentials.token)
+    const { projects } = await listProjects(credentials.token, serverUrl)
 
     if (projects.length === 0) {
       log.info('No projects found.')
@@ -140,16 +143,18 @@ export async function listProjectsCommand(): Promise<void> {
 
 export interface ProjectInfoOptions {
   namespace?: string
+  serverUrl?: string
 }
 
 export async function projectInfoCommand(identifier?: string, options: ProjectInfoOptions = {}): Promise<void> {
-  const credentials = await requireAuth()
+  const serverUrl = options.serverUrl || await getServerUrl()
+  const credentials = await requireAuth(serverUrl)
 
   // Resolve project (handles namespace/name format, ambiguity, and config fallback)
-  const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace)
+  const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace, serverUrl)
 
   try {
-    const { project } = await getProject(credentials.token, resolved.name, resolved.namespace)
+    const { project } = await getProject(credentials.token, resolved.name, resolved.namespace, serverUrl)
 
     log.info('')
     log.info(`Project: ${project.name}`)
@@ -177,18 +182,20 @@ export async function projectInfoCommand(identifier?: string, options: ProjectIn
 
 export interface ProjectDeleteOptions {
   namespace?: string
+  serverUrl?: string
 }
 
 export async function projectDeleteCommand(identifier?: string, options: ProjectDeleteOptions = {}): Promise<void> {
-  const credentials = await requireAuth()
+  const serverUrl = options.serverUrl || await getServerUrl()
+  const credentials = await requireAuth(serverUrl)
 
   // Resolve project (handles namespace/name format, ambiguity, and config fallback)
-  const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace)
+  const resolved = await resolveProjectOrConfig(credentials.token, identifier, options.namespace, serverUrl)
   const ns = formatNamespace(resolved.namespace)
 
   // Verify project exists (resolveProject already checks this, but getProject gives us 404 handling)
   try {
-    await getProject(credentials.token, resolved.name, resolved.namespace)
+    await getProject(credentials.token, resolved.name, resolved.namespace, serverUrl)
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.status === 404) {
@@ -215,7 +222,7 @@ export async function projectDeleteCommand(identifier?: string, options: Project
   }
 
   try {
-    await deleteProject(credentials.token, resolved.name, resolved.namespace)
+    await deleteProject(credentials.token, resolved.name, resolved.namespace, serverUrl)
     log.info('')
     log.info(`Project "${ns}/${resolved.name}" deleted`)
   } catch (error) {

@@ -17,16 +17,29 @@ export interface UserSecrets {
 }
 
 /**
- * Auth credentials for Scratch Cloud
- * Stored in ~/.scratch/credentials.json (0o600)
+ * Per-server credential entry (stored keyed by server URL)
  */
-export interface Credentials {
+export interface CredentialEntry {
   token: string
   user: {
     id: string
     email: string
     name: string | null
   }
+}
+
+/**
+ * Full credentials file structure - keyed by normalized server URL
+ * Stored in ~/.scratch/credentials.json (0o600)
+ */
+export interface CredentialsFile {
+  [serverUrl: string]: CredentialEntry
+}
+
+/**
+ * Auth credentials for Scratch Cloud (includes server URL for convenience)
+ */
+export interface Credentials extends CredentialEntry {
   server: string
 }
 

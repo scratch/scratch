@@ -75,6 +75,7 @@ async function createZip(dirPath: string): Promise<{ data: ArrayBuffer; fileCoun
 export interface DeployOptions {
   name?: string
   namespace?: string
+  serverUrl?: string
   noBuild?: boolean
   dryRun?: boolean
 }
@@ -82,11 +83,15 @@ export interface DeployOptions {
 export async function deployCommand(projectPath: string = '.', options: DeployOptions = {}): Promise<void> {
   const resolvedPath = path.resolve(projectPath)
 
+  // Determine server URL (CLI option > project config > global config)
+  const projectConfig = await loadProjectConfig(resolvedPath)
+  const effectiveServerUrl = options.serverUrl || projectConfig.server_url || await getServerUrl()
+
   // Check credentials (auto-login if not authenticated)
-  const credentials = await requireAuth()
+  const credentials = await requireAuth(effectiveServerUrl)
 
   // Load project config
-  let config = await loadProjectConfig(resolvedPath)
+  let config = projectConfig
   const configRelPath = '.scratch/project.toml'
 
   // Determine project name (CLI option > config > directory name)
@@ -96,7 +101,7 @@ export async function deployCommand(projectPath: string = '.', options: DeployOp
 
   // If no valid project name from options or config, run interactive setup
   if (!projectName || !validateProjectName(projectName).valid) {
-    const result = await runInteractiveSetup(resolvedPath, credentials, config)
+    const result = await runInteractiveSetup(resolvedPath, credentials, config, effectiveServerUrl)
     projectName = result.name!  // runInteractiveSetup guarantees name is set
     namespace = result.namespace!  // runInteractiveSetup guarantees namespace is set
     config = result
@@ -144,8 +149,7 @@ export async function deployCommand(projectPath: string = '.', options: DeployOp
 
   // Dry run - show what would be deployed without uploading
   if (options.dryRun) {
-    const serverUrl = config.server_url || await getServerUrl()
-    const pagesUrl = getPagesUrl(serverUrl)
+    const pagesUrl = getPagesUrl(effectiveServerUrl)
     const urlNamespace = namespace === GLOBAL_NAMESPACE ? '_' : namespace
     const deployUrl = `${pagesUrl}/${urlNamespace}/${projectName}`
     log.info('')
@@ -163,7 +167,7 @@ export async function deployCommand(projectPath: string = '.', options: DeployOp
         credentials.token,
         { name: projectName, namespace, visibility: config.visibility },
         zipData,
-        config.server_url
+        effectiveServerUrl
       )
 
       log.info('')
@@ -245,14 +249,14 @@ export async function deployCommand(projectPath: string = '.', options: DeployOp
 async function runInteractiveSetup(
   resolvedPath: string,
   credentials: { user: { email: string } },
-  existingConfig: ProjectConfig
+  existingConfig: ProjectConfig,
+  serverUrl: string
 ): Promise<ProjectConfig> {
   // Get user's email domain for namespace option
   const userDomain = getEmailDomain(credentials.user.email)
   const dirName = path.basename(resolvedPath)
 
   // Get pages URL for display
-  const serverUrl = await getServerUrl()
   const pagesUrl = getPagesUrl(serverUrl)
 
   log.info('')
