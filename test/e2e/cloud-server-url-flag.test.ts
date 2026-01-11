@@ -158,6 +158,71 @@ describe("Multi-server credentials storage", () => {
   });
 });
 
+describe("Server URL normalization", () => {
+  // Import the normalizeServerUrl function
+  const { normalizeServerUrl } = require("../../src/cmd/cloud/context");
+
+  test("adds https:// if no protocol specified", () => {
+    const result = normalizeServerUrl("app.scratch.dev");
+    expect(result.url).toBe("https://app.scratch.dev");
+    expect(result.modified).toBe(false); // Only modified if app. was added
+  });
+
+  test("preserves http:// for localhost", () => {
+    const result = normalizeServerUrl("http://localhost:8788");
+    expect(result.url).toBe("http://localhost:8788");
+    expect(result.modified).toBe(false);
+  });
+
+  test("adds app. subdomain to naked domains", () => {
+    const result = normalizeServerUrl("ycscratch.dev");
+    expect(result.url).toBe("https://app.ycscratch.dev");
+    expect(result.modified).toBe(true);
+  });
+
+  test("adds app. subdomain to naked domains with https", () => {
+    const result = normalizeServerUrl("https://scratch.dev");
+    expect(result.url).toBe("https://app.scratch.dev");
+    expect(result.modified).toBe(true);
+  });
+
+  test("does not modify URLs with existing subdomain", () => {
+    const result = normalizeServerUrl("staging.scratch.dev");
+    expect(result.url).toBe("https://staging.scratch.dev");
+    expect(result.modified).toBe(false);
+  });
+
+  test("does not modify localhost", () => {
+    const result = normalizeServerUrl("localhost:8788");
+    expect(result.url).toBe("https://localhost:8788");
+    expect(result.modified).toBe(false);
+  });
+
+  test("does not modify app. subdomain URLs", () => {
+    const result = normalizeServerUrl("app.scratch.dev");
+    expect(result.url).toBe("https://app.scratch.dev");
+    expect(result.modified).toBe(false);
+  });
+
+  test("adds app. subdomain to naked .co.uk domains", () => {
+    const result = normalizeServerUrl("example.co.uk");
+    expect(result.url).toBe("https://app.example.co.uk");
+    expect(result.modified).toBe(true);
+  });
+
+  test("does not modify .co.uk domains with existing subdomain", () => {
+    const result = normalizeServerUrl("app.example.co.uk");
+    expect(result.url).toBe("https://app.example.co.uk");
+    expect(result.modified).toBe(false);
+  });
+
+  test("does not modify staging subdomain on .co.uk", () => {
+    const result = normalizeServerUrl("staging.example.co.uk");
+    expect(result.url).toBe("https://staging.example.co.uk");
+    expect(result.modified).toBe(false);
+  });
+});
+
 describe("Server URL configuration precedence", () => {
   let tempDir: string;
   let originalHome: string;

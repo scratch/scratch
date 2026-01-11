@@ -17,7 +17,7 @@ import {
   type UserConfig,
   type ProjectConfig,
 } from '../../config'
-import { CloudContext } from './context'
+import { CloudContext, normalizeServerUrl } from './context'
 import { normalizeNamespace, GLOBAL_NAMESPACE } from './namespace'
 import {
   validateProjectName,
@@ -250,20 +250,22 @@ function validateServerUrl(url: string): string | null {
 // Prompt for server URL with validation
 async function promptServerUrl(currentValue: string, defaultUrl: string): Promise<string> {
   while (true) {
-    let answer = await prompt('Server URL', currentValue || defaultUrl)
+    const answer = await prompt('Server URL', currentValue || defaultUrl)
 
-    // Add https:// if no protocol specified, but preserve http:// for localhost
-    if (!answer.startsWith('http://') && !answer.startsWith('https://')) {
-      answer = `https://${answer}`
-    }
+    // Normalize: add https:// and app. subdomain if needed
+    const { url, modified } = normalizeServerUrl(answer)
 
-    const error = validateServerUrl(answer)
+    const error = validateServerUrl(url)
     if (error) {
       log.error(error)
       continue
     }
 
-    return answer
+    if (modified) {
+      log.info(`Using ${url}`)
+    }
+
+    return url
   }
 }
 

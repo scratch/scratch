@@ -16,6 +16,69 @@ export interface CloudContextOptions {
   projectPath?: string
 }
 
+// Common multi-part TLDs where naked domain has 3 parts instead of 2
+const MULTI_PART_TLDS = [
+  '.co.uk', '.org.uk', '.gov.uk', '.ac.uk',
+  '.com.au', '.net.au', '.org.au',
+  '.co.nz', '.co.jp', '.co.in', '.co.za',
+  '.com.br', '.com.mx', '.com.cn',
+]
+
+/**
+ * Check if a hostname is a naked domain (no subdomain).
+ * e.g., "scratch.dev" is naked, "app.scratch.dev" is not.
+ * Handles multi-part TLDs like .co.uk
+ */
+function isNakedDomain(hostname: string): boolean {
+  // Don't modify localhost
+  if (hostname === 'localhost' || hostname.startsWith('localhost:')) {
+    return false
+  }
+
+  const lowerHostname = hostname.toLowerCase()
+  const parts = hostname.split('.')
+
+  // Check for multi-part TLDs
+  for (const tld of MULTI_PART_TLDS) {
+    if (lowerHostname.endsWith(tld)) {
+      // For multi-part TLDs like .co.uk, naked domain has 3 parts (example.co.uk)
+      return parts.length === 3
+    }
+  }
+
+  // For standard single-part TLDs, naked domain has 2 parts (example.com)
+  return parts.length === 2
+}
+
+/**
+ * Normalize a server URL:
+ * - Add https:// if no protocol specified
+ * - Add app. subdomain if naked domain
+ * Returns { url, modified } where modified is true if app. was added
+ */
+export function normalizeServerUrl(url: string): { url: string; modified: boolean } {
+  let modified = false
+
+  // Add https:// if no protocol specified
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = `https://${url}`
+  }
+
+  // Parse and check if naked domain
+  try {
+    const parsed = new URL(url)
+    if (isNakedDomain(parsed.hostname)) {
+      parsed.hostname = `app.${parsed.hostname}`
+      url = parsed.toString().replace(/\/$/, '') // Remove trailing slash
+      modified = true
+    }
+  } catch {
+    // Invalid URL, return as-is
+  }
+
+  return { url, modified }
+}
+
 /**
  * CloudContext provides a unified interface for cloud command operations.
  * It handles server URL resolution, credential loading, and CF Access headers.
@@ -43,7 +106,11 @@ export class CloudContext {
     if (!this._serverUrl) {
       // CLI flag takes precedence
       if (this.options.serverUrl) {
-        this._serverUrl = this.options.serverUrl
+        const { url, modified } = normalizeServerUrl(this.options.serverUrl)
+        this._serverUrl = url
+        if (modified) {
+          log.info(`Using ${url}`)
+        }
       } else {
         // Check project config
         const projectConfig = await loadProjectConfig(this.options.projectPath || '.')
