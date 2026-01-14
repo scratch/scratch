@@ -1,0 +1,14 @@
+{
+  "name": "@scratch/shared",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./project": "./src/project.ts",
+    "./group": "./src/group.ts",
+    "./api": "./src/api/index.ts"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  }
+}

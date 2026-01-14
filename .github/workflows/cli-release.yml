@@ -1,0 +1,63 @@
+name: CLI Release
+
+on:
+  push:
+    tags:
+      - 'cli-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build CLI for all platforms
+        run: bun ops cli build:all
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/cli-v}" >> $GITHUB_OUTPUT
+
+      - name: Extract changelog entry
+        id: changelog
+        run: |
+          # Extract the changelog entry for this version
+          version="${{ steps.version.outputs.version }}"
+          changelog_entry=$(awk -v ver="$version" '
+            /^## \[/ {
+              if (found) exit
+              if ($0 ~ "\\[" ver "\\]") found=1
+            }
+            found { print }
+          ' cli/CHANGELOG.md | tail -n +2)
+
+          # Write to file for multi-line output
+          echo "$changelog_entry" > /tmp/changelog_entry.md
+
+          # Set output
+          echo "entry<<EOF" >> $GITHUB_OUTPUT
+          cat /tmp/changelog_entry.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: CLI v${{ steps.version.outputs.version }}
+          body: ${{ steps.changelog.outputs.entry }}
+          files: |
+            cli/dist/scratch-darwin-arm64
+            cli/dist/scratch-darwin-x64
+            cli/dist/scratch-linux-arm64
+            cli/dist/scratch-linux-x64

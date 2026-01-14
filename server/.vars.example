@@ -1,0 +1,93 @@
+# Server configuration variables
+#
+# Setup: Run `bun ops setup <instance>` to create resources and configure all variables.
+#
+# Resource names are derived from the instance name:
+#   .prod.vars    → prod-scratch-server, prod-scratch-db, prod-scratch-files
+#   .staging.vars → staging-scratch-server, staging-scratch-db, staging-scratch-files
+
+# =============================================================================
+# Cloudflare Account (required if you have multiple accounts)
+# =============================================================================
+
+# Cloudflare account ID to deploy to
+# Find this in the Cloudflare dashboard URL: dash.cloudflare.com/<account_id>
+# Or run: wrangler whoami
+CLOUDFLARE_ACCOUNT_ID=
+
+# =============================================================================
+# Resource IDs (auto-filled by: bun ops setup <instance>)
+# =============================================================================
+
+# D1 database ID
+D1_DATABASE_ID=
+
+# =============================================================================
+# Domain Configuration
+# =============================================================================
+# The app and content servers run on subdomains of the same base domain.
+# This enables cross-subdomain cookie sharing for authentication.
+
+# Base domain (e.g., "example.com")
+# For local dev, set to "localhost"
+BASE_DOMAIN=
+
+# Subdomain for the app server (e.g., "app" → app.example.com)
+APP_SUBDOMAIN=app
+
+# Subdomain for the content/pages server (e.g., "pages" → pages.example.com)
+CONTENT_SUBDOMAIN=pages
+
+# Cloudflare zone for wrangler routes (usually same as BASE_DOMAIN)
+# This is the domain you added to your Cloudflare account
+CLOUDFLARE_ZONE=
+
+# =============================================================================
+# Authentication
+# =============================================================================
+
+# Secret key for signing session tokens (min 32 chars)
+# Generate with: openssl rand -base64 32
+BETTER_AUTH_SECRET=
+
+# Authentication mode: "local" (default) or "cloudflare-access"
+# - local: Uses BetterAuth with Google OAuth (requires GOOGLE_CLIENT_ID/SECRET)
+# - cloudflare-access: Trusts Cloudflare Access for authentication (requires CLOUDFLARE_ACCESS_TEAM)
+AUTH_MODE=
+
+# Google OAuth (required when AUTH_MODE=local)
+# Create at: https://console.cloud.google.com/apis/credentials
+# Set authorized redirect URI to: https://<APP_SUBDOMAIN>.<BASE_DOMAIN>/auth/callback/google
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Cloudflare Access team name (required when AUTH_MODE=cloudflare-access)
+# This is your team name from the Cloudflare Zero Trust dashboard
+# Used to fetch public keys from: https://<team>.cloudflareaccess.com/cdn-cgi/access/certs
+CLOUDFLARE_ACCESS_TEAM=
+
+# =============================================================================
+# Access Control
+# =============================================================================
+
+# Who can log in: "public" | "private" | "@domain.com" | "user@x.com" | "a@x.com,b@y.com,@acme.com"
+# - "public": anyone can log in
+# - "private": no one can log in (useful for maintenance)
+# - "@domain.com": only users with emails ending in @domain.com
+# - "user@x.com": specific email address
+# - Comma-separated: mix of emails and domains
+ALLOWED_USERS=
+
+# Maximum visibility for any project (same format as ALLOWED_USERS)
+MAX_VISIBILITY=
+
+# Share tokens: allow users to create time-limited anonymous share URLs for projects
+# Set to "true" to enable, omit or set to anything else to disable
+ALLOW_SHARE_TOKENS=
+
+# =============================================================================
+# Limits
+# =============================================================================
+
+# Deploy limits (in megabytes)
+MAX_DEPLOY_SIZE=1

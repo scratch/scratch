@@ -1,41 +1,31 @@
-# generated files
-src/template.generated.ts
-
-# dependencies (bun install)
+# Dependencies
 node_modules
 
-# output
-out
+# Build output
 dist
-*.tgz
+out
 
-# code coverage
-coverage
-*.lcov
+# Environment files
+*.env
+*.vars
 
-# logs
-logs
-_.log
-report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+# Wrangler
+.wrangler
+# Generated wrangler configs (template is tracked, all others are generated)
+server/wrangler.*.toml
+!server/wrangler.template.toml
 
-# dotenv environment variable files
-.env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
-
-# caches
-.eslintcache
-.cache
-*.tsbuildinfo
-
-# IntelliJ based IDEs
+# IDE
 .idea
+.vscode
 
-# Finder (MacOS) folder config
+# OS
 .DS_Store
 
-# PR generation temp file
-PULL_REQUEST.md
+# Logs
+logs/
+*.log
 
+# Cache
+.cache
+*.tsbuildinfo

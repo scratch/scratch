@@ -1,0 +1,56 @@
+{
+  "name": "scratch",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "version": "0.4.7",
+  "patchedDependencies": {
+    "estree-util-build-jsx@3.0.1": "cli/patches/estree-util-build-jsx@3.0.1.patch"
+  },
+  "bin": {
+    "scratch": "src/index.ts"
+  },
+  "scripts": {
+    "compile-templates": "bun scripts/compile-templates.ts",
+    "build": "bun run compile-templates && bun build src/index.ts --compile --outfile dist/scratch",
+    "test": "bun test",
+    "test:unit": "bun test test/unit",
+    "test:e2e": "bun test test/e2e",
+    "test:parallel": "bun run build && bun scripts/test-parallel.ts",
+    "pretest": "bun run build",
+    "pretest:unit": "bun run build",
+    "pretest:e2e": "bun run build",
+    "build:all": "bun run compile-templates && bun run build:darwin-arm64 && bun run build:darwin-x64 && bun run build:linux-arm64 && bun run build:linux-x64",
+    "build:darwin-arm64": "bun build src/index.ts --compile --target=bun-darwin-arm64 --outfile dist/scratch-darwin-arm64",
+    "build:darwin-x64": "bun build src/index.ts --compile --target=bun-darwin-x64 --outfile dist/scratch-darwin-x64",
+    "build:linux-arm64": "bun build src/index.ts --compile --target=bun-linux-arm64 --outfile dist/scratch-linux-arm64",
+    "build:linux-x64": "bun build src/index.ts --compile --target=bun-linux-x64 --outfile dist/scratch-linux-x64"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@scratch/shared": "workspace:*",
+    "@inquirer/prompts": "^8.1.0",
+    "better-auth": "^1.2.5",
+    "@mdx-js/esbuild": "^3.1.0",
+    "@shikijs/rehype": "^3.20.0",
+    "@types/mdast": "^4.0.4",
+    "acorn": "^8.14.0",
+    "commander": "^14.0.0",
+    "fast-glob": "^3.3.3",
+    "gray-matter": "^4.0.3",
+    "jszip": "^3.10.1",
+    "rehype-raw": "^7.0.0",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.0",
+    "shiki": "^3.20.0",
+    "smol-toml": "^1.6.0",
+    "unified": "^11.0.4",
+    "unist-util-is": "^6.0.0",
+    "unist-util-visit": "^5.0.0"
+  }
+}
