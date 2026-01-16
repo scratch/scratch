@@ -522,8 +522,6 @@ if ((window as any).__SCRATCH_SSG__) {
 export const MDXComponents = {};
 `, binary: false },
 
-  '.scratch/project.toml': { content: ``, binary: false },
-
   'AGENTS.md': { content: `# AGENTS.md
 
 This is a **scratch** project - a static site built from MDX files using the scratch CLI.
