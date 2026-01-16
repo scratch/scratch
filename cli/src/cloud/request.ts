@@ -64,6 +64,22 @@ export interface RequestOptions {
   token?: string
   serverUrl?: string
   timeout?: number
+  /** Skip CF Access prompt on auth failure - throw CfAccessError instead */
+  skipCfAccessPrompt?: boolean
+}
+
+/**
+ * Error thrown when CF Access authentication is required but skipCfAccessPrompt is true.
+ * This allows callers to handle CF Access failures without automatic prompting.
+ */
+export class CfAccessError extends Error {
+  constructor(
+    message: string,
+    public hadServiceToken: boolean
+  ) {
+    super(message)
+    this.name = 'CfAccessError'
+  }
 }
 
 /**
@@ -165,6 +181,9 @@ export async function request<T>(
   // Handle errors
   if (!response.ok) {
     if (isCfAccessDenied(response)) {
+      if (options.skipCfAccessPrompt) {
+        throw new CfAccessError('Cloudflare Access denied', hasCfAccess)
+      }
       throw new ApiError('Cloudflare Access denied. Run: scratch cloud cf-access', 403)
     }
 
@@ -173,6 +192,9 @@ export async function request<T>(
 
     // Retry on CF Access auth page
     if (!_isRetry && isCfAccessAuthPage(response, text)) {
+      if (options.skipCfAccessPrompt) {
+        throw new CfAccessError('Cloudflare Access authentication required', hasCfAccess)
+      }
       await handleCfAccessAuth(serverUrl, hasCfAccess)
       return request<T>(path, options, true)
     }
@@ -206,6 +228,9 @@ export async function request<T>(
 
     // Retry on CF Access auth page (HTML instead of expected JSON)
     if (!_isRetry && isCfAccessAuthPage(response, text)) {
+      if (options.skipCfAccessPrompt) {
+        throw new CfAccessError('Cloudflare Access authentication required', hasCfAccess)
+      }
       await handleCfAccessAuth(serverUrl, hasCfAccess)
       return request<T>(path, options, true)
     }

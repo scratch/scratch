@@ -3,7 +3,7 @@
  * Each function maps to a specific API endpoint.
  */
 
-import { request, ApiError } from './request'
+import { request, ApiError, CfAccessError } from './request'
 
 import type {
   UserResponse,
@@ -18,15 +18,25 @@ import type {
   ShareTokenResponse,
 } from '@scratch/shared/api'
 
-// Re-export ApiError for consumers
-export { ApiError }
+// Re-export errors for consumers
+export { ApiError, CfAccessError }
 
 // =============================================================================
 // User
 // =============================================================================
 
-export async function getCurrentUser(token: string, serverUrl?: string): Promise<UserResponse> {
-  return request<UserResponse>('/api/me', { token, serverUrl })
+export interface GetCurrentUserOptions {
+  serverUrl?: string
+  /** Skip CF Access prompt on auth failure - throw CfAccessError instead */
+  skipCfAccessPrompt?: boolean
+}
+
+export async function getCurrentUser(token: string, options: GetCurrentUserOptions = {}): Promise<UserResponse> {
+  return request<UserResponse>('/api/me', {
+    token,
+    serverUrl: options.serverUrl,
+    skipCfAccessPrompt: options.skipCfAccessPrompt,
+  })
 }
 
 // =============================================================================

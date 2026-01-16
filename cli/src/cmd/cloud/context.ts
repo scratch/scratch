@@ -89,12 +89,18 @@ export class CloudContext {
     let credentials = await this.getCredentials()
     if (credentials) {
       // Verify token is still valid
-      const { getCurrentUser } = await import('../../cloud/api')
+      const { getCurrentUser, CfAccessError } = await import('../../cloud/api')
       try {
-        await getCurrentUser(credentials.token, serverUrl)
+        await getCurrentUser(credentials.token, {
+          serverUrl,
+          skipCfAccessPrompt: true,
+        })
         return credentials
       } catch (error: any) {
-        if (error.status === 401) {
+        if (error instanceof CfAccessError) {
+          // CF Access blocked - loginCommand will handle this
+          log.debug('CF Access required, deferring to login flow...')
+        } else if (error.status === 401) {
           // Token expired/invalid, clear and re-login
           await clearCredentials(serverUrl)
           this._credentials = undefined
@@ -106,7 +112,7 @@ export class CloudContext {
       }
     }
 
-    // Not logged in or token expired - run login flow
+    // Not logged in or token expired or CF Access required - run login flow
     const { loginCommand } = await import('./auth')
 
     if (!credentials) {

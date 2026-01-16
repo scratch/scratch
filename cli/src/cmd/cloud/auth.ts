@@ -2,7 +2,7 @@ import http from 'http'
 import log from '../../logger'
 import path from 'path'
 import fs from 'fs/promises'
-import { getCurrentUser } from '../../cloud/api'
+import { getCurrentUser, CfAccessError } from '../../cloud/api'
 import {
   saveCredentials,
   loadCredentials,
@@ -139,12 +139,34 @@ export async function loginCommand(ctxOrServerUrl: CloudContext | string, option
   if (existing) {
     log.debug('Found existing credentials, verifying...')
     try {
-      const { user } = await getCurrentUser(existing.token, serverUrl)
+      const { user } = await getCurrentUser(existing.token, {
+        serverUrl,
+        skipCfAccessPrompt: true,
+      })
       log.info(`Already logged in as ${user.email}`)
       log.info('Use "scratch cloud logout" to log out first')
       return
     } catch (error: any) {
-      if (error.status === 401) {
+      if (error instanceof CfAccessError) {
+        // CF Access blocked the request - handle based on whether service tokens exist
+        if (error.hadServiceToken) {
+          // Service tokens exist but are expired/invalid
+          log.info('Cloudflare Access service token expired or invalid.')
+          const choice = await prompt('Update service token or log in with browser? [s/B]')
+          if (choice?.toLowerCase() === 's') {
+            // User wants to update service token
+            const ctx = new CloudContext({ serverUrl })
+            await cfAccessCommand(ctx)
+            // Retry login after updating service token
+            return loginCommand(serverUrl, options)
+          }
+          // Otherwise proceed to browser login (default)
+          log.info('Proceeding to browser login...')
+        } else {
+          // No service tokens - proceed to browser login (browser will handle CF Access)
+          log.debug('Server requires CF Access, proceeding to browser login...')
+        }
+      } else if (error.status === 401) {
         await clearCredentials(serverUrl)
         log.info('Session expired, logging in again...')
       } else {
@@ -194,7 +216,7 @@ export async function loginCommand(ctxOrServerUrl: CloudContext | string, option
   }, serverUrl)
 
   // Fetch actual user info
-  const { user } = await getCurrentUser(result.token, serverUrl)
+  const { user } = await getCurrentUser(result.token, { serverUrl })
 
   // Update credentials with real user info
   await saveCredentials({
@@ -235,7 +257,7 @@ export async function whoamiCommand(ctx: CloudContext): Promise<void> {
   }
 
   try {
-    const { user } = await getCurrentUser(credentials.token, serverUrl)
+    const { user } = await getCurrentUser(credentials.token, { serverUrl })
     log.info(`Email: ${user.email}`)
     if (user.name) {
       log.info(`Name:  ${user.name}`)

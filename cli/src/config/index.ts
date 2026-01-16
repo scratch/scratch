@@ -23,7 +23,7 @@ export { loadUserConfig, saveUserConfig, getServerUrl, getDefaultServerUrl } fro
 export { loadUserSecrets, saveUserSecrets } from './user-secrets'
 
 // Auth credentials
-export { loadCredentials, saveCredentials, clearCredentials, requireAuth, normalizeServerUrl } from './credentials'
+export { loadCredentials, saveCredentials, clearCredentials, normalizeServerUrl } from './credentials'
 
 // Project config
 export { loadProjectConfig, saveProjectConfig } from './project-config'
