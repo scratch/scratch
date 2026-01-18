@@ -42,6 +42,18 @@ export class CloudContext {
   }
 
   /**
+   * Get the server URL only if explicitly set via CLI option.
+   * Returns undefined if no explicit URL was provided.
+   */
+  getServerUrlIfExplicit(): string | undefined {
+    if (this.options.serverUrl) {
+      const { url } = normalizeServerUrl(this.options.serverUrl)
+      return url
+    }
+    return undefined
+  }
+
+  /**
    * Get the effective server URL, using smart resolution:
    * CLI arg → project config → single logged-in server → prompt if multiple → default
    */

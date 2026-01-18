@@ -115,11 +115,11 @@ export async function integrationTestAction(instance: string): Promise<void> {
     const serverUrl = `https://${appDomain}`
 
     // Check if already logged in
-    const whoamiResult = await runCommand([CLI_BIN, 'cloud', 'whoami', '--server-url', serverUrl])
+    const whoamiResult = await runCommand([CLI_BIN, 'whoami', serverUrl])
     if (whoamiResult.stdout.includes('Not logged in')) {
       console.log('Not logged in. Please complete login in browser...')
       // Use 15 second timeout for test - fail fast if login flow is broken
-      exitCode = await runCommandInherit([CLI_BIN, 'cloud', 'login', '--server-url', serverUrl, '--timeout', '0.25'])
+      exitCode = await runCommandInherit([CLI_BIN, 'login', serverUrl, '--timeout', '0.25'])
       if (exitCode !== 0) {
         throw new Error('Login failed (timed out or denied)')
       }
@@ -139,8 +139,8 @@ export async function integrationTestAction(instance: string): Promise<void> {
     // Step 7: Deploy the scratch project
     console.log(`Step 7: Deploying project "${projectName}" to ${instance}...`)
     const deployResult = await runCommand([
-      CLI_BIN, 'cloud', 'deploy', tempDir,
-      '--server-url', serverUrl,
+      CLI_BIN, 'publish', tempDir,
+      '--server', serverUrl,
       '--visibility', 'public',
       '--name', projectName,
     ])
@@ -193,8 +193,7 @@ export async function integrationTestAction(instance: string): Promise<void> {
 
     // Get project ID using CLI
     const projectInfoResult = await runCommand([
-      CLI_BIN, 'cloud', 'projects', 'info', projectName,
-      '--server-url', serverUrl,
+      CLI_BIN, 'projects', 'info', projectName, serverUrl,
     ])
 
     const idMatch = projectInfoResult.stdout.match(/ID:\s+(\S+)/)
@@ -319,8 +318,7 @@ export async function integrationTestAction(instance: string): Promise<void> {
     // Cleanup: Delete the test project
     console.log('Cleanup: Deleting test project...')
     const deleteResult = await runCommand([
-      CLI_BIN, 'cloud', 'projects', 'delete', projectName,
-      '--server-url', serverUrl,
+      CLI_BIN, 'projects', 'delete', projectName, serverUrl,
       '--force',
     ])
     if (deleteResult.exitCode === 0) {

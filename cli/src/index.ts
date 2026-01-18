@@ -37,23 +37,33 @@ type CommandGroup = typeof COMMAND_GROUPS[number];
 const COMMAND_GROUP_MAP: Record<string, CommandGroup> = {
   // Local
   create: 'Local',
-  build: 'Local',
   dev: 'Local',
+  build: 'Local',
   preview: 'Local',
   watch: 'Local',
   clean: 'Local',
   eject: 'Local',
   config: 'Local',
   // Server
+  publish: 'Server',
   login: 'Server',
   logout: 'Server',
   whoami: 'Server',
-  'cf-access': 'Server',
-  publish: 'Server',
   projects: 'Server',
   share: 'Server',
+  'cf-access': 'Server',
   // update and help go to "Other" (ungrouped)
 };
+
+// Command display order within each group (and Other)
+const COMMAND_ORDER: string[] = [
+  // Local
+  'create', 'dev', 'build', 'preview', 'watch', 'clean', 'eject', 'config',
+  // Server
+  'publish', 'login', 'logout', 'whoami', 'projects', 'share', 'cf-access',
+  // Other
+  'update', 'help',
+];
 
 class GroupedHelp extends Help {
   formatHelp(cmd: Command, helper: Help): string {
@@ -127,6 +137,16 @@ class GroupedHelp extends Help {
     // Commands - grouped
     const visibleCommands = helper.visibleCommands(cmd);
     if (visibleCommands.length > 0) {
+      // Sort commands by COMMAND_ORDER
+      const sortByOrder = (a: Command, b: Command) => {
+        const aIdx = COMMAND_ORDER.indexOf(a.name());
+        const bIdx = COMMAND_ORDER.indexOf(b.name());
+        // Commands not in order go to end
+        const aOrder = aIdx === -1 ? 999 : aIdx;
+        const bOrder = bIdx === -1 ? 999 : bIdx;
+        return aOrder - bOrder;
+      };
+
       // Group commands
       const grouped: Record<string, Command[]> = {};
       const ungrouped: Command[] = [];
@@ -141,10 +161,11 @@ class GroupedHelp extends Help {
         }
       }
 
-      // Output each group
+      // Output each group (sorted)
       for (const group of COMMAND_GROUPS) {
         const cmds = grouped[group];
         if (cmds && cmds.length > 0) {
+          cmds.sort(sortByOrder);
           const cmdList = cmds.map((subCmd) => {
             return formatItem(helper.subcommandTerm(subCmd), helper.subcommandDescription(subCmd));
           });
@@ -152,8 +173,9 @@ class GroupedHelp extends Help {
         }
       }
 
-      // Output ungrouped commands (like 'help')
+      // Output ungrouped commands (sorted)
       if (ungrouped.length > 0) {
+        ungrouped.sort(sortByOrder);
         const cmdList = ungrouped.map((subCmd) => {
           return formatItem(helper.subcommandTerm(subCmd), helper.subcommandDescription(subCmd));
         });
@@ -407,13 +429,14 @@ program
   .command('publish')
   .description('Build and publish project to a Scratch server')
   .argument('[path]', 'Path to project directory', '.')
+  .option('--server <url>', 'Server URL (uses project config or prompts if not specified)')
   .option('--name <name>', 'Override project name')
   .option('--visibility <visibility>', 'Override visibility (public, private, @domain, or email list)')
   .option('--no-build', 'Skip build step')
   .option('--dry-run', 'Show what would be deployed without uploading')
   .action(
     withErrorHandling('Publish', async (projectPath, options) => {
-      const ctx = createCloudContext(undefined, projectPath);
+      const ctx = createCloudContext(options.server, projectPath);
       await publishCommand(ctx, projectPath, {
         name: options.name,
         visibility: options.visibility,

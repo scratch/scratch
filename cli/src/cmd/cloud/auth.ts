@@ -244,13 +244,23 @@ export async function whoamiCommand(ctx: CloudContext): Promise<void> {
   }
 
   try {
-    const { user } = await getCurrentUser(credentials.token, { serverUrl })
+    const { user } = await getCurrentUser(credentials.token, {
+      serverUrl,
+      skipCfAccessPrompt: true,
+    })
     log.info(`Email: ${user.email}`)
     if (user.name) {
       log.info(`Name:  ${user.name}`)
     }
     log.info(`Server: ${serverUrl}`)
   } catch (error: any) {
+    if (error instanceof CfAccessError) {
+      // CF Access blocked the request - credentials may be stale or missing CF token
+      log.error('Unable to reach server (Cloudflare Access). Please log in again.')
+      await clearCredentials(serverUrl)
+      ctx.clearCache()
+      process.exit(1)
+    }
     if (error.status === 401) {
       log.error('Session expired. Please log in again.')
       await clearCredentials(serverUrl)

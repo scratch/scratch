@@ -67,9 +67,15 @@ export async function publishCommand(ctx: CloudContext, projectPath: string = '.
   let config = await loadProjectConfig(resolvedPath)
   const configRelPath = '.scratch/project.toml'
 
-  // Determine server URL: project config → smart resolution (single server auto, multiple prompt)
+  // Determine server URL priority: CLI option (via ctx) → project config → smart resolution
   let effectiveServerUrl: string
-  if (config.server_url) {
+  const ctxServerUrl = ctx.getServerUrlIfExplicit()  // Returns URL only if explicitly set via --server
+
+  if (ctxServerUrl) {
+    // CLI option takes highest priority
+    effectiveServerUrl = ctxServerUrl
+  } else if (config.server_url) {
+    // Project config is second priority
     effectiveServerUrl = config.server_url
   } else {
     // If no config exists at all, run the full config flow
