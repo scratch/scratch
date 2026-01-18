@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { Command } from 'commander';
+import { Command, Help } from 'commander';
 import fs from 'fs/promises';
 import { buildCommand } from './cmd/build';
 import { createCommand } from './cmd/create';
@@ -25,7 +25,167 @@ import { shareCreateCommand, shareListCommand, shareRevokeCommand } from './cmd/
 // Context created in preAction hook, used by commands
 let ctx: BuildContext;
 
+// =============================================================================
+// Custom Help with Command Groups
+// =============================================================================
+
+// Command groups in display order
+const COMMAND_GROUPS = ['Local', 'Server'] as const;
+type CommandGroup = typeof COMMAND_GROUPS[number];
+
+// Map command names to groups
+const COMMAND_GROUP_MAP: Record<string, CommandGroup> = {
+  // Local
+  create: 'Local',
+  build: 'Local',
+  dev: 'Local',
+  preview: 'Local',
+  watch: 'Local',
+  clean: 'Local',
+  eject: 'Local',
+  config: 'Local',
+  // Server
+  login: 'Server',
+  logout: 'Server',
+  whoami: 'Server',
+  'cf-access': 'Server',
+  publish: 'Server',
+  projects: 'Server',
+  share: 'Server',
+  // update and help go to "Other" (ungrouped)
+};
+
+class GroupedHelp extends Help {
+  formatHelp(cmd: Command, helper: Help): string {
+    const termWidth = helper.padWidth(cmd, helper);
+    const helpWidth = (helper as any).helpWidth || 80;
+    const itemIndentWidth = 2;
+    const itemSeparatorWidth = 2; // between term and description
+
+    // Simple text wrapping function
+    function wrapText(text: string, width: number, indent: number): string {
+      if (!text) return '';
+      const words = text.split(' ');
+      const lines: string[] = [];
+      let currentLine = '';
+
+      for (const word of words) {
+        if (currentLine.length + word.length + 1 <= width) {
+          currentLine += (currentLine ? ' ' : '') + word;
+        } else {
+          if (currentLine) lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+
+      return lines.map((line, i) => (i === 0 ? line : ' '.repeat(indent) + line)).join('\n');
+    }
+
+    function formatItem(term: string, description: string): string {
+      const paddedTerm = term.padEnd(termWidth + itemSeparatorWidth);
+      if (!description) return paddedTerm;
+      const wrapped = wrapText(description, helpWidth - termWidth - itemSeparatorWidth, termWidth + itemSeparatorWidth);
+      return paddedTerm + wrapped;
+    }
+
+    function formatList(textArray: string[]): string {
+      return textArray.join('\n').replace(/^/gm, ' '.repeat(itemIndentWidth));
+    }
+
+    // Output sections
+    let output: string[] = [];
+
+    // Description
+    const desc = helper.commandDescription(cmd);
+    if (desc) {
+      output.push(desc, '');
+    }
+
+    // Usage
+    const usage = helper.commandUsage(cmd);
+    if (usage) {
+      output.push(`Usage: ${usage}`, '');
+    }
+
+    // Arguments
+    const argList = helper.visibleArguments(cmd).map((arg) => {
+      return formatItem(helper.argumentTerm(arg), helper.argumentDescription(arg));
+    });
+    if (argList.length > 0) {
+      output.push('Arguments:', formatList(argList), '');
+    }
+
+    // Options
+    const optList = helper.visibleOptions(cmd).map((opt) => {
+      return formatItem(helper.optionTerm(opt), helper.optionDescription(opt));
+    });
+    if (optList.length > 0) {
+      output.push('Options:', formatList(optList), '');
+    }
+
+    // Commands - grouped
+    const visibleCommands = helper.visibleCommands(cmd);
+    if (visibleCommands.length > 0) {
+      // Group commands
+      const grouped: Record<string, Command[]> = {};
+      const ungrouped: Command[] = [];
+
+      for (const subCmd of visibleCommands) {
+        const group = COMMAND_GROUP_MAP[subCmd.name()];
+        if (group) {
+          if (!grouped[group]) grouped[group] = [];
+          grouped[group].push(subCmd);
+        } else {
+          ungrouped.push(subCmd);
+        }
+      }
+
+      // Output each group
+      for (const group of COMMAND_GROUPS) {
+        const cmds = grouped[group];
+        if (cmds && cmds.length > 0) {
+          const cmdList = cmds.map((subCmd) => {
+            return formatItem(helper.subcommandTerm(subCmd), helper.subcommandDescription(subCmd));
+          });
+          output.push(`${group} Commands:`, formatList(cmdList), '');
+        }
+      }
+
+      // Output ungrouped commands (like 'help')
+      if (ungrouped.length > 0) {
+        const cmdList = ungrouped.map((subCmd) => {
+          return formatItem(helper.subcommandTerm(subCmd), helper.subcommandDescription(subCmd));
+        });
+        output.push('Other Commands:', formatList(cmdList), '');
+      }
+    }
+
+    return output.join('\n');
+  }
+}
+
+// =============================================================================
+// Program Setup
+// =============================================================================
+
 const program = new Command();
+
+program
+  .name('scratch')
+  .description('Build static websites with Markdown and React')
+  .version(VERSION)
+  .option('-v, --verbose', 'Verbose output')
+  .option('-q, --quiet', 'Quiet mode (errors only)')
+  .option('--show-bun-errors', 'Show full Bun error stack traces');
+
+// Configure custom grouped help
+program.configureHelp({
+  formatHelp: (cmd, helper) => {
+    const groupedHelper = new GroupedHelp();
+    return groupedHelper.formatHelp(cmd, helper);
+  },
+});
 
 export function withErrorHandling(
   name: string,
@@ -57,21 +217,6 @@ function createCloudContext(serverUrl?: string, projectPath?: string): CloudCont
     projectPath,
   });
 }
-
-program
-  .name('scratch')
-  .description('Build static websites with Markdown and React')
-  .version(VERSION)
-  .option('-v, --verbose', 'Verbose output')
-  .option('-q, --quiet', 'Quiet mode (errors only)')
-  .option('--show-bun-errors', 'Show full Bun error stack traces')
-  .addHelpText('after', `
-Command Groups:
-  Local:    create, build, dev, preview, watch, clean, update, eject, config
-  Server:   login, logout, whoami, cf-access
-  Project:  publish, projects
-  Share:    share
-`);
 
 // =============================================================================
 // Local Commands
@@ -186,11 +331,11 @@ program
 program
   .command('eject')
   .description('Eject a file or directory from the built-in templates')
-  .argument('[file]', 'File or directory to clone')
+  .argument('[file]', 'File or directory to eject')
   .option('-l, --list', 'List available template files')
   .option('-f, --force', 'Overwrite existing files without confirmation')
   .action(
-    withErrorHandling('Pull', async (file, options) => {
+    withErrorHandling('Eject', async (file, options) => {
       await checkoutCommand(file, options);
     })
   );

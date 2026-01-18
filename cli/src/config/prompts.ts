@@ -311,14 +311,17 @@ export async function resolveServerUrl(serverUrlArg?: string): Promise<string> {
   }
 
   // Multiple servers - prompt user to choose
+  // Strip https:// for cleaner display
+  const stripProtocol = (url: string) => url.replace(/^https?:\/\//, '')
+
   const choices: SelectChoice<string>[] = loggedInServers.map(url => ({
-    name: url,
+    name: stripProtocol(url),
     value: url,
   }))
 
   // Add option to enter a different URL
   choices.push({
-    name: 'Enter a different server URL...',
+    name: 'other...',
     value: '__other__',
   })
 
