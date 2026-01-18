@@ -90,7 +90,7 @@ export async function listProjectsCommand(ctx: CloudContext): Promise<void> {
 
     if (projects.length === 0) {
       log.info('No projects found.')
-      log.info('Deploy your first project with `scratch cloud deploy`')
+      log.info('Deploy your first project with `scratch publish`')
       return
     }
 

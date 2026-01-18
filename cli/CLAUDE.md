@@ -7,60 +7,55 @@ scratch is a CLI tool for building static MDX-based websites using Bun. Users cr
 ## Architecture
 
 ### CLI Commands (`src/index.ts`)
+
+Commands are organized into four groups:
+
+**Local Commands:**
 - `create [path]` - Create a new Scratch project
   - `--no-src` - Exclude src/ directory
   - `--no-package` - Exclude package.json
-  - `--no-example` - Create empty pages/ and public/ directories
+  - `--minimal` - Minimal mode: skip example content
 - `build [path]` - Build the static site
 - `dev [path]` - Development server with hot reload
 - `preview [path]` - Preview the built site
+- `watch [path]` - Watch markdown file(s) with live reload (alias: `view`)
 - `clean [path]` - Clean build artifacts
 - `update` - Update scratch to the latest version
-- `checkout [file]` - Clone file/directory from built-in templates
-  - Alias: `eject`
+- `pull [file]` - Clone file/directory from built-in templates (aliases: `checkout`, `eject`)
   - `-l, --list` - List available template files
   - `-f, --force` - Overwrite existing files without confirmation
-- `watch <path>` - Watch markdown file(s) with live reload
-  - Alias: `view`
-  - If path is a file: opens that file's route
-  - If path is a directory: opens first markdown file alphabetically
-  - `-p, --port <port>` - Port for dev server
-  - `-n, --no-open` - Don't auto-open browser
-- `cloud` - Cloud deployment commands (see Cloud Commands below)
+- `config [path]` - Configure local project settings (.scratch/project.toml)
 
-### Cloud Commands (`src/cmd/cloud/`)
+**Server Commands:**
+- `login [server-url]` - Log in via OAuth device flow
+- `logout [server-url]` - Log out and clear credentials
+- `whoami [server-url]` - Show current user info
+- `cf-access [server-url]` - Configure Cloudflare Access service token
 
-**Authentication**:
-- `cloud login` - Log in via OAuth device flow (displays code, opens browser)
-- `cloud logout` - Log out and clear credentials
-- `cloud whoami` - Show current user info (email, name, server URL)
-- `cloud config` - Configure cloud settings (e.g., custom server URL)
-
-**Deployment**:
-- `cloud deploy [path]` - Deploy project to Scratch Cloud
+**Project Commands:**
+- `publish [path]` - Build and publish project to server (alias: `deploy`)
   - `--name <name>` - Override project name
   - `--visibility <visibility>` - Override visibility
   - `--no-build` - Skip build step
   - `--dry-run` - Show what would be deployed without uploading
-  - Builds project, creates ZIP of dist/, uploads to cloud
-  - Saves config to `.scratch/project.toml`
-  - Opens deployed URL in browser
-
-**Project Management**:
-- `cloud projects list` - List all user's projects (default subcommand)
-- `cloud projects info [name]` - Show project details
-  - Uses `.scratch/project.toml` if no name specified
-- `cloud projects delete [name]` - Delete project (requires confirmation)
-  - Uses `.scratch/project.toml` if no name specified
+  - If `.scratch/project.toml` doesn't exist, runs config flow first
+- `projects list [server-url]` - List all user's projects
+- `projects info [name] [server-url]` - Show project details
+- `projects delete [name] [server-url]` - Delete project (requires confirmation)
   - `-f, --force` - Skip confirmation prompt
 
-**Share Tokens** (anonymous access):
-- `cloud share [project]` - Create a time-limited share token (default action)
-  - Uses `.scratch/project.toml` if no project specified
+**Share Commands:**
+- `share create [project]` - Create a time-limited share token
   - `--name <name>` - Token name
   - `--duration <duration>` - Token duration (1d, 1w, 1m)
-- `cloud share list [project]` - List share tokens for a project
-- `cloud share revoke <tokenId> [project]` - Revoke a share token
+- `share list [project]` - List share tokens for a project
+- `share revoke <tokenId> [project]` - Revoke a share token
+
+**Server URL Resolution:**
+When `[server-url]` is not provided:
+1. If logged into exactly one server, use it automatically
+2. If logged into multiple servers, prompt user to choose
+3. If not logged in anywhere, use default server
 
 ### Build Pipeline (`src/build/`)
 The build system uses a modular step-based architecture orchestrated by `src/build/orchestrator.ts`:
@@ -91,7 +86,7 @@ Components from both directories are auto-imported into MDX files by basename.
 - `src/markdown/Heading.tsx` - Styled headings with anchor links
 - `src/markdown/Link.tsx` - Styled links
 
-These can be ejected from embedded templates using `scratch checkout`.
+These can be ejected from embedded templates using `scratch pull`.
 
 ### Key Files
 
@@ -109,16 +104,16 @@ These can be ejected from embedded templates using `scratch checkout`.
 - `src/cmd/dev.ts` - Development server with live reload
 - `src/cmd/create.ts` - Create command handler
 - `src/cmd/preview.ts` - Preview server for built sites
-- `src/cmd/checkout.ts` - Checkout/eject command handler
+- `src/cmd/checkout.ts` - Pull/checkout/eject command handler
 - `src/cmd/watch.ts` - Watch single file with live reload
 
-**Cloud commands** (`src/cmd/cloud/`):
-- `src/cmd/cloud/index.ts` - Cloud command registration
-- `src/cmd/cloud/auth.ts` - login, logout, whoami, config commands
-- `src/cmd/cloud/deploy.ts` - Deploy command with build integration
+**Server/Project commands** (`src/cmd/cloud/`):
+- `src/cmd/cloud/context.ts` - CloudContext for server URL resolution and auth
+- `src/cmd/cloud/auth.ts` - login, logout, whoami, cf-access commands
+- `src/cmd/cloud/config.ts` - Local project config command
+- `src/cmd/cloud/publish.ts` - Publish/deploy command with build integration
 - `src/cmd/cloud/projects.ts` - Project list, info, delete commands
 - `src/cmd/cloud/share.ts` - Share token create, list, revoke commands
-- `src/cmd/cloud/namespace.ts` - Namespace display formatting utility
 
 **Templates**:
 - `src/template.ts` - Template runtime API (materialize, getContent, list templates)

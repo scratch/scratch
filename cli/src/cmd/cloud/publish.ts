@@ -10,6 +10,9 @@ import {
   // Prompts
   promptProjectName,
   promptVisibility,
+  promptServerUrl,
+  resolveServerUrl,
+  getLoggedInServers,
   type ProjectConfig,
 } from '../../config'
 import { CloudContext } from './context'
@@ -50,25 +53,44 @@ async function createZip(dirPath: string): Promise<{ data: ArrayBuffer; fileCoun
   return { data, fileCount, totalBytes }
 }
 
-export interface DeployOptions {
+export interface PublishOptions {
   name?: string
   visibility?: string
   noBuild?: boolean
   dryRun?: boolean
 }
 
-export async function deployCommand(ctx: CloudContext, projectPath: string = '.', options: DeployOptions = {}): Promise<void> {
+export async function publishCommand(ctx: CloudContext, projectPath: string = '.', options: PublishOptions = {}): Promise<void> {
   const resolvedPath = path.resolve(projectPath)
 
-  // Get server URL from context (already resolved from CLI flag → project config → global config)
-  const effectiveServerUrl = await ctx.getServerUrl()
-
-  // Check credentials (auto-login if not authenticated)
-  const credentials = await ctx.requireAuth()
-
-  // Load project config
+  // Load project config first to check for server_url override
   let config = await loadProjectConfig(resolvedPath)
   const configRelPath = '.scratch/project.toml'
+
+  // Determine server URL: project config → smart resolution (single server auto, multiple prompt)
+  let effectiveServerUrl: string
+  if (config.server_url) {
+    effectiveServerUrl = config.server_url
+  } else {
+    // If no config exists at all, run the full config flow
+    if (!config.name) {
+      const result = await runConfigFlow(resolvedPath, config)
+      config = result
+      effectiveServerUrl = result.server_url!
+    } else {
+      // Config exists but no server_url - use smart resolution
+      effectiveServerUrl = await resolveServerUrl()
+    }
+  }
+
+  // Now create context with resolved server URL
+  const cloudCtx = new CloudContext({ serverUrl: effectiveServerUrl, projectPath: resolvedPath })
+
+  // Check credentials (auto-login if not authenticated)
+  const credentials = await cloudCtx.requireAuth()
+
+  // Reload config in case it was updated during login/config
+  config = await loadProjectConfig(resolvedPath)
 
   // Determine project name (CLI option > config > directory name)
   let projectName = options.name || config.name
@@ -77,7 +99,7 @@ export async function deployCommand(ctx: CloudContext, projectPath: string = '.'
 
   // If no valid project name from options or config, run interactive setup
   if (!projectName || !validateProjectName(projectName).valid) {
-    const result = await runInteractiveSetup(resolvedPath, credentials, config)
+    const result = await runInteractiveSetup(resolvedPath, credentials, config, effectiveServerUrl)
     projectName = result.name!  // runInteractiveSetup guarantees name is set
     config = result
   } else if (config.name) {
@@ -201,12 +223,65 @@ export async function deployCommand(ctx: CloudContext, projectPath: string = '.'
 }
 
 /**
- * Interactive setup - prompts user for project config, saves to .scratch/project.toml
+ * Run the full config flow - prompts for server URL, project name, and visibility
+ * Called when no .scratch/project.toml exists
+ */
+async function runConfigFlow(
+  resolvedPath: string,
+  existingConfig: ProjectConfig
+): Promise<ProjectConfig> {
+  const dirName = path.basename(resolvedPath)
+
+  log.info('')
+  log.info('Project Setup')
+  log.info('=============')
+  log.info('')
+
+  // 1. Prompt for server URL (from logged-in servers or enter new)
+  const loggedInServers = await getLoggedInServers()
+  let serverUrl: string
+
+  if (loggedInServers.length === 0) {
+    // Not logged in - prompt for server URL
+    serverUrl = await promptServerUrl()
+  } else if (loggedInServers.length === 1) {
+    // Single server - use it
+    serverUrl = loggedInServers[0]!
+    log.info(`Using server: ${serverUrl}`)
+  } else {
+    // Multiple servers - prompt to choose
+    serverUrl = await resolveServerUrl()
+  }
+
+  // 2. Prompt for project name
+  const projectName = await promptProjectName(existingConfig.name, dirName)
+
+  // Create a temporary context to get credentials for visibility prompt
+  const ctx = new CloudContext({ serverUrl })
+  const credentials = await ctx.requireAuth()
+
+  // 3. Prompt for visibility
+  const visibility = await promptVisibility(credentials.user.email, existingConfig.visibility)
+
+  // Save config
+  log.info('')
+  log.info('Saving .scratch/project.toml...')
+  const newConfig: ProjectConfig = { name: projectName, visibility, server_url: serverUrl }
+  await saveProjectConfig(resolvedPath, newConfig)
+  log.info('')
+
+  return newConfig
+}
+
+/**
+ * Interactive setup - prompts user for project name and visibility only
+ * Called when config exists but name is invalid
  */
 async function runInteractiveSetup(
   resolvedPath: string,
   credentials: { user: { email: string } },
-  existingConfig: ProjectConfig
+  existingConfig: ProjectConfig,
+  serverUrl: string
 ): Promise<ProjectConfig> {
   const dirName = path.basename(resolvedPath)
 
@@ -224,7 +299,11 @@ async function runInteractiveSetup(
   // Save config
   log.info('')
   log.info('Saving .scratch/project.toml...')
-  const newConfig: ProjectConfig = { name: projectName, visibility }
+  const newConfig: ProjectConfig = {
+    name: projectName,
+    visibility,
+    server_url: existingConfig.server_url || (serverUrl !== (await resolveServerUrl()) ? serverUrl : undefined),
+  }
   await saveProjectConfig(resolvedPath, newConfig)
   log.info('')
 

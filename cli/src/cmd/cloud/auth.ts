@@ -1,23 +1,10 @@
 import http from 'http'
 import log from '../../logger'
-import path from 'path'
-import fs from 'fs/promises'
 import { getCurrentUser, CfAccessError } from '../../cloud/api'
 import {
   saveCredentials,
   loadCredentials,
   clearCredentials,
-  loadUserConfig,
-  saveUserConfig,
-  loadProjectConfig,
-  saveProjectConfig,
-  PATHS,
-  // Prompts
-  promptServerUrl,
-  promptProjectName,
-  promptVisibility,
-  type UserConfig,
-  type ProjectConfig,
 } from '../../config'
 import { CloudContext } from './context'
 import { prompt, openBrowser } from '../../util'
@@ -144,7 +131,7 @@ export async function loginCommand(ctxOrServerUrl: CloudContext | string, option
         skipCfAccessPrompt: true,
       })
       log.info(`Already logged in as ${user.email}`)
-      log.info('Use "scratch cloud logout" to log out first')
+      log.info('Use "scratch logout" to log out first')
       return
     } catch (error: any) {
       if (error instanceof CfAccessError) {
@@ -272,89 +259,6 @@ export async function whoamiCommand(ctx: CloudContext): Promise<void> {
     }
     throw error
   }
-}
-
-export async function configCommand(projectPath?: string): Promise<void> {
-  const resolvedPath = path.resolve(projectPath || '.')
-
-  // Check if pages/ directory exists
-  const pagesDir = path.join(resolvedPath, 'pages')
-  let hasPages = false
-  try {
-    const stat = await fs.stat(pagesDir)
-    hasPages = stat.isDirectory()
-  } catch {
-    hasPages = false
-  }
-
-  let globalConfig = await loadUserConfig()
-
-  log.info('')
-  if (!hasPages) {
-    log.info(`No pages/ directory found at ${resolvedPath}`)
-    log.info('Configuring global Scratch Cloud settings.')
-  } else {
-    log.info(`Configuring project: ${resolvedPath}`)
-  }
-  log.info('')
-
-  const serverUrl = await promptServerUrl(globalConfig.server_url)
-  globalConfig.server_url = serverUrl
-  await saveUserConfig(globalConfig)
-
-  const ctx = new CloudContext({ serverUrl })
-  const credentials = await ctx.requireAuth()
-  const userEmail = credentials.user.email
-
-  globalConfig = await loadUserConfig()
-
-  if (!hasPages) {
-    log.info('')
-    log.info(`Global configuration saved to ${PATHS.userConfig}`)
-  } else {
-    await runProjectConfigFlow(resolvedPath, globalConfig, serverUrl, userEmail)
-  }
-}
-
-export async function configUserCommand(): Promise<void> {
-  let globalConfig = await loadUserConfig()
-
-  log.info('')
-  log.info('Configuring global Scratch Cloud settings.')
-  log.info('')
-
-  const serverUrl = await promptServerUrl(globalConfig.server_url)
-  globalConfig.server_url = serverUrl
-  await saveUserConfig(globalConfig)
-
-  const ctx = new CloudContext({ serverUrl })
-  await ctx.requireAuth()
-
-  log.info('')
-  log.info(`Global configuration saved to ${PATHS.userConfig}`)
-}
-
-async function runProjectConfigFlow(
-  resolvedPath: string,
-  globalConfig: UserConfig,
-  serverUrl: string,
-  userEmail: string
-): Promise<void> {
-  const projectConfig = await loadProjectConfig(resolvedPath)
-  const dirName = path.basename(resolvedPath)
-
-  const projectName = await promptProjectName(projectConfig.name, dirName)
-  const visibility = await promptVisibility(userEmail, projectConfig.visibility)
-
-  const newProjectConfig: ProjectConfig = {
-    name: projectName,
-    server_url: serverUrl !== globalConfig.server_url ? serverUrl : undefined,
-    visibility: visibility,
-  }
-  await saveProjectConfig(resolvedPath, newProjectConfig)
-
-  log.info('')
-  log.info('Project configuration saved to .scratch/project.toml')
 }
 
 export async function cfAccessCommand(ctx: CloudContext): Promise<void> {

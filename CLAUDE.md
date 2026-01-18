@@ -44,7 +44,9 @@ Key commands:
 - `scratch create` - Create new project
 - `scratch build` - Build static site
 - `scratch dev` - Development server with hot reload
-- `scratch cloud deploy` - Deploy to Scratch Cloud
+- `scratch publish` - Deploy to Scratch server (alias: `deploy`)
+- `scratch login` - Log in to a server
+- `scratch projects` - Manage projects
 
 **For detailed CLI documentation, see `cli/CLAUDE.md`.**
 
@@ -140,10 +142,10 @@ Full automated tests require `TEST_MODE=true` which isn't enabled in production.
 
 ```bash
 # Check CLI auth
-scratch cloud whoami
+scratch whoami
 
 # List projects
-scratch cloud projects
+scratch projects
 
 # Test API directly
 curl -H "Authorization: Bearer <token>" https://<APP_SUBDOMAIN>.<BASE_DOMAIN>/api/me

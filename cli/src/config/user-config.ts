@@ -1,64 +1,41 @@
-import { mkdir, writeFile, readFile } from 'fs/promises'
-import { dirname } from 'path'
-import { PATHS, DEFAULT_SERVER_URL } from './paths'
-import { parseTOML, generateTOML } from './toml'
+/**
+ * User config utilities.
+ *
+ * Note: Global config file (~/.config/scratch/config.toml) has been removed.
+ * Server selection now uses smart resolution:
+ * - Project config (.scratch/project.toml server_url)
+ * - Single logged-in server auto-selected
+ * - Multiple servers prompts user to choose
+ * - Default server URL as fallback
+ */
+
+import { DEFAULT_SERVER_URL } from './paths'
 import type { UserConfig } from './types'
 
-const USER_CONFIG_KEYS: (keyof UserConfig)[] = ['server_url']
-
-const USER_CONFIG_HEADER = [
-  '# Scratch Cloud Global Configuration',
-  '#',
-  '# These are your default settings for all Scratch projects.',
-  '# Run `scratch cloud config` from a non-project directory to update.',
-  '# Project-specific settings in .scratch/project.toml override these.',
-]
-
 /**
- * Load user config from ~/.config/scratch/config.toml
- * Returns empty object if file doesn't exist or is invalid
+ * Load user config.
+ * @deprecated Global config has been removed. Returns empty object.
  */
 export async function loadUserConfig(): Promise<UserConfig> {
-  try {
-    const content = await readFile(PATHS.userConfig, 'utf-8')
-    return parseTOML<UserConfig>(content, USER_CONFIG_KEYS)
-  } catch {
-    return {}
-  }
+  return {}
 }
 
 /**
- * Save user config to ~/.config/scratch/config.toml
- * Permissions: 0o644 (world-readable, as this contains no secrets)
+ * Save user config.
+ * @deprecated Global config has been removed. This is a no-op.
  */
-export async function saveUserConfig(config: UserConfig): Promise<void> {
-  await mkdir(dirname(PATHS.userConfig), { recursive: true })
-
-  const fields = [
-    {
-      key: 'server_url',
-      value: config.server_url || DEFAULT_SERVER_URL,
-      comment: 'Default server URL',
-    },
-  ]
-
-  const content = generateTOML(fields, USER_CONFIG_HEADER)
-  await writeFile(PATHS.userConfig, content, { mode: 0o644 })
+export async function saveUserConfig(_config: UserConfig): Promise<void> {
+  // No-op: global config has been removed
 }
 
 /**
- * Get the server URL, checking environment variable first, then config, then default
+ * Get the server URL from environment variable or return default.
+ * Note: This no longer reads from global config file.
  */
 export async function getServerUrl(): Promise<string> {
   // Environment variable takes precedence
   if (process.env.SCRATCH_SERVER_URL) {
     return process.env.SCRATCH_SERVER_URL
-  }
-
-  // Then check user config
-  const config = await loadUserConfig()
-  if (config.server_url) {
-    return config.server_url
   }
 
   // Fall back to default

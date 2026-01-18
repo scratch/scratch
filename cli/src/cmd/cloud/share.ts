@@ -124,7 +124,7 @@ export async function shareListCommand(
     if (share_tokens.length === 0) {
       log.info('')
       log.info(`No share tokens for ${projectName}`)
-      log.info('Create one with `scratch cloud share <project>`')
+      log.info('Create one with `scratch share`')
       return
     }
 

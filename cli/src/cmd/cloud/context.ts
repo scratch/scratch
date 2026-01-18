@@ -1,10 +1,10 @@
 import {
   loadProjectConfig,
-  getServerUrl,
   loadCredentials,
   clearCredentials,
   getCfAccessHeaders,
   normalizeServerUrlInput,
+  resolveServerUrl,
   type Credentials,
   type CfAccessHeaders,
 } from '../../config'
@@ -25,10 +25,11 @@ export const normalizeServerUrl = normalizeServerUrlInput
  * It handles server URL resolution, credential loading, and CF Access headers.
  *
  * Server URL resolution precedence:
- * 1. CLI flag (--server-url)
+ * 1. CLI argument (server-url positional arg)
  * 2. Project config (.scratch/project.toml server_url)
- * 3. Global config (~/.config/scratch/config.toml server_url)
- * 4. Default (https://app.scratch.dev)
+ * 3. If logged into exactly one server, use it
+ * 4. If logged into multiple servers, prompt user to choose
+ * 5. If not logged in anywhere, use default
  */
 export class CloudContext {
   private options: CloudContextOptions
@@ -41,11 +42,12 @@ export class CloudContext {
   }
 
   /**
-   * Get the effective server URL, resolving from options → project config → global config → default
+   * Get the effective server URL, using smart resolution:
+   * CLI arg → project config → single logged-in server → prompt if multiple → default
    */
   async getServerUrl(): Promise<string> {
     if (!this._serverUrl) {
-      // CLI flag takes precedence
+      // CLI argument takes precedence
       if (this.options.serverUrl) {
         const { url, modified } = normalizeServerUrl(this.options.serverUrl)
         this._serverUrl = url
@@ -58,8 +60,8 @@ export class CloudContext {
         if (projectConfig.server_url) {
           this._serverUrl = projectConfig.server_url
         } else {
-          // Fall back to global config or default
-          this._serverUrl = await getServerUrl()
+          // Use smart server URL resolution
+          this._serverUrl = await resolveServerUrl()
         }
       }
     }

@@ -270,6 +270,68 @@ export async function promptCustomVisibility(currentValue: string): Promise<stri
 }
 
 // ============================================================================
+// Server Selection (for commands that need to choose a server)
+// ============================================================================
+
+import { getLoggedInServers } from './credentials'
+
+/**
+ * Resolve which server to use.
+ *
+ * Priority:
+ * 1. If serverUrlArg is provided (from CLI argument), use it
+ * 2. If logged into exactly one server, use it automatically
+ * 3. If logged into multiple servers, prompt user to choose
+ * 4. If not logged into any server, use default
+ *
+ * @param serverUrlArg - Optional server URL from CLI argument
+ * @returns The resolved server URL
+ */
+export async function resolveServerUrl(serverUrlArg?: string): Promise<string> {
+  // If explicit server URL provided, normalize and return it
+  if (serverUrlArg) {
+    const { url, modified } = normalizeServerUrlInput(serverUrlArg)
+    if (modified) {
+      log.info(`Using ${url}`)
+    }
+    return url
+  }
+
+  // Check how many servers we're logged into
+  const loggedInServers = await getLoggedInServers()
+
+  if (loggedInServers.length === 0) {
+    // Not logged in anywhere - use default
+    return DEFAULT_SERVER_URL
+  }
+
+  if (loggedInServers.length === 1) {
+    // Logged into exactly one server - use it automatically
+    return loggedInServers[0]!
+  }
+
+  // Multiple servers - prompt user to choose
+  const choices: SelectChoice<string>[] = loggedInServers.map(url => ({
+    name: url,
+    value: url,
+  }))
+
+  // Add option to enter a different URL
+  choices.push({
+    name: 'Enter a different server URL...',
+    value: '__other__',
+  })
+
+  const selected = await select('Select server:', choices, loggedInServers[0]!)
+
+  if (selected === '__other__') {
+    return promptServerUrl()
+  }
+
+  return selected
+}
+
+// ============================================================================
 // Re-export constants for convenience
 // ============================================================================
 

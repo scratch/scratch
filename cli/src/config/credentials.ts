@@ -97,3 +97,11 @@ export async function clearCredentials(serverUrl: string): Promise<void> {
   }
 }
 
+/**
+ * Get all server URLs that have valid credentials stored
+ */
+export async function getLoggedInServers(): Promise<string[]> {
+  const allCredentials = await loadCredentialsFile()
+  return Object.keys(allCredentials).filter(url => isValidCredentialEntry(allCredentials[url]))
+}
+
