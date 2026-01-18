@@ -109,3 +109,4 @@ scratch share revoke <tokenId> [project]
 - When logged into exactly one server, all server/cloud commands use that server by default (no prompt)
 - When logged into multiple servers and no `[server-url]` provided, prompt user to choose
 - Remove `config` prefix from `cf-access` → now `scratch cf-access [server-url]`
+- Remove global config (`_config/global.toml`) and all supporting code - only project config (`.scratch/project.toml`) remains
