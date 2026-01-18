@@ -4,7 +4,8 @@ import { authRoutes } from './routes/app/auth'
 import { apiRoutes } from './routes/app/api/index'
 import { uiRoutes } from './routes/app/ui'
 import { pagesRoutes } from './routes/pages'
-import { getContentDomain } from './lib/domains'
+import { wwwRoutes } from './routes/www'
+import { getContentDomain, isWwwOrRootDomain } from './lib/domains'
 
 // App router - handles app subdomain (API, auth, UI)
 const appRouter = new Hono<{ Bindings: Env }>({ strict: false })
@@ -29,6 +30,11 @@ app.all('*', async (c) => {
   const contentDomain = getContentDomain(c.env).toLowerCase()
   if (host === contentDomain) {
     return pagesRoutes.fetch(c.req.raw, c.env, c.executionCtx)
+  }
+
+  // Route to www handler for www subdomain or naked domain
+  if (host && isWwwOrRootDomain(host, c.env)) {
+    return wwwRoutes.fetch(c.req.raw, c.env, c.executionCtx)
   }
 
   // Default to app routes (API, auth, UI) for app subdomain

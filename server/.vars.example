@@ -26,7 +26,6 @@ D1_DATABASE_ID=
 # Domain Configuration
 # =============================================================================
 # The app and content servers run on subdomains of the same base domain.
-# This enables cross-subdomain cookie sharing for authentication.
 
 # Base domain (e.g., "example.com")
 # For local dev, set to "localhost"
@@ -41,6 +40,9 @@ CONTENT_SUBDOMAIN=pages
 # Cloudflare zone for wrangler routes (usually same as BASE_DOMAIN)
 # This is the domain you added to your Cloudflare account
 CLOUDFLARE_ZONE=
+
+# A specific project for the root and root domain. Ignored if set to _
+WWW_PROJECT_ID=_
 
 # =============================================================================
 # Authentication

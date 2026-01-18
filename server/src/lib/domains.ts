@@ -47,3 +47,27 @@ export function getContentBaseUrl(env: Env): string {
 export function useHttps(env: Env): boolean {
   return !isLocalhost(env)
 }
+
+/**
+ * Get the www domain (e.g., "www.example.com")
+ */
+export function getWwwDomain(env: Env): string {
+  return `www.${env.BASE_DOMAIN}`
+}
+
+/**
+ * Get the root/naked domain (e.g., "example.com")
+ */
+export function getRootDomain(env: Env): string {
+  return env.BASE_DOMAIN
+}
+
+/**
+ * Check if host matches the www or root domain (for WWW_PROJECT_ID routing)
+ */
+export function isWwwOrRootDomain(host: string, env: Env): boolean {
+  const wwwDomain = getWwwDomain(env).toLowerCase()
+  const rootDomain = getRootDomain(env).toLowerCase()
+  const normalizedHost = host.toLowerCase()
+  return normalizedHost === wwwDomain || normalizedHost === rootDomain
+}

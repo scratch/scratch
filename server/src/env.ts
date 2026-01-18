@@ -12,6 +12,7 @@ export interface Env {
   APP_SUBDOMAIN: string
   CONTENT_SUBDOMAIN: string
   CLOUDFLARE_ZONE: string
+  WWW_PROJECT_ID: string
   BETTER_AUTH_SECRET: string
   AUTH_MODE: string
   GOOGLE_CLIENT_ID: string

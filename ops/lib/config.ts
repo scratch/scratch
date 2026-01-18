@@ -1,7 +1,7 @@
 // Configuration validation helpers
 // Used by ops commands to validate config before running
 
-import { existsSync, readFileSync } from 'fs'
+import { existsSync, readFileSync, writeFileSync } from 'fs'
 
 // File paths
 export const VARS_EXAMPLE = 'server/.vars.example'
@@ -17,6 +17,15 @@ export function getInstanceVarsPath(instance: string): string {
 // Get the wrangler config path for an instance
 export function getInstanceWranglerPath(instance: string): string {
   return `server/wrangler.${instance}.toml`
+}
+
+// Write a vars file from key-value pairs
+export function writeVarsFile(path: string, vars: Map<string, string>): void {
+  const lines: string[] = []
+  for (const [name, value] of vars) {
+    lines.push(`${name}=${value}`)
+  }
+  writeFileSync(path, lines.join('\n') + '\n')
 }
 
 // Parse a .vars file and return key-value pairs

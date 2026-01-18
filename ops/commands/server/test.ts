@@ -1,12 +1,13 @@
 // Integration test command
 
-import { existsSync } from 'fs'
+import { existsSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { rm, readFile } from 'fs/promises'
 import { green, yellow, red, reset } from '../../lib/colors'
-import { parseVarsFile, getInstanceVarsPath } from '../../lib/config'
+import { parseVarsFile, writeVarsFile, getInstanceVarsPath, getInstanceWranglerPath } from '../../lib/config'
 import { runCommand, runCommandInherit, getWranglerConfig } from '../../lib/process'
+import { generateWranglerConfig } from './setup'
 
 const CLI_BIN = './cli/dist/scratch'
 
@@ -184,6 +185,129 @@ export async function integrationTestAction(instance: string): Promise<void> {
         console.log('\nDeployed content (first 500 chars):')
         console.log(deployedContent.slice(0, 500))
         testPassed = false
+      }
+    }
+
+    // Step 9: Test WWW domain serving
+    console.log('Step 9: Testing WWW domain serving...')
+
+    // Get project ID using CLI
+    const projectInfoResult = await runCommand([
+      CLI_BIN, 'cloud', 'projects', 'info', projectName,
+      '--server-url', serverUrl,
+    ])
+
+    const idMatch = projectInfoResult.stdout.match(/ID:\s+(\S+)/)
+    if (!idMatch) {
+      console.error(`${red}✗${reset} Could not get project ID from CLI output`)
+      testPassed = false
+    } else {
+      const projectId = idMatch[1]
+      console.log(`Project ID: ${projectId}`)
+
+      // Save original WWW_PROJECT_ID
+      const originalWwwProjectId = vars.get('WWW_PROJECT_ID') || '_'
+
+      // Update vars with WWW_PROJECT_ID
+      vars.set('WWW_PROJECT_ID', projectId)
+      writeVarsFile(varsPath, vars)
+      console.log(`Updated WWW_PROJECT_ID to ${projectId}`)
+
+      // Regenerate wrangler config
+      const d1DatabaseId = vars.get('D1_DATABASE_ID')
+      if (!d1DatabaseId) {
+        console.error(`${red}✗${reset} Missing D1_DATABASE_ID in vars`)
+        testPassed = false
+      } else {
+        try {
+          const wranglerConfig = generateWranglerConfig(instance, d1DatabaseId)
+          const wranglerPath = getInstanceWranglerPath(instance)
+          writeFileSync(wranglerPath, wranglerConfig)
+          console.log(`Regenerated ${wranglerPath}`)
+
+          // Push secrets
+          console.log('Pushing secrets...')
+          exitCode = await runCommandInherit(['bun', 'ops', 'server', '-i', instance, 'config', 'push'])
+          if (exitCode !== 0) {
+            console.log(`${yellow}!${reset} Secret push had issues (may be ok)`)
+          }
+
+          // Redeploy server with WWW_PROJECT_ID passed directly via --var
+          console.log('Redeploying server with WWW_PROJECT_ID...')
+          const wwwWranglerPath = getInstanceWranglerPath(instance).replace('server/', '')
+          exitCode = await runCommandInherit([
+            'bun', 'run', 'wrangler', 'deploy',
+            '-c', wwwWranglerPath,
+            '--var', `WWW_PROJECT_ID:${projectId}`,
+          ], { cwd: 'server' })
+          if (exitCode !== 0) {
+            throw new Error('WWW deploy failed')
+          }
+
+          // Give it a moment for deployment to propagate
+          await new Promise(resolve => setTimeout(resolve, 5000))
+
+          // Test www domain
+          const wwwUrl = `https://www.${baseDomain}/`
+          console.log(`Fetching WWW domain: ${wwwUrl}`)
+
+          const wwwResponse = await fetch(wwwUrl)
+          if (!wwwResponse.ok) {
+            console.error(`${red}✗${reset} Failed to fetch WWW domain content: ${wwwResponse.status}`)
+            testPassed = false
+          } else {
+            const wwwContent = await wwwResponse.text()
+            const normalizeHtml = (html: string) => html.replace(/\s+/g, ' ').trim()
+
+            if (normalizeHtml(localContent) === normalizeHtml(wwwContent)) {
+              console.log(`${green}✓${reset} WWW domain content matches!\n`)
+            } else {
+              console.error(`${red}✗${reset} WWW domain content mismatch!`)
+              console.log('\nExpected content (first 500 chars):')
+              console.log(localContent.slice(0, 500))
+              console.log('\nWWW content (first 500 chars):')
+              console.log(wwwContent.slice(0, 500))
+              testPassed = false
+            }
+          }
+
+          // Test naked domain
+          const nakedUrl = `https://${baseDomain}/`
+          console.log(`Fetching naked domain: ${nakedUrl}`)
+
+          const nakedResponse = await fetch(nakedUrl)
+          if (!nakedResponse.ok) {
+            console.error(`${red}✗${reset} Failed to fetch naked domain content: ${nakedResponse.status}`)
+            testPassed = false
+          } else {
+            const nakedContent = await nakedResponse.text()
+            const normalizeHtml = (html: string) => html.replace(/\s+/g, ' ').trim()
+
+            if (normalizeHtml(localContent) === normalizeHtml(nakedContent)) {
+              console.log(`${green}✓${reset} Naked domain content matches!\n`)
+            } else {
+              console.error(`${red}✗${reset} Naked domain content mismatch!`)
+              testPassed = false
+            }
+          }
+
+        } catch (error) {
+          console.error(`${red}✗${reset} WWW test error: ${error instanceof Error ? error.message : error}`)
+          testPassed = false
+        }
+
+        // Restore original WWW_PROJECT_ID and redeploy
+        console.log('Restoring original WWW_PROJECT_ID...')
+        vars.set('WWW_PROJECT_ID', originalWwwProjectId)
+        writeVarsFile(varsPath, vars)
+
+        const restoredWranglerConfig = generateWranglerConfig(instance, d1DatabaseId)
+        const restoredWranglerPath = getInstanceWranglerPath(instance)
+        writeFileSync(restoredWranglerPath, restoredWranglerConfig)
+
+        exitCode = await runCommandInherit(['bun', 'ops', 'server', '-i', instance, 'config', 'push'])
+        exitCode = await runCommandInherit(['bun', 'ops', 'server', '-i', instance, 'deploy'])
+        console.log(`${green}✓${reset} Restored original config\n`)
       }
     }
 

@@ -123,7 +123,7 @@ program
   .command('watch')
   .aliases(['view'])
   .description('Serve target file/directory on development server')
-  .argument('<path>', 'Markdown file or directory to watch')
+  .argument('[path]', 'Markdown file or directory to watch', '.')
   .option('-p, --port <port>', 'Port for dev server', '5173')
   .option('-n, --no-open', "Don't open browser automatically")
   .action(

@@ -34,7 +34,7 @@ async function getD1DatabaseId(dbName: string, accountId?: string): Promise<stri
   }
 }
 
-function generateWranglerConfig(instance: string, d1DatabaseId: string): string {
+export function generateWranglerConfig(instance: string, d1DatabaseId: string): string {
   if (!existsSync(WRANGLER_TEMPLATE)) {
     throw new Error(`Wrangler template not found: ${WRANGLER_TEMPLATE}`)
   }
@@ -91,6 +91,20 @@ zone_name = "${zone}"
 pattern = "${contentDomain}/*"
 zone_name = "${zone}"
 `
+
+    // Add www and naked domain routes if WWW_PROJECT_ID is configured
+    const wwwProjectId = vars.get('WWW_PROJECT_ID')
+    if (wwwProjectId && wwwProjectId !== '_') {
+      config += `
+[[routes]]
+pattern = "www.${baseDomain}/*"
+zone_name = "${zone}"
+
+[[routes]]
+pattern = "${baseDomain}/*"
+zone_name = "${zone}"
+`
+    }
   }
 
   return config

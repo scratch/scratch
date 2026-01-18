@@ -126,6 +126,7 @@ export async function projectInfoCommand(ctx: CloudContext, identifier?: string)
 
     log.info('')
     log.info(`Project: ${project.name}`)
+    log.info(`ID: ${project.id}`)
     log.info(`URLs:`)
     log.info(`  ${stripTrailingSlash(project.urls.primary)}`)
     log.info(`  ${stripTrailingSlash(project.urls.byId)}`)
