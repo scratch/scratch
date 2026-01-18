@@ -44,7 +44,7 @@ Key commands:
 - `scratch create` - Create new project
 - `scratch build` - Build static site
 - `scratch dev` - Development server with hot reload
-- `scratch publish` - Deploy to Scratch server (alias: `deploy`)
+- `scratch publish` - Deploy to Scratch server
 - `scratch login` - Log in to a server
 - `scratch projects` - Manage projects
 

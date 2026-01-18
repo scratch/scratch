@@ -18,10 +18,10 @@ Commands are organized into four groups:
 - `build [path]` - Build the static site
 - `dev [path]` - Development server with hot reload
 - `preview [path]` - Preview the built site
-- `watch [path]` - Watch markdown file(s) with live reload (alias: `view`)
+- `watch [path]` - Watch markdown file(s) with live reload
 - `clean [path]` - Clean build artifacts
 - `update` - Update scratch to the latest version
-- `pull [file]` - Clone file/directory from built-in templates (aliases: `checkout`, `eject`)
+- `eject [file]` - Eject file/directory from built-in templates for customization
   - `-l, --list` - List available template files
   - `-f, --force` - Overwrite existing files without confirmation
 - `config [path]` - Configure local project settings (.scratch/project.toml)
@@ -33,7 +33,7 @@ Commands are organized into four groups:
 - `cf-access [server-url]` - Configure Cloudflare Access service token
 
 **Project Commands:**
-- `publish [path]` - Build and publish project to server (alias: `deploy`)
+- `publish [path]` - Build and publish project to server
   - `--name <name>` - Override project name
   - `--visibility <visibility>` - Override visibility
   - `--no-build` - Skip build step
@@ -86,7 +86,7 @@ Components from both directories are auto-imported into MDX files by basename.
 - `src/markdown/Heading.tsx` - Styled headings with anchor links
 - `src/markdown/Link.tsx` - Styled links
 
-These can be ejected from embedded templates using `scratch pull`.
+These can be ejected from embedded templates using `scratch eject`.
 
 ### Key Files
 
@@ -104,7 +104,7 @@ These can be ejected from embedded templates using `scratch pull`.
 - `src/cmd/dev.ts` - Development server with live reload
 - `src/cmd/create.ts` - Create command handler
 - `src/cmd/preview.ts` - Preview server for built sites
-- `src/cmd/checkout.ts` - Pull/checkout/eject command handler
+- `src/cmd/checkout.ts` - Eject command handler
 - `src/cmd/watch.ts` - Watch single file with live reload
 
 **Server/Project commands** (`src/cmd/cloud/`):

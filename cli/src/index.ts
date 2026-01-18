@@ -67,7 +67,7 @@ program
   .option('--show-bun-errors', 'Show full Bun error stack traces')
   .addHelpText('after', `
 Command Groups:
-  Local:    create, build, dev, preview, watch, clean, update, pull, config
+  Local:    create, build, dev, preview, watch, clean, update, eject, config
   Server:   login, logout, whoami, cf-access
   Project:  publish, projects
   Share:    share
@@ -149,7 +149,6 @@ program
 
 program
   .command('watch')
-  .aliases(['view'])
   .description('Serve target file/directory on development server')
   .argument('[path]', 'Markdown file or directory to watch', '.')
   .option('-p, --port <port>', 'Port for dev server', '5173')
@@ -185,9 +184,8 @@ program
   );
 
 program
-  .command('pull')
-  .aliases(['checkout', 'eject'])
-  .description('Clone a file or directory from the built-in templates')
+  .command('eject')
+  .description('Eject a file or directory from the built-in templates')
   .argument('[file]', 'File or directory to clone')
   .option('-l, --list', 'List available template files')
   .option('-f, --force', 'Overwrite existing files without confirmation')
@@ -262,7 +260,6 @@ program
 
 program
   .command('publish')
-  .aliases(['deploy'])
   .description('Build and publish project to a Scratch server')
   .argument('[path]', 'Path to project directory', '.')
   .option('--name <name>', 'Override project name')
