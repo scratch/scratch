@@ -26,168 +26,6 @@ import { shareCreateCommand, shareListCommand, shareRevokeCommand } from './cmd/
 let ctx: BuildContext;
 
 // =============================================================================
-// Custom Help with Command Groups
-// =============================================================================
-
-// Command groups in display order
-const COMMAND_GROUPS = ['Local', 'Server'] as const;
-type CommandGroup = typeof COMMAND_GROUPS[number];
-
-// Map command names to groups
-const COMMAND_GROUP_MAP: Record<string, CommandGroup> = {
-  // Local
-  create: 'Local',
-  dev: 'Local',
-  build: 'Local',
-  preview: 'Local',
-  watch: 'Local',
-  clean: 'Local',
-  eject: 'Local',
-  config: 'Local',
-  // Server
-  publish: 'Server',
-  login: 'Server',
-  logout: 'Server',
-  whoami: 'Server',
-  projects: 'Server',
-  share: 'Server',
-  'cf-access': 'Server',
-  // update and help go to "Other" (ungrouped)
-};
-
-// Command display order within each group (and Other)
-const COMMAND_ORDER: string[] = [
-  // Local
-  'create', 'dev', 'build', 'preview', 'watch', 'clean', 'eject', 'config',
-  // Server
-  'publish', 'login', 'logout', 'whoami', 'projects', 'share', 'cf-access',
-  // Other
-  'update', 'help',
-];
-
-class GroupedHelp extends Help {
-  formatHelp(cmd: Command, helper: Help): string {
-    const termWidth = helper.padWidth(cmd, helper);
-    const helpWidth = (helper as any).helpWidth || 80;
-    const itemIndentWidth = 2;
-    const itemSeparatorWidth = 2; // between term and description
-
-    // Simple text wrapping function
-    function wrapText(text: string, width: number, indent: number): string {
-      if (!text) return '';
-      const words = text.split(' ');
-      const lines: string[] = [];
-      let currentLine = '';
-
-      for (const word of words) {
-        if (currentLine.length + word.length + 1 <= width) {
-          currentLine += (currentLine ? ' ' : '') + word;
-        } else {
-          if (currentLine) lines.push(currentLine);
-          currentLine = word;
-        }
-      }
-      if (currentLine) lines.push(currentLine);
-
-      return lines.map((line, i) => (i === 0 ? line : ' '.repeat(indent) + line)).join('\n');
-    }
-
-    function formatItem(term: string, description: string): string {
-      const paddedTerm = term.padEnd(termWidth + itemSeparatorWidth);
-      if (!description) return paddedTerm;
-      const wrapped = wrapText(description, helpWidth - termWidth - itemSeparatorWidth, termWidth + itemSeparatorWidth);
-      return paddedTerm + wrapped;
-    }
-
-    function formatList(textArray: string[]): string {
-      return textArray.join('\n').replace(/^/gm, ' '.repeat(itemIndentWidth));
-    }
-
-    // Output sections
-    let output: string[] = [];
-
-    // Description
-    const desc = helper.commandDescription(cmd);
-    if (desc) {
-      output.push(desc, '');
-    }
-
-    // Usage
-    const usage = helper.commandUsage(cmd);
-    if (usage) {
-      output.push(`Usage: ${usage}`, '');
-    }
-
-    // Arguments
-    const argList = helper.visibleArguments(cmd).map((arg) => {
-      return formatItem(helper.argumentTerm(arg), helper.argumentDescription(arg));
-    });
-    if (argList.length > 0) {
-      output.push('Arguments:', formatList(argList), '');
-    }
-
-    // Options
-    const optList = helper.visibleOptions(cmd).map((opt) => {
-      return formatItem(helper.optionTerm(opt), helper.optionDescription(opt));
-    });
-    if (optList.length > 0) {
-      output.push('Options:', formatList(optList), '');
-    }
-
-    // Commands - grouped
-    const visibleCommands = helper.visibleCommands(cmd);
-    if (visibleCommands.length > 0) {
-      // Sort commands by COMMAND_ORDER
-      const sortByOrder = (a: Command, b: Command) => {
-        const aIdx = COMMAND_ORDER.indexOf(a.name());
-        const bIdx = COMMAND_ORDER.indexOf(b.name());
-        // Commands not in order go to end
-        const aOrder = aIdx === -1 ? 999 : aIdx;
-        const bOrder = bIdx === -1 ? 999 : bIdx;
-        return aOrder - bOrder;
-      };
-
-      // Group commands
-      const grouped: Record<string, Command[]> = {};
-      const ungrouped: Command[] = [];
-
-      for (const subCmd of visibleCommands) {
-        const group = COMMAND_GROUP_MAP[subCmd.name()];
-        if (group) {
-          if (!grouped[group]) grouped[group] = [];
-          grouped[group].push(subCmd);
-        } else {
-          ungrouped.push(subCmd);
-        }
-      }
-
-      // Output each group (sorted)
-      for (const group of COMMAND_GROUPS) {
-        const cmds = grouped[group];
-        if (cmds && cmds.length > 0) {
-          cmds.sort(sortByOrder);
-          const cmdList = cmds.map((subCmd) => {
-            return formatItem(helper.subcommandTerm(subCmd), helper.subcommandDescription(subCmd));
-          });
-          output.push(`${group} Commands:`, formatList(cmdList), '');
-        }
-      }
-
-      // Output ungrouped commands (sorted)
-      if (ungrouped.length > 0) {
-        ungrouped.sort(sortByOrder);
-        const cmdList = ungrouped.map((subCmd) => {
-          return formatItem(helper.subcommandTerm(subCmd), helper.subcommandDescription(subCmd));
-        });
-        output.push('Other Commands:', formatList(cmdList), '');
-      }
-    }
-
-    return output.join('\n');
-  }
-}
-
-// =============================================================================
 // Program Setup
 // =============================================================================
 
@@ -201,13 +39,9 @@ program
   .option('-q, --quiet', 'Quiet mode (errors only)')
   .option('--show-bun-errors', 'Show full Bun error stack traces');
 
-// Configure custom grouped help
-program.configureHelp({
-  formatHelp: (cmd, helper) => {
-    const groupedHelper = new GroupedHelp();
-    return groupedHelper.formatHelp(cmd, helper);
-  },
-});
+// =============================================================================
+// Helper Functions
+// =============================================================================
 
 export function withErrorHandling(
   name: string,
@@ -342,15 +176,6 @@ program
   );
 
 program
-  .command('update')
-  .description('Update scratch to the latest version')
-  .action(
-    withErrorHandling('Update', async () => {
-      await updateCommand();
-    })
-  );
-
-program
   .command('eject')
   .description('Eject a file or directory from the built-in templates')
   .argument('[file]', 'File or directory to eject')
@@ -375,6 +200,27 @@ program
 // =============================================================================
 // Server Commands
 // =============================================================================
+
+program
+  .command('publish')
+  .description('Build and publish project to a Scratch server')
+  .argument('[path]', 'Path to project directory', '.')
+  .option('--server <url>', 'Server URL (uses project config or prompts if not specified)')
+  .option('--name <name>', 'Override project name')
+  .option('--visibility <visibility>', 'Override visibility (public, private, @domain, or email list)')
+  .option('--no-build', 'Skip build step')
+  .option('--dry-run', 'Show what would be deployed without uploading')
+  .action(
+    withErrorHandling('Publish', async (projectPath, options) => {
+      const ctx = createCloudContext(options.server, projectPath);
+      await publishCommand(ctx, projectPath, {
+        name: options.name,
+        visibility: options.visibility,
+        noBuild: options.build === false,
+        dryRun: options.dryRun === true,
+      });
+    })
+  );
 
 program
   .command('login')
@@ -407,42 +253,6 @@ program
     withErrorHandling('Whoami', async (serverUrl) => {
       const ctx = createCloudContext(serverUrl);
       await whoamiCommand(ctx);
-    })
-  );
-
-program
-  .command('cf-access')
-  .description('Configure Cloudflare Access service token')
-  .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
-  .action(
-    withErrorHandling('CF Access', async (serverUrl) => {
-      const ctx = createCloudContext(serverUrl);
-      await cfAccessCommand(ctx);
-    })
-  );
-
-// =============================================================================
-// Project Commands
-// =============================================================================
-
-program
-  .command('publish')
-  .description('Build and publish project to a Scratch server')
-  .argument('[path]', 'Path to project directory', '.')
-  .option('--server <url>', 'Server URL (uses project config or prompts if not specified)')
-  .option('--name <name>', 'Override project name')
-  .option('--visibility <visibility>', 'Override visibility (public, private, @domain, or email list)')
-  .option('--no-build', 'Skip build step')
-  .option('--dry-run', 'Show what would be deployed without uploading')
-  .action(
-    withErrorHandling('Publish', async (projectPath, options) => {
-      const ctx = createCloudContext(options.server, projectPath);
-      await publishCommand(ctx, projectPath, {
-        name: options.name,
-        visibility: options.visibility,
-        noBuild: options.build === false,
-        dryRun: options.dryRun === true,
-      });
     })
   );
 
@@ -487,10 +297,7 @@ projects
     })
   );
 
-// =============================================================================
-// Share Commands
-// =============================================================================
-
+// Share subcommand group
 const share = program
   .command('share')
   .description('Create and manage share tokens for anonymous access');
@@ -530,6 +337,172 @@ share
       await shareRevokeCommand(ctx, tokenId, project);
     })
   );
+
+program
+  .command('cf-access')
+  .description('Configure Cloudflare Access service token')
+  .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
+  .action(
+    withErrorHandling('CF Access', async (serverUrl) => {
+      const ctx = createCloudContext(serverUrl);
+      await cfAccessCommand(ctx);
+    })
+  );
+
+// =============================================================================
+// Other Commands
+// =============================================================================
+
+program
+  .command('update')
+  .description('Update scratch to the latest version')
+  .action(
+    withErrorHandling('Update', async () => {
+      await updateCommand();
+    })
+  );
+
+// =============================================================================
+// Grouped Help Output
+// =============================================================================
+
+// Command groups with ordering - single source of truth
+// Commands appear in help in the order listed here
+const COMMAND_GROUPS_CONFIG = [
+  { name: 'Local', commands: ['create', 'dev', 'build', 'preview', 'watch', 'clean', 'eject', 'config'] },
+  { name: 'Server', commands: ['publish', 'login', 'logout', 'whoami', 'projects', 'share', 'cf-access'] },
+  { name: 'Other', commands: ['update', 'help'] },
+] as const;
+
+// Derived lookup maps
+const COMMAND_GROUP_MAP: Record<string, string> = {};
+const COMMAND_ORDER: string[] = [];
+for (const group of COMMAND_GROUPS_CONFIG) {
+  for (const cmd of group.commands) {
+    COMMAND_GROUP_MAP[cmd] = group.name;
+    COMMAND_ORDER.push(cmd);
+  }
+}
+
+class GroupedHelp extends Help {
+  formatHelp(cmd: Command, helper: Help): string {
+    const termWidth = helper.padWidth(cmd, helper);
+    const helpWidth = (helper as any).helpWidth || 80;
+    const itemIndentWidth = 2;
+    const itemSeparatorWidth = 2; // between term and description
+
+    // Simple text wrapping function
+    function wrapText(text: string, width: number, indent: number): string {
+      if (!text) return '';
+      const words = text.split(' ');
+      const lines: string[] = [];
+      let currentLine = '';
+
+      for (const word of words) {
+        if (currentLine.length + word.length + 1 <= width) {
+          currentLine += (currentLine ? ' ' : '') + word;
+        } else {
+          if (currentLine) lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+
+      return lines.map((line, i) => (i === 0 ? line : ' '.repeat(indent) + line)).join('\n');
+    }
+
+    function formatItem(term: string, description: string): string {
+      const paddedTerm = term.padEnd(termWidth + itemSeparatorWidth);
+      if (!description) return paddedTerm;
+      const wrapped = wrapText(description, helpWidth - termWidth - itemSeparatorWidth, termWidth + itemSeparatorWidth);
+      return paddedTerm + wrapped;
+    }
+
+    function formatList(textArray: string[]): string {
+      return textArray.join('\n').replace(/^/gm, ' '.repeat(itemIndentWidth));
+    }
+
+    // Output sections
+    let output: string[] = [];
+
+    // Description
+    const desc = helper.commandDescription(cmd);
+    if (desc) {
+      output.push(desc, '');
+    }
+
+    // Usage
+    const usage = helper.commandUsage(cmd);
+    if (usage) {
+      output.push(`Usage: ${usage}`, '');
+    }
+
+    // Arguments
+    const argList = helper.visibleArguments(cmd).map((arg) => {
+      return formatItem(helper.argumentTerm(arg), helper.argumentDescription(arg));
+    });
+    if (argList.length > 0) {
+      output.push('Arguments:', formatList(argList), '');
+    }
+
+    // Options
+    const optList = helper.visibleOptions(cmd).map((opt) => {
+      return formatItem(helper.optionTerm(opt), helper.optionDescription(opt));
+    });
+    if (optList.length > 0) {
+      output.push('Options:', formatList(optList), '');
+    }
+
+    // Commands - grouped
+    const visibleCommands = helper.visibleCommands(cmd);
+    if (visibleCommands.length > 0) {
+      // Sort commands by COMMAND_ORDER
+      const sortByOrder = (a: Command, b: Command) => {
+        const aIdx = COMMAND_ORDER.indexOf(a.name());
+        const bIdx = COMMAND_ORDER.indexOf(b.name());
+        // Commands not in order go to end
+        const aOrder = aIdx === -1 ? 999 : aIdx;
+        const bOrder = bIdx === -1 ? 999 : bIdx;
+        return aOrder - bOrder;
+      };
+
+      // Group commands
+      const grouped: Record<string, Command[]> = {};
+      const ungrouped: Command[] = [];
+
+      for (const subCmd of visibleCommands) {
+        const group = COMMAND_GROUP_MAP[subCmd.name()];
+        if (group) {
+          if (!grouped[group]) grouped[group] = [];
+          grouped[group].push(subCmd);
+        } else {
+          ungrouped.push(subCmd);
+        }
+      }
+
+      // Output each group (sorted)
+      for (const groupConfig of COMMAND_GROUPS_CONFIG) {
+        const cmds = grouped[groupConfig.name];
+        if (cmds && cmds.length > 0) {
+          cmds.sort(sortByOrder);
+          const cmdList = cmds.map((subCmd) => {
+            return formatItem(helper.subcommandTerm(subCmd), helper.subcommandDescription(subCmd));
+          });
+          output.push(`${groupConfig.name} Commands:`, formatList(cmdList), '');
+        }
+      }
+    }
+
+    return output.join('\n');
+  }
+}
+
+program.configureHelp({
+  formatHelp: (cmd, helper) => {
+    const groupedHelper = new GroupedHelp();
+    return groupedHelper.formatHelp(cmd, helper);
+  },
+});
 
 // =============================================================================
 // Hooks and Entry
