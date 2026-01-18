@@ -294,20 +294,25 @@ export async function integrationTestAction(instance: string): Promise<void> {
         } catch (error) {
           console.error(`${red}✗${reset} WWW test error: ${error instanceof Error ? error.message : error}`)
           testPassed = false
+        } finally {
+          // Always restore original WWW_PROJECT_ID and redeploy, even if test failed or was interrupted
+          console.log('Restoring original WWW_PROJECT_ID...')
+          try {
+            vars.set('WWW_PROJECT_ID', originalWwwProjectId)
+            writeVarsFile(varsPath, vars)
+
+            const restoredWranglerConfig = generateWranglerConfig(instance, d1DatabaseId)
+            const restoredWranglerPath = getInstanceWranglerPath(instance)
+            writeFileSync(restoredWranglerPath, restoredWranglerConfig)
+
+            exitCode = await runCommandInherit(['bun', 'ops', 'server', '-i', instance, 'config', 'push'])
+            exitCode = await runCommandInherit(['bun', 'ops', 'server', '-i', instance, 'deploy'])
+            console.log(`${green}✓${reset} Restored original config\n`)
+          } catch (restoreError) {
+            console.error(`${red}✗${reset} Failed to restore config: ${restoreError instanceof Error ? restoreError.message : restoreError}`)
+            console.error('Manual restoration may be needed!')
+          }
         }
-
-        // Restore original WWW_PROJECT_ID and redeploy
-        console.log('Restoring original WWW_PROJECT_ID...')
-        vars.set('WWW_PROJECT_ID', originalWwwProjectId)
-        writeVarsFile(varsPath, vars)
-
-        const restoredWranglerConfig = generateWranglerConfig(instance, d1DatabaseId)
-        const restoredWranglerPath = getInstanceWranglerPath(instance)
-        writeFileSync(restoredWranglerPath, restoredWranglerConfig)
-
-        exitCode = await runCommandInherit(['bun', 'ops', 'server', '-i', instance, 'config', 'push'])
-        exitCode = await runCommandInherit(['bun', 'ops', 'server', '-i', instance, 'deploy'])
-        console.log(`${green}✓${reset} Restored original config\n`)
       }
     }
 
