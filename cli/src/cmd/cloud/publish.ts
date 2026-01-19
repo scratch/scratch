@@ -308,7 +308,7 @@ async function runInteractiveSetup(
   const newConfig: ProjectConfig = {
     name: projectName,
     visibility,
-    server_url: existingConfig.server_url || (serverUrl !== (await resolveServerUrl()) ? serverUrl : undefined),
+    server_url: serverUrl,
   }
   await saveProjectConfig(resolvedPath, newConfig)
   log.info('')
