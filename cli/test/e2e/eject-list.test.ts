@@ -20,13 +20,13 @@ function runCliCapture(args: string[], cwd: string) {
   };
 }
 
-describe("checkout command", () => {
+describe("eject command", () => {
   test("lists available template files with --list", async () => {
-    const tempDir = await mkTempDir("checkout-list-");
+    const tempDir = await mkTempDir("eject-list-");
     runCliSync(["create", "sandbox"], tempDir);
     const sandboxDir = path.join(tempDir, "sandbox");
 
-    const result = runCliCapture(["checkout", "--list"], sandboxDir);
+    const result = runCliCapture(["eject", "--list"], sandboxDir);
 
     expect(result.status).toBe(0);
     // Should include common template files (shown in tree format)
