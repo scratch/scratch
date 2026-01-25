@@ -1,0 +1,16 @@
+{
+  "name": "scratch.dev",
+  "private": true,
+  "scripts": {
+    "dev": "scratch dev",
+    "build": "scratch build"
+  },
+  "dependencies": {
+    "react": "latest",
+    "react-dom": "latest",
+    "@mdx-js/react": "latest",
+    "tailwindcss": "latest",
+    "@tailwindcss/cli": "latest",
+    "@tailwindcss/typography": "latest"
+  }
+}

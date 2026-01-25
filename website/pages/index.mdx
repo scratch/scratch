@@ -1,0 +1,93 @@
+---
+# Basic metadata
+title: "Scratch"                      # Page title (<title>, og:title, twitter:title)
+description: "Write with Markdown and React"  # SEO description
+keywords: ["MDX", "static site", "React", "Bun", "markdown"]  # SEO keywords
+author: "Pete Koomen"                 # Page author
+robots: "index, follow"               # Search engine directives
+lang: "en"                            # HTML lang attribute
+canonical: "https://scratch.dev/"     # Canonical URL (<link rel="canonical">)
+
+# Open Graph (social sharing)
+image: "https://scratch.dev/scratch-social.png"  # Social sharing image (og:image, twitter:image)
+url: "https://scratch.dev/"           # Open Graph URL (og:url)
+type: "website"                       # Content type (og:type) - "website" or "article"
+siteName: "Scratch"                   # Site name (og:site_name)
+locale: "en_US"                       # Locale (og:locale)
+siteUrl: "https://scratch.dev"        # Base URL for resolving relative image paths
+---
+
+![Scratch logo](/scratch-logo.svg)
+
+Scratch is a tool for writing with [Markdown](https://daringfireball.net/projects/markdown/) and [React](https://react.dev/). 
+
+Write in Markdown and embed React components right in your text. Scratch compiles your work into beautiful static websites that can be hosted anywhere.
+
+Scratch was designed for collaborative writing with coding agents like [Claude Code](https://www.claude.com/product/claude-code). Use your favorite editor to write in Markdown and ask a coding agent for help when it's easier to express yourself with code. 
+
+
+## Quick Start
+
+Scratch requires no configuration so it's easy to get started. First, install:
+
+```bash
+# Install scratch
+curl -fsSL https://scratch.dev/install.sh | bash
+```
+
+Then create a project and start the dev server:
+
+```bash
+# Create a new project
+scratch create
+
+# Start the dev server
+scratch dev
+```
+
+Now you're ready to start writing in `pages/index.mdx`. When you're ready, use the `publish` command to share with specific people, your team, or the world:
+
+```bash
+# Publish with a Scratch Server on Cloudflare
+scratch publish
+```
+
+## What can you do with Scratch?
+
+Scratch lets you embed interactive React components into your writing, like this counter:
+
+<Counter />
+
+You can use components to <Fire>style text</Fire> or embed fully working demos in your product specs:
+
+<TodoList />
+
+Scratch uses [Tailwind Typography](https://github.com/tailwindlabs/tailwindcss-typography) to render your prose with a clean aesthetic. It supports [Github-flavored Markdown](https://github.com/remarkjs/remark-gfm) out of the box. Code blocks use syntax highlighting by [Shiki](https://shiki.style/).
+
+```python
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+
+print(greet("World"))
+```
+
+Unlike traditional word processors, Scratch makes it easy to express any idea. If you can describe it to a coding agent, you can add it to your document:
+
+<BouncingDvdLogo />
+
+Collaborating with AI makes writing more fun. Scratch makes that easy.
+
+## Acknowledgements
+
+
+[Bun](https://bun.com/) for lightning-fast builds, development with HMR, native typescript support, and a portable executable.
+
+[React](https://react.dev/) and [MDX](https://mdxjs.com/) make it possible to write with Markdown and code. [Tailwind CSS](https://tailwindcss.com/) makes component styling easy.
+
+Content preprocessing relies on [unified](https://unifiedjs.com/), with [remark-gfm](https://github.com/remarkjs/remark-gfm) for GitHub Flavored Markdown and [remark-frontmatter](https://github.com/remarkjs/remark-frontmatter) plus [gray-matter](https://github.com/jonschlinkert/gray-matter) for parsing front matter.
+
+[Shiki](https://shiki.style/) provides beautiful, accurate syntax highlighting with VS Code's grammar engine.
+
+[Commander.js](https://github.com/tj/commander.js) scaffolds the CLI.
+
+Additional dependencies: [fast-glob](https://github.com/mrmlnc/fast-glob), [acorn](https://github.com/acornjs/acorn), [@mdx-js/esbuild](https://mdxjs.com/packages/esbuild/), [@shikijs/rehype](https://shiki.style/packages/rehype), [@types/mdast](https://github.com/DefinitelyTyped/DefinitelyTyped), [unist-util-visit](https://github.com/syntax-tree/unist-util-visit), [unist-util-is](https://github.com/syntax-tree/unist-util-is).

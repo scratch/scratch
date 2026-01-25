@@ -1,0 +1,13 @@
+# Scratch Cloud Project Configuration
+#
+# This file configures how your project deploys to Scratch Cloud.
+# Run `scratch cloud config` to update these settings interactively.
+
+# Project name
+name = "scratch-dev"
+
+# Server URL (overrides global default)
+server_url = "https://app.scratch.dev"
+
+# Visibility
+visibility = "public"

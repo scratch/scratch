@@ -1,0 +1,84 @@
+@import 'tailwindcss';
+@plugin "@tailwindcss/typography";
+
+/*
+ * Prose styling for markdown content is provided by @tailwindcss/typography.
+ * The 'prose' class is applied via PageWrapper component.
+ * See: https://github.com/tailwindlabs/tailwindcss-typography
+ */
+
+/*
+ * Custom prose overrides for elements not fully styled by @tailwindcss/typography
+ */
+
+/* Links - only underline on hover */
+.prose :where(a):not(:where([class~='not-prose'] *)) {
+  @apply no-underline hover:underline;
+}
+
+/* H1 - center and add extra top margin */
+.prose :where(h1):not(:where([class~='not-prose'] *)) {
+  @apply text-center mt-16;
+}
+
+/* Inline code - add background and padding, remove backticks */
+.prose :where(code):not(:where([class~='not-prose'], pre *)) {
+  @apply text-gray-700 font-medium text-[0.9em] bg-gray-50 px-1.5 py-0.5 rounded;
+}
+
+.prose :where(code):not(:where([class~='not-prose'], pre *))::before,
+.prose :where(code):not(:where([class~='not-prose'], pre *))::after {
+  content: none;
+}
+
+/* Reset code styling inside pre blocks (Shiki handles this) */
+.prose :where(pre code):not(:where([class~='not-prose'] *)) {
+  @apply bg-transparent border-0 rounded-none p-0 font-normal;
+  font-size: inherit;
+}
+
+/* Keyboard keys */
+.prose :where(kbd):not(:where([class~='not-prose'] *)) {
+  @apply text-gray-900 font-semibold text-sm bg-gray-100 rounded px-1.5 py-0.5 border border-gray-300 shadow-sm;
+}
+
+/* Task lists (GFM checkboxes) - align checkboxes with bullet points */
+.prose :where(ul.contains-task-list):not(:where([class~='not-prose'] *)) {
+  @apply list-none pl-0;
+}
+
+.prose
+  :where(li.task-list-item > input[type='checkbox']):not(
+    :where([class~='not-prose'] *)
+  ) {
+  @apply mr-2 align-middle ml-1;
+}
+
+/* Tables - center by default, prevent overflow */
+.prose :where(table):not(:where([class~='not-prose'] *)) {
+  @apply mx-auto w-auto max-w-full;
+}
+
+/*
+ * Style code blocks to match Shiki github-light theme.
+ * This ensures consistent styling whether or not Shiki processes the block.
+ */
+pre:has(> code) {
+  @apply bg-white rounded-lg overflow-x-auto;
+}
+
+pre > code {
+  @apply block p-4 text-sm leading-relaxed;
+  color: #24292e;
+}
+
+/* Custom interactive elements */
+.copy-button {
+  @apply absolute top-2 right-2 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity;
+  @apply text-gray-500 hover:text-gray-700 bg-gray-200;
+}
+
+.heading-anchor {
+  @apply absolute -left-6 top-0 opacity-0 group-hover:opacity-100 transition-opacity no-underline select-none;
+  @apply text-gray-400 hover:text-gray-600;
+}
