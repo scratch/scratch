@@ -5,6 +5,7 @@ import { registerServerCommands } from './commands/server/index'
 import { registerCliCommands } from './commands/cli'
 import { registerPrCommand } from './commands/pr'
 import { registerCommitCommand } from './commands/commit'
+import { registerWebsiteCommands } from './commands/website'
 
 const program = new Command()
 
@@ -17,5 +18,6 @@ registerServerCommands(program)
 registerCliCommands(program)
 registerPrCommand(program)
 registerCommitCommand(program)
+registerWebsiteCommands(program)
 
 program.parse()
