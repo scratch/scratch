@@ -21,9 +21,9 @@ siteUrl: "https://scratch.dev"        # Base URL for resolving relative image pa
 
 Scratch is a tool for writing with [Markdown](https://daringfireball.net/projects/markdown/) and [React](https://react.dev/). 
 
-Write in Markdown and embed React components right in your text. Scratch compiles your work into beautiful static websites that can be hosted anywhere.
+Scratch compiles MDX files into beautiful static websites that can be shared publicly or privately with a single command. It's opinionated about everything so that you can focus on writing without worrying about scaffolding, dependencies, formatting or styling. 
 
-Scratch was designed for collaborative writing with coding agents like [Claude Code](https://www.claude.com/product/claude-code). Use your favorite editor to write in Markdown and ask a coding agent for help when it's easier to express yourself with code. 
+Scratch was designed for collaborative writing with coding agents like [Claude Code](https://www.claude.com/product/claude-code). Use your favorite editor to write in Markdown and ask an agent for help when it's easier to express yourself with code. 
 
 
 ## Quick Start
@@ -45,49 +45,79 @@ scratch create
 scratch dev
 ```
 
-Now you're ready to start writing in `pages/index.mdx`. When you're ready, use the `publish` command to share with specific people, your team, or the world:
+Now you're ready to start writing in `pages/index.mdx`. Use the `publish` command to share with specific people, your team, or the world:
 
 ```bash
-# Publish with a Scratch Server on Cloudflare
+# Publish your project to a Scratch server. 
+# Grant access to specific people, @youdomain.com, or the world
 scratch publish
 ```
 
 ## What can you do with Scratch?
 
-Scratch lets you embed interactive React components into your writing, like this counter:
+Scratch turns Markdown and MDX content like this:
+
+```mdx
+
+### Markdown and React
+
+Here's a counter:
 
 <Counter />
 
-You can use components to <Fire>style text</Fire> or embed fully working demos in your product specs:
+```
+into static websites you can share privately with your colleagues or publicly with the world. 
+
+Scratch makes it easy to express your ideas with code. Here are a few of the ways you can do that.
+
+### Formatting text
+
+Traditional word processors like Microsoft Word and Google Docs give writers a fixed set formatting options exposed as buttons in ribbons and drop-down menus. 
+
+In contrast, Markdown pares all of this down to the bare essentials, like `**bold**`, `_italics_`, and `[embedded hyperlinks](http://example.org)`, expressed directly in plain text.
+
+MDX gives us a way to add an essentially infinite variety of formatting options: **use Markdown for the basics and React components for everything else**.
+
+For example, you can use inline components for things like <Highlight>highlighting text</Highlight>,<Marquis>marquis effects</Marquis>, or hover tooltips<HoverTooltip>like this one</HoverTooltips>.
+
+<HighlightedSnippet>
+    Want to draw attention to a snippet or quote? That's easy to do with a custom component.
+</HighlightedSnippet>
+
+Scratch doesn't include any of these components out-of-the-box. Instead, you'll create them as the need arises while you write, effectively building a custom word processor for each document. It's a lot of fun!
+
+### Interactive demos
+
+You can also use React components to embed interactive demos into your prose, like this one:
 
 <TodoList />
 
-Scratch uses [Tailwind Typography](https://github.com/tailwindlabs/tailwindcss-typography) to render your prose with a clean aesthetic. It supports [Github-flavored Markdown](https://github.com/remarkjs/remark-gfm) out of the box. Code blocks use syntax highlighting by [Shiki](https://shiki.style/).
+This is particularly handy for writing product specs where embbeded demos can communicate what it should feel like to use a particular feature much better written requirements and wireframes do.
 
-```python
-def greet(name: str) -> str:
-    return f"Hello, {name}!"
+### Publishing your work
 
-print(greet("World"))
-```
+Use the `scratch publish` command to share your writing, either privately with your colleagues or publicly with the world.
 
-Unlike traditional word processors, Scratch makes it easy to express any idea. If you can describe it to a coding agent, you can add it to your document:
+For now, you can publish your work for free on [scratch.dev](https://scratch.dev). Right now, this capability is a "preview" and shouldn't be used for anything important. Projects published on scratch.dev must be less than 5MB and will persist for only 30 days.
 
-<BouncingDvdLogo />
+<!-- Todo: update with correct documentation url -->
+You can also [host your own Scratch server](https://scratch.dev/docs#self-hosting) on Cloudflare and protect it with Cloudflare Access for additional security.
 
-Collaborating with AI makes writing more fun. Scratch makes that easy.
 
 ## Acknowledgements
 
+Scratch is built on the shoulders of giants:
 
-[Bun](https://bun.com/) for lightning-fast builds, development with HMR, native typescript support, and a portable executable.
+Scratch uses [Bun](https://bun.com/) for lightning-fast builds, development with HMR, native typescript support, and bundling as a portable executable.
 
-[React](https://react.dev/) and [MDX](https://mdxjs.com/) make it possible to write with Markdown and code. [Tailwind CSS](https://tailwindcss.com/) makes component styling easy.
+[React](https://react.dev/) and [MDX](https://mdxjs.com/) make it possible to compile Markdown and code into static websites. [Tailwind CSS](https://tailwindcss.com/) makes them look good, and makes it easy to style custom components.
 
 Content preprocessing relies on [unified](https://unifiedjs.com/), with [remark-gfm](https://github.com/remarkjs/remark-gfm) for GitHub Flavored Markdown and [remark-frontmatter](https://github.com/remarkjs/remark-frontmatter) plus [gray-matter](https://github.com/jonschlinkert/gray-matter) for parsing front matter.
 
-[Shiki](https://shiki.style/) provides beautiful, accurate syntax highlighting with VS Code's grammar engine.
+[Shiki](https://shiki.style/) provides syntax highlighting with VS Code's grammar engine.
 
 [Commander.js](https://github.com/tj/commander.js) scaffolds the CLI.
 
-Additional dependencies: [fast-glob](https://github.com/mrmlnc/fast-glob), [acorn](https://github.com/acornjs/acorn), [@mdx-js/esbuild](https://mdxjs.com/packages/esbuild/), [@shikijs/rehype](https://shiki.style/packages/rehype), [@types/mdast](https://github.com/DefinitelyTyped/DefinitelyTyped), [unist-util-visit](https://github.com/syntax-tree/unist-util-visit), [unist-util-is](https://github.com/syntax-tree/unist-util-is).
+Scratch server uses [hono](https://hono.dev) for routing and [Better Auth](https://better-auth.com) for authentication.
+
+Additional dependencies can be found in the [Scratch repo](https://github.com/scratch/scratch).
