@@ -238,8 +238,9 @@ export async function integrationTestAction(instance: string): Promise<void> {
       } else {
         console.log(renameDeployResult.stdout)
 
-        // Verify the new URL works
-        const renamedUrl = `https://${pagesDomain}/${newProjectName}/`
+        // Extract the renamed URL from deploy output (first URL after "URLs:")
+        const renamedUrlMatch = renameDeployResult.stdout.match(/URLs:\s+(\S+)/)
+        const renamedUrl = renamedUrlMatch ? renamedUrlMatch[1] : `https://${pagesDomain}/${newProjectName}/`
         console.log(`Fetching renamed project: ${renamedUrl}`)
         await new Promise(resolve => setTimeout(resolve, 2000))
 
@@ -249,9 +250,6 @@ export async function integrationTestAction(instance: string): Promise<void> {
           testPassed = false
         } else {
           console.log(`${green}✓${reset} Project rename via ID worked!\n`)
-
-          // Update projectName for cleanup
-          // (The test cleanup uses the original projectName variable, so we need to update it)
         }
 
         // Verify old URL no longer works (project was renamed, not duplicated)
@@ -284,8 +282,8 @@ export async function integrationTestAction(instance: string): Promise<void> {
         console.log(`${green}✓${reset} Invalid project ID correctly rejected with helpful error\n`)
       } else {
         console.error(`${red}✗${reset} Invalid ID failed but with unexpected error:`)
-        console.log('stdout:', invalidIdResult.stdout)
-        console.log('stderr:', invalidIdResult.stderr)
+        console.log('stdout:', invalidIdResult.stdout.slice(0, 500))
+        console.log('stderr:', invalidIdResult.stderr.slice(0, 500))
         testPassed = false
       }
 
