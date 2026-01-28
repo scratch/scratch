@@ -80,6 +80,9 @@ export async function deploy(
   if (params.visibility) {
     queryParams.set('visibility', params.visibility)
   }
+  if (params.project_id) {
+    queryParams.set('project_id', params.project_id)
+  }
   const query = queryParams.toString() ? `?${queryParams.toString()}` : ''
 
   return request<DeployCreateResponse>(

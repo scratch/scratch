@@ -168,7 +168,7 @@ export async function publishCommand(ctx: CloudContext, projectPath: string = '.
     try {
       const result = await deploy(
         credentials.token,
-        { name: projectName, visibility },
+        { name: projectName, visibility, project_id: config.id },
         zipData,
         effectiveServerUrl
       )
@@ -182,6 +182,15 @@ export async function publishCommand(ctx: CloudContext, projectPath: string = '.
       log.info('URLs:')
       log.info(`  ${stripTrailingSlash(result.urls.primary)}`)
       log.info(`  ${stripTrailingSlash(result.urls.byId)}`)
+
+      // Save project ID if it changed (new project or wasn't saved before)
+      if (result.project.id !== config.id) {
+        await saveProjectConfig(resolvedPath, {
+          ...config,
+          id: result.project.id,
+          name: projectName,
+        })
+      }
 
       // Open the deployed page in browser (primary URL)
       await openBrowser(result.urls.primary)
@@ -199,20 +208,50 @@ export async function publishCommand(ctx: CloudContext, projectPath: string = '.
 
           projectName = await promptProjectName(undefined, undefined)
 
-          // Save new config (preserve visibility and server_url from existing config)
+          // Save new config (preserve visibility and server_url from existing config, clear id for new project)
           log.info('')
           log.info('Saving .scratch/project.toml...')
           await saveProjectConfig(resolvedPath, {
             name: projectName,
             visibility: config.visibility,
             server_url: config.server_url,
+            // Don't preserve id - this will be a new project
           })
+          config = { ...config, id: undefined, name: projectName }
           log.info('')
           log.info('Note: If your site has broken links, run `scratch publish` again to rebuild with the new name.')
           log.info('')
 
           // Retry with new name
           continue
+        } else if (error.status === 400) {
+          const body = error.body as any
+          const code = body?.code
+
+          if (code === 'PROJECT_NOT_FOUND') {
+            log.error('')
+            log.error('Project not found on server.')
+            log.error('')
+            log.error('This can happen if:')
+            log.error(`  - The project was deleted from the server`)
+            log.error(`  - You're logged in as a different user (currently logged in as ${credentials.user.email})`)
+            log.error(`  - The .scratch/project.toml contains an ID from a different server`)
+            log.error('')
+            log.error('To fix, remove the "id" line from .scratch/project.toml and publish again.')
+            process.exit(1)
+          } else if (code === 'PROJECT_NAME_TAKEN') {
+            log.error('')
+            log.error(`You already have a project named "${projectName}".`)
+            log.error('')
+            log.error(`Run \`scratch projects info ${projectName}\` to see details.`)
+            process.exit(1)
+          } else {
+            log.error(`Deploy failed (${error.status})`)
+            if (body?.error) {
+              log.error(`  ${body.error}`)
+            }
+            process.exit(1)
+          }
         } else {
           const body = error.body as any
           log.error(`Deploy failed (${error.status})`)

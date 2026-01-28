@@ -15,6 +15,8 @@ export const deployCreateQuerySchema = z.object({
     z.literal('private'),
     z.string(), // email, @domain, or comma-separated list
   ]).optional(),
+  // Project ID from local config - enables rename detection
+  project_id: z.string().optional(),
 })
 
 export type DeployCreateQuery = z.infer<typeof deployCreateQuerySchema>
@@ -27,4 +29,6 @@ export interface DeployCreateParams {
   // Updates existing project visibility, or sets initial visibility for new projects
   // Accepts: 'public', 'private', '@domain.com', 'email@example.com', or comma-separated list
   visibility?: string
+  // Project ID from local config - enables rename detection
+  project_id?: string
 }

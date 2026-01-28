@@ -29,11 +29,12 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
   // Parse query params with shared schema
   const queryResult = deployCreateQuerySchema.safeParse({
     visibility: c.req.query('visibility'),
+    project_id: c.req.query('project_id'),
   })
   if (!queryResult.success) {
     return c.json({ error: 'Invalid query parameters', code: 'INVALID_PARAMS' }, 400)
   }
-  const { visibility: rawVisibility } = queryResult.data
+  const { visibility: rawVisibility, project_id: projectIdParam } = queryResult.data
 
   // Validate project name
   const nameValidation = validateProjectName(name)
@@ -159,21 +160,45 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
   // Note: D1's single-writer model serializes all writes, making explicit locking unnecessary
   type TxResult =
     | { ok: true; projectId: string; version: number; projectCreated: boolean }
-    | { ok: false; reason: 'PROJECT_NOT_OWNER' }
+    | { ok: false; reason: 'PROJECT_NOT_OWNER' | 'PROJECT_NOT_FOUND' | 'PROJECT_NAME_TAKEN' }
 
   const txResult = await db.transaction(async (tx): Promise<TxResult> => {
-    // Check if project exists (D1's single-writer model handles concurrency)
-    const [existingProject] = (await tx`
-      SELECT id, owner_id FROM projects
-      WHERE name = ${name} AND owner_id = ${auth.userId}
-    `) as { id: string; owner_id: string }[]
-
     let projId: string
     let created = false
 
-    if (existingProject) {
-      // Project exists - already owned by this user
+    if (projectIdParam) {
+      // Project ID provided - look up by ID
+      const [existingProject] = (await tx`
+        SELECT id, name, owner_id FROM projects
+        WHERE id = ${projectIdParam}
+      `) as { id: string; name: string; owner_id: string }[]
+
+      if (!existingProject || existingProject.owner_id !== auth.userId) {
+        // Project doesn't exist or owned by different user
+        return { ok: false, reason: 'PROJECT_NOT_FOUND' }
+      }
+
       projId = existingProject.id
+
+      // Check if name changed (rename)
+      if (existingProject.name !== name) {
+        // Check if user already has a project with the new name
+        const [nameConflict] = (await tx`
+          SELECT id FROM projects
+          WHERE name = ${name} AND owner_id = ${auth.userId}
+        `) as { id: string }[]
+
+        if (nameConflict) {
+          return { ok: false, reason: 'PROJECT_NAME_TAKEN' }
+        }
+
+        // Update project name
+        await tx`
+          UPDATE projects
+          SET name = ${name}, updated_at = datetime('now')
+          WHERE id = ${projId}
+        `
+      }
 
       // Update visibility if provided
       if (rawVisibility) {
@@ -184,13 +209,33 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
         `
       }
     } else {
-      // Auto-create project with specified or default visibility
-      projId = generateId()
-      await tx`
-        INSERT INTO projects (id, name, owner_id, visibility, created_at, updated_at)
-        VALUES (${projId}, ${name}, ${auth.userId}, ${projectVisibility}, datetime('now'), datetime('now'))
-      `
-      created = true
+      // No project ID - use existing behavior (lookup by name + owner, auto-create)
+      const [existingProject] = (await tx`
+        SELECT id, owner_id FROM projects
+        WHERE name = ${name} AND owner_id = ${auth.userId}
+      `) as { id: string; owner_id: string }[]
+
+      if (existingProject) {
+        // Project exists - already owned by this user
+        projId = existingProject.id
+
+        // Update visibility if provided
+        if (rawVisibility) {
+          await tx`
+            UPDATE projects
+            SET visibility = ${projectVisibility}, updated_at = datetime('now')
+            WHERE id = ${projId}
+          `
+        }
+      } else {
+        // Auto-create project with specified or default visibility
+        projId = generateId()
+        await tx`
+          INSERT INTO projects (id, name, owner_id, visibility, created_at, updated_at)
+          VALUES (${projId}, ${name}, ${auth.userId}, ${projectVisibility}, datetime('now'), datetime('now'))
+        `
+        created = true
+      }
     }
 
     // Get next version number
@@ -208,8 +253,14 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
     return { ok: true, projectId: projId, version: versionRow.next_version, projectCreated: created }
   })
 
-  // Handle ownership error from transaction
+  // Handle errors from transaction
   if (!txResult.ok) {
+    if (txResult.reason === 'PROJECT_NOT_FOUND') {
+      return c.json({ error: 'Project not found', code: 'PROJECT_NOT_FOUND' }, 400)
+    }
+    if (txResult.reason === 'PROJECT_NAME_TAKEN') {
+      return c.json({ error: 'Project name already taken', code: 'PROJECT_NAME_TAKEN' }, 400)
+    }
     return c.json({ error: 'Project owned by different user', code: 'PROJECT_NOT_OWNER' }, 403)
   }
 

@@ -22,12 +22,14 @@ export async function loadProjectConfig(projectPath: string): Promise<ProjectCon
   try {
     const content = await readFile(configPath, 'utf-8')
     const parsed = parseToml(content) as {
+      id?: string
       name?: string
       server_url?: string
       visibility?: string
     }
 
     return {
+      id: parsed.id,
       name: parsed.name,
       server_url: parsed.server_url,
       visibility: parsed.visibility,
@@ -52,6 +54,10 @@ export async function saveProjectConfig(projectPath: string, config: ProjectConf
 
   // Generate TOML content with comments
   const lines = [...PROJECT_CONFIG_HEADER, '']
+
+  if (config.id) {
+    lines.push('# Project ID (do not modify)', `id = "${escapeTomlString(config.id)}"`, '')
+  }
 
   if (config.name) {
     lines.push('# Project name', `name = "${escapeTomlString(config.name)}"`, '')

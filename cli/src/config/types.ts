@@ -65,6 +65,7 @@ export interface Credentials extends CredentialEntry {
  * Stored in .scratch/project.toml (0o644)
  */
 export interface ProjectConfig {
+  id?: string  // Project ID from server (do not modify)
   name?: string
   server_url?: string
   visibility?: string
