@@ -188,12 +188,119 @@ export async function integrationTestAction(instance: string): Promise<void> {
       }
     }
 
-    // Step 9: Test WWW domain serving
-    console.log('Step 9: Testing WWW domain serving...')
+    // Step 9: Test project ID persistence
+    console.log('Step 9: Testing project ID persistence...')
+
+    // 9a: Verify project ID was saved to project.toml
+    const projectTomlPath = join(tempDir, '.scratch', 'project.toml')
+    let projectTomlContent: string
+    try {
+      projectTomlContent = await readFile(projectTomlPath, 'utf-8')
+    } catch {
+      console.error(`${red}✗${reset} project.toml not found at ${projectTomlPath}`)
+      testPassed = false
+      projectTomlContent = ''
+    }
+
+    const projectIdMatch = projectTomlContent.match(/^id\s*=\s*"([^"]+)"/m)
+    if (!projectIdMatch) {
+      console.error(`${red}✗${reset} Project ID not found in project.toml`)
+      console.log('project.toml contents:')
+      console.log(projectTomlContent)
+      testPassed = false
+    } else {
+      const savedProjectId = projectIdMatch[1]
+      console.log(`Project ID saved to project.toml: ${savedProjectId}`)
+      console.log(`${green}✓${reset} Project ID persisted after first publish\n`)
+
+      // 9b: Rename the project and publish again
+      const newProjectName = `${projectName}-renamed`
+      console.log(`Renaming project from "${projectName}" to "${newProjectName}"...`)
+
+      // Update the name in project.toml (keep the ID)
+      const updatedTomlContent = projectTomlContent.replace(
+        /^name\s*=\s*"[^"]+"/m,
+        `name = "${newProjectName}"`
+      )
+      writeFileSync(projectTomlPath, updatedTomlContent)
+
+      // Publish again (should update server-side name via project ID)
+      console.log('Publishing renamed project...')
+      const renameDeployResult = await runCommand([
+        CLI_BIN, 'publish', tempDir,
+        '--server', serverUrl,
+        '--no-build',
+      ])
+
+      if (renameDeployResult.exitCode !== 0) {
+        console.error(`${red}✗${reset} Rename deploy failed: ${renameDeployResult.stderr}`)
+        testPassed = false
+      } else {
+        console.log(renameDeployResult.stdout)
+
+        // Verify the new URL works
+        const renamedUrl = `https://${pagesDomain}/${newProjectName}/`
+        console.log(`Fetching renamed project: ${renamedUrl}`)
+        await new Promise(resolve => setTimeout(resolve, 2000))
+
+        const renamedResponse = await fetch(renamedUrl)
+        if (!renamedResponse.ok) {
+          console.error(`${red}✗${reset} Renamed project not accessible: ${renamedResponse.status}`)
+          testPassed = false
+        } else {
+          console.log(`${green}✓${reset} Project rename via ID worked!\n`)
+
+          // Update projectName for cleanup
+          // (The test cleanup uses the original projectName variable, so we need to update it)
+        }
+
+        // Verify old URL no longer works (project was renamed, not duplicated)
+        const oldUrlResponse = await fetch(deployedUrl)
+        if (oldUrlResponse.ok) {
+          console.log(`${yellow}!${reset} Old URL still works (may be cached or stale)\n`)
+        } else {
+          console.log(`${green}✓${reset} Old URL no longer works (project was renamed)\n`)
+        }
+      }
+
+      // 9c: Test invalid project ID error handling
+      console.log('Testing invalid project ID handling...')
+      const invalidIdTomlContent = projectTomlContent.replace(
+        /^id\s*=\s*"[^"]+"/m,
+        `id = "invalid-project-id-12345"`
+      )
+      writeFileSync(projectTomlPath, invalidIdTomlContent)
+
+      const invalidIdResult = await runCommand([
+        CLI_BIN, 'publish', tempDir,
+        '--server', serverUrl,
+        '--no-build',
+      ])
+
+      if (invalidIdResult.exitCode === 0) {
+        console.error(`${red}✗${reset} Expected publish with invalid ID to fail`)
+        testPassed = false
+      } else if (invalidIdResult.stderr.includes('Project not found') || invalidIdResult.stdout.includes('Project not found')) {
+        console.log(`${green}✓${reset} Invalid project ID correctly rejected with helpful error\n`)
+      } else {
+        console.error(`${red}✗${reset} Invalid ID failed but with unexpected error:`)
+        console.log('stdout:', invalidIdResult.stdout)
+        console.log('stderr:', invalidIdResult.stderr)
+        testPassed = false
+      }
+
+      // Restore valid config for cleanup (use new name since project was renamed)
+      writeFileSync(projectTomlPath, updatedTomlContent)
+    }
+
+    // Step 10: Test WWW domain serving
+    // Note: projectName may have been renamed to ${projectName}-renamed in step 9
+    const currentProjectName = projectIdMatch ? `${projectName}-renamed` : projectName
+    console.log('Step 10: Testing WWW domain serving...')
 
     // Get project ID using CLI
     const projectInfoResult = await runCommand([
-      CLI_BIN, 'projects', 'info', projectName, serverUrl,
+      CLI_BIN, 'projects', 'info', currentProjectName, serverUrl,
     ])
 
     const idMatch = projectInfoResult.stdout.match(/ID:\s+(\S+)/)
@@ -315,10 +422,10 @@ export async function integrationTestAction(instance: string): Promise<void> {
       }
     }
 
-    // Cleanup: Delete the test project
+    // Cleanup: Delete the test project (use currentProjectName since it may have been renamed)
     console.log('Cleanup: Deleting test project...')
     const deleteResult = await runCommand([
-      CLI_BIN, 'projects', 'delete', projectName, serverUrl,
+      CLI_BIN, 'projects', 'delete', currentProjectName, serverUrl,
       '--force',
     ])
     if (deleteResult.exitCode === 0) {
