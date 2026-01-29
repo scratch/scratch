@@ -160,7 +160,7 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
   // Note: D1's single-writer model serializes all writes, making explicit locking unnecessary
   type TxResult =
     | { ok: true; projectId: string; version: number; projectCreated: boolean }
-    | { ok: false; reason: 'PROJECT_NOT_OWNER' | 'PROJECT_NOT_FOUND' | 'PROJECT_NAME_TAKEN' }
+    | { ok: false; reason: 'PROJECT_NOT_FOUND' | 'PROJECT_NAME_TAKEN' }
 
   const txResult = await db.transaction(async (tx): Promise<TxResult> => {
     let projId: string
@@ -258,10 +258,8 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
     if (txResult.reason === 'PROJECT_NOT_FOUND') {
       return c.json({ error: 'Project not found', code: 'PROJECT_NOT_FOUND' }, 400)
     }
-    if (txResult.reason === 'PROJECT_NAME_TAKEN') {
-      return c.json({ error: 'Project name already taken', code: 'PROJECT_NAME_TAKEN' }, 400)
-    }
-    return c.json({ error: 'Project owned by different user', code: 'PROJECT_NOT_OWNER' }, 403)
+    // PROJECT_NAME_TAKEN
+    return c.json({ error: 'Project name already taken', code: 'PROJECT_NAME_TAKEN' }, 400)
   }
 
   const { projectId, version, projectCreated } = txResult

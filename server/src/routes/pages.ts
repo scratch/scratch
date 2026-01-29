@@ -10,7 +10,8 @@
 // - Public projects: served immediately
 // - Non-public projects: require content token (project-scoped JWT)
 // - Share tokens: provide anonymous access for specific projects
-// - Unknown/missing projects: 404 (don't reveal existence)
+// - Unknown/missing projects: redirect to auth (same as private), then error
+//   This prevents attackers from distinguishing "doesn't exist" from "private"
 
 import { Hono } from 'hono'
 import type { Env } from '../env'
@@ -20,7 +21,9 @@ import {
   type Project,
   validateFilePath,
   serveProjectContent,
+  buildContentAccessRedirect,
 } from '../lib/content-serving'
+import { isPublicProject } from '../lib/visibility'
 
 export const pagesRoutes = new Hono<{ Bindings: Env }>({ strict: true })
 
@@ -61,6 +64,21 @@ function getCookiePath(ownerIdentifier: string, projectName: string): string {
   return `/${ownerIdentifier}/${projectName}/`
 }
 
+// Generate a synthetic project ID for non-existent projects
+// This is used to redirect to auth without revealing that the project doesn't exist
+// Uses a deterministic hash so the same path always produces the same ID
+async function generateSyntheticProjectId(ownerIdentifier: string, projectName: string): Promise<string> {
+  const data = new TextEncoder().encode(`${ownerIdentifier}/${projectName}`)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = new Uint8Array(hashBuffer)
+  // Convert to base36 and take first 21 chars (matches nanoid format)
+  let result = ''
+  for (const byte of hashArray) {
+    result += byte.toString(36)
+  }
+  return result.substring(0, 21)
+}
+
 // GET requests for static file serving
 pagesRoutes.get('*', async (c) => {
   const url = new URL(c.req.url)
@@ -99,32 +117,44 @@ pagesRoutes.get('*', async (c) => {
 
   // Resolve owner identifier to user ID
   const ownerId = await resolveOwnerId(db, ownerIdentifier, c.env.ALLOWED_USERS || '')
-  if (!ownerId) {
-    return c.text('Not Found', 404)
-  }
 
-  // Look up project with visibility info
+  // Look up project with visibility info (only if owner exists)
   let project: Project | undefined
-  try {
-    const [row] = (await db`
-      SELECT p.id, p.name, p.owner_id, u.email as owner_email, p.visibility, p.live_deploy_id
-      FROM projects p
-      JOIN "user" u ON p.owner_id = u.id
-      WHERE p.name = ${projectName} AND p.owner_id = ${ownerId}
-    `) as Project[]
-    project = row
-  } catch (err) {
-    console.error('Database error:', err)
-    return c.text('Internal Server Error', 500)
+  if (ownerId) {
+    try {
+      const [row] = (await db`
+        SELECT p.id, p.name, p.owner_id, u.email as owner_email, p.visibility, p.live_deploy_id
+        FROM projects p
+        JOIN "user" u ON p.owner_id = u.id
+        WHERE p.name = ${projectName} AND p.owner_id = ${ownerId}
+      `) as Project[]
+      project = row
+    } catch (err) {
+      console.error('Database error:', err)
+      return c.text('Internal Server Error', 500)
+    }
   }
 
-  if (!project) {
-    return c.text('Not Found', 404)
+  // If project exists and is public, serve immediately
+  if (project && isPublicProject(project.visibility, c.env)) {
+    return serveProjectContent(c, project, filePath, {
+      cookiePath: getCookiePath(ownerIdentifier, projectName),
+      enableCaching: true,
+    })
   }
 
-  // Serve the project content
-  return serveProjectContent(c, project, filePath, {
-    cookiePath: getCookiePath(ownerIdentifier, projectName),
-    enableCaching: true,
-  })
+  // For non-public or non-existent projects, use the same auth flow
+  // This prevents attackers from distinguishing "doesn't exist" from "private"
+  if (project) {
+    // Project exists but is non-public - use real project ID
+    return serveProjectContent(c, project, filePath, {
+      cookiePath: getCookiePath(ownerIdentifier, projectName),
+      enableCaching: false,
+    })
+  }
+
+  // Project doesn't exist - redirect to auth with synthetic ID
+  // After auth, content-access will fail to find the project and show generic error
+  const syntheticId = await generateSyntheticProjectId(ownerIdentifier, projectName)
+  return c.redirect(buildContentAccessRedirect(c.env, syntheticId, c.req.url))
 })
