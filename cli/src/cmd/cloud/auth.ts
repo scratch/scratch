@@ -216,6 +216,14 @@ export async function loginCommand(ctxOrServerUrl: CloudContext | string, option
 
   log.info('')
   log.info(`Logged in as ${user.email}`)
+  log.info('')
+  log.info('For CI/CD or automation, create an API token:')
+  log.info('  scratch tokens create my-ci-token')
+  log.info('')
+  log.info('Then use one of:')
+  log.info('  export SCRATCH_TOKEN=scratch_...   # CI environment variable')
+  log.info('  echo "SCRATCH_TOKEN=..." >> .env   # Project .env file')
+  log.info('  scratch tokens use scratch_...     # Store in credentials file')
 
   if (typeof ctxOrServerUrl !== 'string') {
     ctxOrServerUrl.clearCache()

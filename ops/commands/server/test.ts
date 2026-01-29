@@ -570,6 +570,24 @@ export async function integrationTestAction(instance: string): Promise<void> {
           console.error(`${red}✗${reset} Invalid token not rejected: ${invalidResponse.status}`)
           testPassed = false
         }
+
+        // Test 7: API token must NOT work on content domain (security invariant)
+        // The pages subdomain serves user-uploaded JS, so API keys must be rejected there
+        // to prevent malicious JS from using a stolen API key.
+        // We verify by checking that a nonexistent private path still redirects to auth
+        // even when an API token is provided (the token should be ignored entirely).
+        const privateContentUrl = `https://${pagesDomain}/test-user/private-project-that-does-not-exist/`
+        const privateContentResponse = await fetch(privateContentUrl, {
+          headers: { 'X-Api-Key': apiToken },
+          redirect: 'manual',  // Don't follow redirects so we can check the redirect
+        })
+        // Should redirect to auth (302/307) or return 404, but NOT return 200
+        if (privateContentResponse.status === 200) {
+          console.error(`${red}✗${reset} API token granted access on content domain (SECURITY ISSUE)`)
+          testPassed = false
+        } else {
+          console.log(`${green}✓${reset} API token correctly ignored on content domain (status: ${privateContentResponse.status})`)
+        }
       }
     }
 

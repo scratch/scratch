@@ -152,6 +152,40 @@ Key files:
 - `server/src/auth.ts` - BetterAuth config with device authorization plugin
 - `server/src/routes/app/ui.ts` - Device approval UI
 
+### API Tokens (Programmatic Access)
+
+For CI/CD and automation, users can create API tokens:
+
+```bash
+# Create a token
+scratch tokens create my-ci-token --expires 90
+
+# Option 1: Use via environment variable (CI/CD)
+export SCRATCH_TOKEN=scratch_...
+scratch publish
+
+# Option 2: Store in .env file (project-specific)
+echo "SCRATCH_TOKEN=scratch_..." >> .env
+scratch publish
+
+# Option 3: Store in credentials file (user-specific)
+scratch tokens use scratch_...
+scratch publish
+```
+
+Token resolution priority: `SCRATCH_TOKEN` (env var or .env) > `~/.scratch/credentials.json`
+
+API tokens are:
+- Hashed in the database (only shown once at creation)
+- Optionally time-limited (recommended for CI)
+- Revocable via `scratch tokens revoke <name>`
+- Scoped to the user who created them
+- **Only valid on the app subdomain** - API tokens do NOT grant access to the content domain (this is a security invariant to prevent malicious user-uploaded JS from using stolen tokens)
+
+Key files:
+- `server/src/auth.ts` - BetterAuth apiKey plugin configuration
+- `cli/src/cmd/cloud/tokens.ts` - Token management commands
+
 ### Modifying Authentication Code
 
 We strive to offload as much of the authentication logic to Better Auth as possible. Before making any changes to an auth workflow:

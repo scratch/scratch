@@ -68,6 +68,11 @@ export function createAuth(env: Env) {
       // API key support for CLI/CI authentication
       // API keys use X-Api-Key header (NOT Authorization: Bearer)
       // This prevents confusion between session tokens and API keys
+      //
+      // NOTE: Unlike other tables, apikey uses BetterAuth's default camelCase columns.
+      // The plan specified snake_case with schema mapping, but BetterAuth's apiKey plugin
+      // doesn't support field-level schema customization the same way deviceAuthorization does.
+      // Using defaults simplifies configuration and avoids potential mapping bugs.
       apiKey({
         defaultPrefix: 'scratch_',
         defaultKeyLength: 32,
