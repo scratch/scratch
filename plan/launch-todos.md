@@ -3,17 +3,26 @@
 - [x] Add website to monorepo
 - [x] Deploy website via scratch server
 - [x] remove width toggle
-- [ ] Update docs
-  - [ ] Reorder sections so that Authentication is under Publishing?
+- [x] Update docs
+- [x] 02-static-assets.md
+  - make sure .sh, .md, and .txt files are served as text
+- [x] 03-rename-commands.md
+  - Rename list and delete commands
+- [ ] 04-claude-skills.md
+  - Migrate to claude skills for this repo
+  - probably need a skill for running tests
+  - probably need a skill for writing or updating docs
+  - how about a skill for testing docs for maximal simplicity and clarity?
+- [ ] 05-pages-ctoken-url-fix.md
+  - fix persistent _ctoken in pages url
 - [ ] Review pass
   - [ ] auth flow
   - [ ] secrets
 - [ ] delete old branches
 - [ ] fix dev error handling
-- [ ] fix persistent _ctoken in pages url
-- [ ] make sure .sh, .md, and .txt files are served as text
 - [ ] get rid of --minimal and --no-src flags?
 - [ ] support pass through src/ and package.json?
 - [ ] remove development flag from dev command
 - [ ] review strict mode
 - [ ] do we need --highlight flag?
+- [ ] scratch claude skill?

@@ -119,14 +119,15 @@ Proposed documentation structure
     #### scratch create
     #### scratch dev
     #### scratch build
+      - should refer to the build pipeline section
     #### scratch preview
-    #### scratch watch
     #### scratch clean
     #### scratch eject
-    #### Global Options
   ### Publishing your project
     #### scratch publish
-      ##### Naming your project
+      - should document naming your project
+      - should refer the reader to the scratch login section for more info on selecting a scratch server
+      - should document 
     #### scratch login
       - should document how the user can specify a scratch server url
       - should document where credentials are stored and how it works 
@@ -138,12 +139,41 @@ Proposed documentation structure
       - should document ls|info|rm
     #### scratch share
       - should document share|ls|revoke
-    ####
+    #### scratch cf-access
+
+  ### Scratch build pipeline
+    #### Build Steps
+    #### Build Cache
+
+  ### scratch watch
+    - this is a handy feature for viewing markdown files locally
 
 
-
-
-
-
-      ##### URL structure
-      ##### Updating your site
+## Scratch Server
+  ### Overview
+    - server gives authors a way to share their work with others, either privately with friends and colleagues or publicly with the world.
+    - currently runs on cloudflare and can optionally be protected by Cloudflare Access. (maybe this is actually called zero trust now?)
+  ### scratch.dev
+    - document that right now anyone can publish to scratch.dev for free, and that projects will only stay published for 30 days while scratch is in Preview.
+    - document how routing works on scratch.dev. That is, when you publish a project what the URLs at which it will be available
+    - security warning: scratch is in preview and should not be relied upon yet to serve anything sensitive or important. Refer users to the source code and remind them that they can host their own scratch server behind Cloudflare Access if they want additional security
+  ### Self-hosting
+    - Explain why self-hosting is useful. User can use the server for their own personal website, or as a shared space for colleagues to share writing privately with each other.
+    #### Setting up Cloudflare
+    #### Configuring your server
+      ##### authentication modes
+      ##### domain configuration
+    #### Deploying your server
+    #### publishing to `www` and the root domain
+  ### Security
+    - describe the approach we've taken to securing the server
+    - warn the user that scratch is in preview and that users should not assume it is secure.
+    - users who want to publish sensitive content should consider self hosting behind Cloudflare Access (or Zero Trust?) to do this
+  ### API Reference
+    #### Authentication
+    #### Endpoints
+      ##### User
+      ##### Projects
+      ##### Deploys
+      ##### Share Tokens
+    #### Error Codes
