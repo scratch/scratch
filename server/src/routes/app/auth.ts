@@ -7,6 +7,7 @@ import { isUserAllowed } from '../../lib/access'
 import { createContentToken } from '../../lib/content-token'
 import { createDbClient } from '../../db/client'
 import { canAccessProject } from '../../lib/visibility'
+import { getAuthenticatedUser } from '../../lib/api-helpers'
 
 export const authRoutes = new Hono<{ Bindings: Env }>({ strict: false })
 
@@ -116,21 +117,9 @@ authRoutes.get('/content-access', async (c) => {
     return c.redirect('/error?message=' + encodeURIComponent('Invalid return URL'))
   }
 
-  // Check user is authenticated
-  let user: { id: string; email: string } | null = null
-
-  if (c.env.AUTH_MODE === 'cloudflare-access') {
-    const cfUser = await getOrCreateCloudflareAccessUser(c.req.raw, c.env)
-    if (cfUser) {
-      user = { id: cfUser.id, email: cfUser.email }
-    }
-  } else {
-    const auth = createAuth(c.env)
-    const session = await getSession(c.req.raw, auth)
-    if (session?.user) {
-      user = { id: session.user.id, email: session.user.email }
-    }
-  }
+  // Check user is authenticated (supports Bearer tokens for CLI and session cookies for browser)
+  const authResult = await getAuthenticatedUser(c)
+  const user = authResult?.user ?? null
 
   if (!user) {
     // Not logged in - redirect to login, then back here

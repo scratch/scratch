@@ -306,6 +306,159 @@ export async function integrationTestAction(instance: string): Promise<void> {
 
     console.log()
 
+    // Step 8d: Test content token URL cleanup (redirect to clean URL)
+    console.log('Step 8d: Testing content token URL cleanup...')
+
+    // Create a private project for this test
+    const privateProjectName = generateRandomProjectName()
+    const privateTempDir = join(tmpdir(), `scratch-${instance}-private-${Date.now()}`)
+    exitCode = await runCommandInherit([CLI_BIN, 'create', privateTempDir])
+    if (exitCode !== 0) {
+      throw new Error('Private project creation failed')
+    }
+
+    // Deploy as private
+    const privateDeployResult = await runCommand([
+      CLI_BIN, 'publish', privateTempDir,
+      '--server', serverUrl,
+      '--visibility', 'private',
+      '--name', privateProjectName,
+      '--no-open',
+    ])
+
+    if (privateDeployResult.exitCode !== 0) {
+      console.error(`${red}✗${reset} Private project deploy failed: ${privateDeployResult.stderr}`)
+      testPassed = false
+    } else {
+      // Extract project ID from project.toml
+      const privateProjectTomlPath = join(privateTempDir, '.scratch', 'project.toml')
+      const privateProjectToml = await readFile(privateProjectTomlPath, 'utf-8')
+      const privateIdMatch = privateProjectToml.match(/^id\s*=\s*"([^"]+)"/m)
+      const privateProjectId = privateIdMatch ? privateIdMatch[1] : null
+
+      if (!privateProjectId) {
+        console.error(`${red}✗${reset} Could not extract private project ID`)
+        testPassed = false
+      } else {
+        // Get the deployed URL from the deploy output (includes owner path)
+        const privateUrlMatch = privateDeployResult.stdout.match(/URLs:\s+(\S+)/)
+        const privateDeployedUrl = privateUrlMatch ? privateUrlMatch[1] : null
+
+        if (!privateDeployedUrl) {
+          console.error(`${red}✗${reset} Could not extract deployed URL from output`)
+          testPassed = false
+        } else {
+          // Get CLI credentials to make authenticated request
+          const credentialsPath = join(process.env.HOME || '~', '.scratch', 'credentials.json')
+          let cliToken: string | null = null
+          try {
+            const credentials = JSON.parse(await readFile(credentialsPath, 'utf-8'))
+            // Find token for this server
+            for (const [server, creds] of Object.entries(credentials)) {
+              if (server.includes(appDomain)) {
+                cliToken = (creds as { token: string }).token
+                break
+              }
+            }
+          } catch {
+            console.error(`${red}✗${reset} Could not read CLI credentials`)
+          }
+
+          if (!cliToken) {
+            console.error(`${red}✗${reset} No CLI token found for ${appDomain}`)
+            testPassed = false
+          } else {
+            // Get content token via /auth/content-access endpoint
+            // Ensure URL has trailing slash for consistency
+            const returnUrl = privateDeployedUrl.endsWith('/') ? privateDeployedUrl : `${privateDeployedUrl}/`
+            const contentAccessUrl = `https://${appDomain}/auth/content-access?project_id=${privateProjectId}&return_url=${encodeURIComponent(returnUrl)}`
+
+            const tokenResponse = await fetch(contentAccessUrl, {
+              headers: { 'Authorization': `Bearer ${cliToken}` },
+              redirect: 'manual',
+            })
+
+            if (tokenResponse.status !== 302 && tokenResponse.status !== 303) {
+              console.error(`${red}✗${reset} Content access endpoint returned ${tokenResponse.status}, expected redirect`)
+              testPassed = false
+            } else {
+              const redirectLocation = tokenResponse.headers.get('Location')
+              if (!redirectLocation) {
+                console.error(`${red}✗${reset} No redirect location from content access endpoint`)
+                testPassed = false
+              } else {
+                const redirectUrl = new URL(redirectLocation)
+                const ctoken = redirectUrl.searchParams.get('_ctoken')
+
+                if (!ctoken) {
+                  console.error(`${red}✗${reset} No _ctoken in redirect URL: ${redirectLocation}`)
+                  testPassed = false
+                } else {
+                  console.log(`${green}✓${reset} Got content token from auth endpoint`)
+
+                  // Request private page with token in URL - should get 302 redirect to clean URL
+                  const pageWithToken = `${returnUrl}?_ctoken=${ctoken}`
+                  const redirectResponse = await fetch(pageWithToken, { redirect: 'manual' })
+
+                  if (redirectResponse.status !== 302) {
+                    console.error(`${red}✗${reset} Expected 302 redirect, got ${redirectResponse.status}`)
+                    testPassed = false
+                  } else {
+                    const cleanLocation = redirectResponse.headers.get('Location')
+                    const setCookieHeader = redirectResponse.headers.get('Set-Cookie')
+
+                    // Verify redirect is to clean URL (without token)
+                    if (!cleanLocation || cleanLocation.includes('_ctoken')) {
+                      console.error(`${red}✗${reset} Redirect URL still contains token: ${cleanLocation}`)
+                      testPassed = false
+                    } else {
+                      console.log(`${green}✓${reset} Server redirects to clean URL without token`)
+                    }
+
+                    // Verify cookie was set
+                    if (!setCookieHeader || !setCookieHeader.includes('_content_token')) {
+                      console.error(`${red}✗${reset} Content token cookie not set`)
+                      testPassed = false
+                    } else {
+                      console.log(`${green}✓${reset} Content token cookie was set`)
+
+                      // Extract cookie value for follow-up request
+                      const cookieMatch = setCookieHeader.match(/_content_token=([^;]+)/)
+                      const cookieValue = cookieMatch ? cookieMatch[1] : null
+
+                      if (cookieValue) {
+                        // Verify content is served with just the cookie (no token in URL)
+                        const finalResponse = await fetch(returnUrl, {
+                          headers: { 'Cookie': `_content_token=${cookieValue}` },
+                        })
+
+                        if (finalResponse.ok) {
+                          console.log(`${green}✓${reset} Content served with cookie only (no URL token)`)
+                        } else {
+                          console.error(`${red}✗${reset} Failed to serve content with cookie: ${finalResponse.status}`)
+                          testPassed = false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Cleanup private test project
+      await runCommand([CLI_BIN, 'projects', 'delete', privateProjectName, serverUrl, '--force'])
+      try {
+        await rm(privateTempDir, { recursive: true, force: true })
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+
+    console.log()
+
     // Step 9: Test project ID persistence
     console.log('Step 9: Testing project ID persistence...')
 

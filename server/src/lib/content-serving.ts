@@ -109,6 +109,8 @@ export function validateFilePath(rawFilePath: string): string | null {
 export interface ContentAuthResult {
   user: { id: string; email: string } | null
   hasAccess: boolean
+  tokenFromUrl?: boolean      // Content token was in URL (not cookie)
+  shareTokenFromUrl?: boolean // Share token was in URL (not cookie)
 }
 
 // Authenticate a content request for a specific project
@@ -120,6 +122,8 @@ export async function authenticateContentRequest(
 ): Promise<ContentAuthResult> {
   const url = new URL(c.req.url)
   let verifiedUser: { id: string; email: string } | null = null
+  let contentTokenFromUrl = false
+  let shareTokenUsedFromUrl = false
 
   if (c.env.AUTH_MODE === 'cloudflare-access') {
     // Cloudflare Access mode: get user from CF JWT
@@ -142,6 +146,7 @@ export async function authenticateContentRequest(
 
         // Set cookie if token came from URL (first visit after auth)
         if (tokenFromUrl) {
+          contentTokenFromUrl = true
           const isHttps = useHttps(c.env)
           setCookie(c, contentTokenCookieName, token, {
             path: cookiePath,
@@ -177,6 +182,7 @@ export async function authenticateContentRequest(
 
         // Set cookie so subsequent requests (assets) don't need the token param
         if (shareTokenFromUrl && !shareTokenFromCookie) {
+          shareTokenUsedFromUrl = true
           const isHttps = useHttps(c.env)
           setCookie(c, shareTokenCookieName, shareToken, {
             path: cookiePath,
@@ -190,7 +196,12 @@ export async function authenticateContentRequest(
     }
   }
 
-  return { user: verifiedUser, hasAccess }
+  return {
+    user: verifiedUser,
+    hasAccess,
+    tokenFromUrl: contentTokenFromUrl,
+    shareTokenFromUrl: shareTokenUsedFromUrl,
+  }
 }
 
 // Options for serving project content
@@ -236,6 +247,15 @@ export async function serveProjectContent(
 
       // Has token but no access (permissions changed? wrong user?)
       return c.text('Not Found', 404)
+    }
+
+    // Redirect to clean URL if token was in URL (cookie has been set)
+    // This removes the token from browser history and prevents leakage via Referer
+    if (authResult.tokenFromUrl || authResult.shareTokenFromUrl) {
+      const cleanUrl = new URL(c.req.url)
+      cleanUrl.searchParams.delete('_ctoken')
+      cleanUrl.searchParams.delete('token')
+      return c.redirect(cleanUrl.toString(), 302)
     }
   }
 

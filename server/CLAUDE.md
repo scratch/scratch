@@ -27,6 +27,20 @@ The content domain (`pages.*`) serves **untrusted, user-submitted JavaScript**. 
   - Make API requests to app domain → BLOCKED (CORS + no cookie)
   - Use victim's content token for other projects → BLOCKED (project-scoped)
 
+### Token URL Cleanup
+
+Both content tokens (`?_ctoken=...`) and share tokens (`?token=...`) are passed in URLs during auth flows. While the risk is low (tokens are project-scoped and short-lived), we clean URLs via server-side redirect:
+
+1. Request arrives with token in URL
+2. Server validates token, sets path-scoped cookie
+3. Server redirects to same URL without token parameter
+4. Browser history only contains the clean URL
+
+This is a defense-in-depth measure. Even without it, the risk is limited because:
+- Tokens are project-scoped (can't access other projects)
+- Content tokens expire in 1 hour
+- Modern browsers strip query params from cross-origin Referer headers
+
 ### When Modifying Auth Code
 
 Before changing authentication, content tokens, or cookie handling:
