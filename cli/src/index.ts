@@ -261,11 +261,11 @@ const projects = program
   .description('Manage projects on a Scratch server');
 
 projects
-  .command('list', { isDefault: true })
+  .command('ls', { isDefault: true })
   .description('List all projects')
   .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
   .action(
-    withErrorHandling('Projects list', async (serverUrl) => {
+    withErrorHandling('Projects ls', async (serverUrl) => {
       const ctx = createCloudContext(serverUrl);
       await listProjectsCommand(ctx);
     })
@@ -284,13 +284,13 @@ projects
   );
 
 projects
-  .command('delete')
+  .command('rm')
   .description('Delete a project and all its deploys')
   .argument('[name]', 'Project name (uses .scratch/project.toml if not specified)')
   .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
   .option('-f, --force', 'Skip confirmation prompt')
   .action(
-    withErrorHandling('Projects delete', async (name, serverUrl, options) => {
+    withErrorHandling('Projects rm', async (name, serverUrl, options) => {
       const ctx = createCloudContext(serverUrl);
       await projectDeleteCommand(ctx, name, { force: options.force });
     })
@@ -315,11 +315,11 @@ share
   );
 
 share
-  .command('list')
+  .command('ls')
   .description('List share tokens for a project')
   .argument('[project]', 'Project name (uses .scratch/project.toml if not specified)')
   .action(
-    withErrorHandling('Share list', async (project) => {
+    withErrorHandling('Share ls', async (project) => {
       const ctx = createCloudContext();
       await shareListCommand(ctx, project);
     })

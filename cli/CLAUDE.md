@@ -39,16 +39,16 @@ Commands are organized into four groups:
   - `--no-build` - Skip build step
   - `--dry-run` - Show what would be deployed without uploading
   - If `.scratch/project.toml` doesn't exist, runs config flow first
-- `projects list [server-url]` - List all user's projects
+- `projects ls [server-url]` - List all user's projects
 - `projects info [name] [server-url]` - Show project details
-- `projects delete [name] [server-url]` - Delete project (requires confirmation)
+- `projects rm [name] [server-url]` - Delete project (requires confirmation)
   - `-f, --force` - Skip confirmation prompt
 
 **Share Commands:**
 - `share create [project]` - Create a time-limited share token
   - `--name <name>` - Token name
   - `--duration <duration>` - Token duration (1d, 1w, 1m)
-- `share list [project]` - List share tokens for a project
+- `share ls [project]` - List share tokens for a project
 - `share revoke <tokenId> [project]` - Revoke a share token
 
 **Server URL Resolution:**

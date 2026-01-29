@@ -632,12 +632,12 @@ Run `scratch publish` again to deploy updates. Each deploy creates a new version
 
 ## Project Management
 
-### scratch projects list
+### scratch projects ls
 
 List all your projects.
 
 ```bash
-scratch projects list [server-url]
+scratch projects ls [server-url]
 scratch projects [server-url]  # shorthand
 ```
 
@@ -675,12 +675,12 @@ URLs:
   https://pages.scratch.dev/abc123/my-blog/
 ```
 
-### scratch projects delete
+### scratch projects rm
 
 Delete a project and all its deploys.
 
 ```bash
-scratch projects delete [name] [server-url]
+scratch projects rm [name] [server-url]
 ```
 
 | Option | Description |
@@ -688,7 +688,7 @@ scratch projects delete [name] [server-url]
 | `-f, --force` | Skip confirmation prompt |
 
 ```bash
-$ scratch projects delete my-blog
+$ scratch projects rm my-blog
 ⚠ This will permanently delete project 'my-blog' and all 3 deploys.
 Type 'my-blog' to confirm: my-blog
 ✓ Project deleted
@@ -780,16 +780,16 @@ Expires: January 27, 2025
 - `1w` — 1 week (7 days)
 - `1m` — 1 month (30 days)
 
-### scratch share list
+### scratch share ls
 
 List share tokens for a project.
 
 ```bash
-scratch share list [project]
+scratch share ls [project]
 ```
 
 ```bash
-$ scratch share list my-blog
+$ scratch share ls my-blog
 Share tokens for my-blog:
 
   ID: tok_abc123
