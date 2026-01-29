@@ -27,31 +27,7 @@ Note: `BETTER_AUTH_SECRET` is always required because both modes use the device 
 
 ## Implementation
 
-### 1. Update `.vars.example` with conditional documentation
-
-Update the comments to clarify which variables are needed for which mode:
-
-```
-# Authentication mode: "local" or "cloudflare-access"
-# - local: Uses BetterAuth with Google OAuth
-# - cloudflare-access: Uses Cloudflare Zero Trust (no OAuth needed)
-AUTH_MODE=
-
-# Secret key for signing tokens (required for both modes)
-# Generate with: openssl rand -base64 32
-BETTER_AUTH_SECRET=
-
-# Google OAuth (required when AUTH_MODE=local)
-# Create at: https://console.cloud.google.com/apis/credentials
-# Set redirect URI to: https://<APP_SUBDOMAIN>.<BASE_DOMAIN>/auth/callback/google
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-
-# Cloudflare Access team name (required when AUTH_MODE=cloudflare-access)
-CLOUDFLARE_ACCESS_TEAM=
-```
-
-### 2. Modify setup flow in `ops/commands/server/setup.ts`
+### 1. Modify setup flow in `ops/commands/server/setup.ts`
 
 Change the interactive config (Step 4) to:
 
@@ -63,50 +39,14 @@ Change the interactive config (Step 4) to:
    - If `cloudflare-access`: Ask for `CLOUDFLARE_ACCESS_TEAM`
 4. Set unneeded variables to `_` (placeholder)
 
-### 3. Update `ops/lib/config.ts`
+### 2. Update validation in `ops/lib/config.ts`
 
-Add constants to categorize auth variables:
-
-```typescript
-// Variables required only for local (BetterAuth) mode
-export const LOCAL_AUTH_VARS = [
-  'GOOGLE_CLIENT_ID',
-  'GOOGLE_CLIENT_SECRET',
-]
-
-// Variables required only for cloudflare-access mode
-export const CF_ACCESS_VARS = [
-  'CLOUDFLARE_ACCESS_TEAM',
-]
-
-// Variables required for both auth modes
-export const COMMON_AUTH_VARS = [
-  'BETTER_AUTH_SECRET',
-]
-```
-
-### 4. Update validation in `validateInstanceVars()`
-
-Add auth-mode-aware validation:
+Update `validateInstanceVars()` to be auth-mode-aware:
 - Check AUTH_MODE value
 - Only flag missing vars if they're required for the configured mode
+- Treat `_` as "not set" for conditional variables
 
-### 5. Update `server/src/env.ts`
-
-Make conditionally-required variables optional in the TypeScript interface:
-
-```typescript
-export interface Env {
-  // ...
-  BETTER_AUTH_SECRET: string  // Always required
-  AUTH_MODE: string
-  GOOGLE_CLIENT_ID?: string   // Required for local mode
-  GOOGLE_CLIENT_SECRET?: string
-  CLOUDFLARE_ACCESS_TEAM?: string  // Required for cloudflare-access mode
-}
-```
-
-### 6. Add runtime validation in server
+### 3. Add runtime validation in server
 
 Add startup validation to ensure required vars are set for the configured mode. This provides clear error messages if vars are missing.
 
@@ -130,13 +70,13 @@ function validateEnvForAuthMode(env: Env) {
 }
 ```
 
+Note: `env.ts` remains unchanged. All fields stay required at the TypeScript level (they'll have `_` as a value when not needed). Runtime validation checks for actual usability.
+
 ## Files to Modify
 
-1. `server/.vars.example` - Update comments
-2. `ops/commands/server/setup.ts` - Conditional prompts
-3. `ops/lib/config.ts` - Auth var categorization
-4. `server/src/env.ts` - Optional types
-5. `server/src/index.ts` - Runtime validation
+1. `ops/commands/server/setup.ts` - Conditional prompts based on AUTH_MODE
+2. `ops/lib/config.ts` - Auth-mode-aware validation in `validateInstanceVars()`
+3. `server/src/index.ts` - Runtime validation for auth mode requirements
 
 ## Testing
 
@@ -151,3 +91,42 @@ function validateEnvForAuthMode(env: Env) {
    - GOOGLE_CLIENT_ID/SECRET should be set to `_`
 
 3. Verify server starts correctly with each configuration
+
+## Implementation Complete
+
+### Changes Made
+
+#### 1. `ops/commands/server/setup.ts`
+- Added `select` import from `@inquirer/prompts`
+- Modified Step 4 to:
+  - First prompt for all non-auth variables
+  - Present AUTH_MODE as a select dropdown (local vs cloudflare-access)
+  - Ask for BETTER_AUTH_SECRET (always required)
+  - Based on AUTH_MODE:
+    - `local`: Ask for GOOGLE_CLIENT_ID/SECRET, set CLOUDFLARE_ACCESS_TEAM to `_`
+    - `cloudflare-access`: Ask for CLOUDFLARE_ACCESS_TEAM, set Google vars to `_`
+
+#### 2. `ops/lib/config.ts`
+- Added auth mode constants (`COMMON_AUTH_VARS`, `LOCAL_AUTH_VARS`, `CF_ACCESS_AUTH_VARS`)
+- Added `isUnset()` helper to treat `_` and empty strings as unset
+- Updated `validateInstanceVars()` to be auth-mode-aware:
+  - Always validates BETTER_AUTH_SECRET
+  - For `local` mode: validates Google OAuth vars
+  - For `cloudflare-access` mode: validates CLOUDFLARE_ACCESS_TEAM
+
+#### 3. `server/src/lib/validate-env.ts` (new file)
+- Runtime validation for auth mode requirements
+- Throws descriptive errors on startup if required vars are missing
+- Skipped in test mode
+
+#### 4. `server/src/index.ts`
+- Added import for `validateEnvForAuthMode`
+- Added middleware that validates environment on first request
+
+### Tests Added
+- `ops/test/config.test.ts` - 11 tests for ops config validation
+- `server/test/validate-env.test.ts` - 13 tests for server-side validation
+
+### Verification
+- All 24 unit tests pass
+- Full integration test (`bun ops server -i staging test`) passes

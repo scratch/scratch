@@ -230,6 +230,23 @@ export const ROUTE_VARS = [
   'CLOUDFLARE_ZONE',
 ]
 
+// Auth mode constants
+export type AuthMode = 'local' | 'cloudflare-access'
+
+// Variables always required regardless of auth mode
+export const COMMON_AUTH_VARS = ['BETTER_AUTH_SECRET']
+
+// Variables required only for local (BetterAuth) mode
+export const LOCAL_AUTH_VARS = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET']
+
+// Variables required only for cloudflare-access mode
+export const CF_ACCESS_AUTH_VARS = ['CLOUDFLARE_ACCESS_TEAM']
+
+// Check if a value is effectively unset (empty or placeholder)
+export function isUnset(value: string | undefined): boolean {
+  return !value || value === '' || value === '_'
+}
+
 // Validate UUID format (for D1_DATABASE_ID)
 export function isValidUUID(value: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -263,6 +280,38 @@ export function validateInstanceVars(instance: string): { valid: boolean; missin
       missing.push(name)
     } else if (vars.get(name) === '') {
       empty.push(name)
+    }
+  }
+
+  // Check auth vars based on AUTH_MODE
+  const authMode = vars.get('AUTH_MODE') || 'local'
+
+  // Common auth vars are always required
+  for (const name of COMMON_AUTH_VARS) {
+    if (!vars.has(name)) {
+      missing.push(name)
+    } else if (isUnset(vars.get(name))) {
+      empty.push(name)
+    }
+  }
+
+  // Mode-specific auth vars
+  if (authMode === 'cloudflare-access') {
+    for (const name of CF_ACCESS_AUTH_VARS) {
+      if (!vars.has(name)) {
+        missing.push(name)
+      } else if (isUnset(vars.get(name))) {
+        empty.push(name)
+      }
+    }
+  } else {
+    // Default to local mode
+    for (const name of LOCAL_AUTH_VARS) {
+      if (!vars.has(name)) {
+        missing.push(name)
+      } else if (isUnset(vars.get(name))) {
+        empty.push(name)
+      }
     }
   }
 

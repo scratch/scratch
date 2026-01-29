@@ -6,6 +6,7 @@ import { uiRoutes } from './routes/app/ui'
 import { pagesRoutes } from './routes/pages'
 import { wwwRoutes } from './routes/www'
 import { getContentDomain, isWwwOrRootDomain } from './lib/domains'
+import { validateEnvForAuthMode } from './lib/validate-env'
 
 // App router - handles app subdomain (API, auth, UI)
 const appRouter = new Hono<{ Bindings: Env }>({ strict: false })
@@ -22,7 +23,16 @@ appRouter.route('/', uiRoutes)
 // Main app with domain-based routing
 const app = new Hono<{ Bindings: Env }>({ strict: false })
 
+// Track if env has been validated (per isolate)
+let envValidated = false
+
 app.all('*', async (c) => {
+  // Validate environment on first request (skipped in test mode)
+  if (!envValidated && !c.env.TEST_MODE) {
+    validateEnvForAuthMode(c.env)
+    envValidated = true
+  }
+
   // HTTP host headers are case-insensitive per RFC
   const host = c.req.header('host')?.toLowerCase()
 

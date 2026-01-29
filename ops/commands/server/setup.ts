@@ -1,7 +1,7 @@
 // Setup command - creates Cloudflare resources and configures an instance
 
 import { existsSync, readFileSync, writeFileSync } from 'fs'
-import { input } from '@inquirer/prompts'
+import { input, select } from '@inquirer/prompts'
 import { green, yellow, reset, dim } from '../../lib/colors'
 import {
   WRANGLER_TEMPLATE,
@@ -270,14 +270,14 @@ export async function setupAction(instance: string): Promise<void> {
 
   newVars.set('D1_DATABASE_ID', d1DatabaseId)
 
-  for (const varInfo of varsWithComments) {
+  // Variables that depend on AUTH_MODE
+  const AUTH_MODE_VARS = ['AUTH_MODE', 'BETTER_AUTH_SECRET', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'CLOUDFLARE_ACCESS_TEAM']
+  const LOCAL_AUTH_VARS = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET']
+  const CF_ACCESS_AUTH_VARS = ['CLOUDFLARE_ACCESS_TEAM']
+
+  // Helper function to prompt for a variable
+  async function promptForVar(varInfo: { name: string; comments: string[]; defaultValue: string }) {
     const { name: varName, comments, defaultValue } = varInfo
-
-    if (varName === 'D1_DATABASE_ID') {
-      console.log(`${dim}D1_DATABASE_ID=${d1DatabaseId} (auto-filled)${reset}\n`)
-      continue
-    }
-
     const existingValue = existingVars.get(varName) || defaultValue || ''
 
     if (comments.length > 0) {
@@ -294,8 +294,79 @@ export async function setupAction(instance: string): Promise<void> {
 
     const finalValue = inputValue === truncate(existingValue, 30) ? existingValue : inputValue
     newVars.set(varName, finalValue)
-
     console.log('')
+    return finalValue
+  }
+
+  // First, ask for all non-auth variables
+  for (const varInfo of varsWithComments) {
+    const { name: varName } = varInfo
+
+    if (varName === 'D1_DATABASE_ID') {
+      console.log(`${dim}D1_DATABASE_ID=${d1DatabaseId} (auto-filled)${reset}\n`)
+      continue
+    }
+
+    // Skip auth-mode-dependent variables for now
+    if (AUTH_MODE_VARS.includes(varName)) {
+      continue
+    }
+
+    await promptForVar(varInfo)
+  }
+
+  // Now handle AUTH_MODE and its dependent variables
+  const existingAuthMode = existingVars.get('AUTH_MODE') || 'local'
+  const authMode = await select({
+    message: 'AUTH_MODE:',
+    choices: [
+      {
+        name: 'local (Google OAuth)',
+        value: 'local',
+        description: 'Use BetterAuth with Google OAuth for authentication',
+      },
+      {
+        name: 'cloudflare-access',
+        value: 'cloudflare-access',
+        description: 'Trust Cloudflare Access for authentication',
+      },
+    ],
+    default: existingAuthMode,
+  })
+  newVars.set('AUTH_MODE', authMode)
+  console.log('')
+
+  // Always ask for BETTER_AUTH_SECRET (needed for both modes)
+  const secretVarInfo = varsWithComments.find(v => v.name === 'BETTER_AUTH_SECRET')
+  if (secretVarInfo) {
+    await promptForVar(secretVarInfo)
+  }
+
+  // Ask for mode-specific variables and set placeholders for the others
+  if (authMode === 'local') {
+    // Ask for Google OAuth variables
+    for (const varName of LOCAL_AUTH_VARS) {
+      const varInfo = varsWithComments.find(v => v.name === varName)
+      if (varInfo) {
+        await promptForVar(varInfo)
+      }
+    }
+    // Set placeholder for Cloudflare Access variable
+    for (const varName of CF_ACCESS_AUTH_VARS) {
+      newVars.set(varName, '_')
+    }
+  } else {
+    // Ask for Cloudflare Access variable
+    for (const varName of CF_ACCESS_AUTH_VARS) {
+      const varInfo = varsWithComments.find(v => v.name === varName)
+      if (varInfo) {
+        await promptForVar(varInfo)
+      }
+    }
+    // Set placeholder for Google OAuth variables
+    for (const varName of LOCAL_AUTH_VARS) {
+      newVars.set(varName, '_')
+    }
   }
 
   // Step 5: Write vars file
