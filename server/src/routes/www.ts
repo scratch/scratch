@@ -32,6 +32,13 @@ wwwRoutes.get('*', async (c) => {
   const url = new URL(c.req.url)
   const pathname = url.pathname
 
+  // Redirect .mdx URLs to .md (CLI renames .mdx to .md when copying)
+  if (pathname.endsWith('.mdx')) {
+    const redirectUrl = new URL(url)
+    redirectUrl.pathname = pathname.slice(0, -4) + '.md'
+    return c.redirect(redirectUrl.toString(), 301)
+  }
+
   // Normalize pathname for www routes:
   // - Remove leading slash for file path validation
   // - Root "/" becomes empty string (will serve index.html)

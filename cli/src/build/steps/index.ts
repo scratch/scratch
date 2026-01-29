@@ -1,5 +1,6 @@
 export { ensureDependenciesStep } from './01-ensure-dependencies';
 export { resetDirectoriesStep } from './02-reset-directories';
+export { checkConflictsStep } from './02b-check-conflicts';
 export { createTsxEntriesStep } from './03-create-tsx-entries';
 export { tailwindCssStep } from './04-tailwind-css';
 export { serverBuildStep } from './05-server-build';

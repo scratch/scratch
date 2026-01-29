@@ -66,6 +66,13 @@ pagesRoutes.get('*', async (c) => {
   const url = new URL(c.req.url)
   const pathname = url.pathname
 
+  // Redirect .mdx URLs to .md (CLI renames .mdx to .md when copying)
+  if (pathname.endsWith('.mdx')) {
+    const redirectUrl = new URL(url)
+    redirectUrl.pathname = pathname.slice(0, -4) + '.md'
+    return c.redirect(redirectUrl.toString(), 301)
+  }
+
   // Redirect /{owner}/{project} to /{owner}/{project}/
   // Preserve query params (e.g., ?_access=token) during redirect
   if (pathname.match(/^\/[^/]+\/[^/]+$/) && !pathname.endsWith('/')) {

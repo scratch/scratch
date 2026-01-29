@@ -5,7 +5,6 @@ import type { BuildContext, Entry } from './context';
  */
 export interface BuildOptions {
   ssg?: boolean;
-  static?: 'public' | 'assets' | 'all';
 }
 
 /**

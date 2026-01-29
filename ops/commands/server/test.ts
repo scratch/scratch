@@ -1,9 +1,9 @@
 // Integration test command
 
-import { existsSync, writeFileSync } from 'fs'
+import { existsSync, writeFileSync, mkdirSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { rm, readFile } from 'fs/promises'
+import { rm, readFile, writeFile } from 'fs/promises'
 import { green, yellow, red, reset } from '../../lib/colors'
 import { parseVarsFile, writeVarsFile, getInstanceVarsPath, getInstanceWranglerPath } from '../../lib/config'
 import { runCommand, runCommandInherit, getWranglerConfig } from '../../lib/process'
@@ -134,7 +134,12 @@ export async function integrationTestAction(instance: string): Promise<void> {
     if (exitCode !== 0) {
       throw new Error('Project creation failed')
     }
-    console.log(`${green}✓${reset} Project created\n`)
+
+    // Add test files for static file serving tests
+    await writeFile(join(tempDir, 'pages', 'source.mdx'), '# MDX Source\n\nHello world from source.mdx')
+    await writeFile(join(tempDir, 'pages', 'notes.txt'), 'Plain text notes')
+    await writeFile(join(tempDir, 'pages', 'readme.md'), '# Readme\n\nDocumentation')
+    console.log(`${green}✓${reset} Project created with test files\n`)
 
     // Step 7: Deploy the scratch project
     console.log(`Step 7: Deploying project "${projectName}" to ${instance}...`)
@@ -187,6 +192,66 @@ export async function integrationTestAction(instance: string): Promise<void> {
         testPassed = false
       }
     }
+
+    // Step 8b: Test static file serving (MIME types and .mdx redirect)
+    console.log('Step 8b: Testing static file serving...')
+
+    // Test 1: .md file served as text/plain
+    const mdUrl = `https://${pagesDomain}/${projectName}/readme.md`
+    const mdResponse = await fetch(mdUrl)
+    if (mdResponse.ok && mdResponse.headers.get('content-type')?.startsWith('text/plain')) {
+      console.log(`${green}✓${reset} .md served as text/plain`)
+    } else {
+      console.error(`${red}✗${reset} .md not served as text/plain: ${mdResponse.headers.get('content-type')}`)
+      testPassed = false
+    }
+
+    // Test 2: .txt file served as text/plain
+    const txtUrl = `https://${pagesDomain}/${projectName}/notes.txt`
+    const txtResponse = await fetch(txtUrl)
+    if (txtResponse.ok && txtResponse.headers.get('content-type')?.startsWith('text/plain')) {
+      console.log(`${green}✓${reset} .txt served as text/plain`)
+    } else {
+      console.error(`${red}✗${reset} .txt not served as text/plain: ${txtResponse.headers.get('content-type')}`)
+      testPassed = false
+    }
+
+    // Test 3: .mdx URL redirects to .md
+    const mdxUrl = `https://${pagesDomain}/${projectName}/source.mdx`
+    const mdxResponse = await fetch(mdxUrl, { redirect: 'manual' })
+    if (mdxResponse.status === 301 && mdxResponse.headers.get('location')?.endsWith('/source.md')) {
+      console.log(`${green}✓${reset} .mdx redirects to .md`)
+    } else {
+      console.error(`${red}✗${reset} .mdx did not redirect: status=${mdxResponse.status}, location=${mdxResponse.headers.get('location')}`)
+      testPassed = false
+    }
+
+    // Test 4: Following .mdx redirect serves correct content
+    const mdxFollowResponse = await fetch(mdxUrl, { redirect: 'follow' })
+    if (mdxFollowResponse.ok) {
+      const mdxContent = await mdxFollowResponse.text()
+      if (mdxContent.includes('MDX Source') || mdxContent.includes('Hello world from source.mdx')) {
+        console.log(`${green}✓${reset} .mdx redirect serves correct content`)
+      } else {
+        console.error(`${red}✗${reset} .mdx redirect content incorrect`)
+        testPassed = false
+      }
+    } else {
+      console.error(`${red}✗${reset} .mdx redirect failed: ${mdxFollowResponse.status}`)
+      testPassed = false
+    }
+
+    // Test 5: HTML page still works (source.mdx compiled to /source/)
+    const htmlUrl = `https://${pagesDomain}/${projectName}/source/`
+    const htmlResponse = await fetch(htmlUrl)
+    if (htmlResponse.ok && htmlResponse.headers.get('content-type')?.includes('text/html')) {
+      console.log(`${green}✓${reset} Compiled HTML page still accessible`)
+    } else {
+      console.error(`${red}✗${reset} Compiled HTML page not accessible: ${htmlResponse.status}`)
+      testPassed = false
+    }
+
+    console.log()
 
     // Step 9: Test project ID persistence
     console.log('Step 9: Testing project ID persistence...')

@@ -15,6 +15,7 @@ import {
   clientBuildStep,
   generateHtmlStep,
   injectFrontmatterStep,
+  checkConflictsStep,
   copyStaticStep,
   copyToDistStep,
 } from './steps';
@@ -36,6 +37,7 @@ const PROGRESS_MESSAGES: Record<string, string> = {
 const BUILD_STEPS: (BuildStep | BuildStep[])[] = [
   ensureDependenciesStep,
   resetDirectoriesStep,
+  checkConflictsStep, // Must run early to catch conflicts before build fails for other reasons
   createTsxEntriesStep,
   [tailwindCssStep, serverBuildStep],
   renderServerStep,
