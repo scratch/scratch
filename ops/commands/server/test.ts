@@ -148,6 +148,7 @@ export async function integrationTestAction(instance: string): Promise<void> {
       '--server', serverUrl,
       '--visibility', 'public',
       '--name', projectName,
+      '--no-open',
     ])
 
     if (deployResult.exitCode !== 0) {
@@ -196,8 +197,12 @@ export async function integrationTestAction(instance: string): Promise<void> {
     // Step 8b: Test static file serving (MIME types and .mdx redirect)
     console.log('Step 8b: Testing static file serving...')
 
+    // Extract base URL from deployedUrl (e.g., https://pages.sndbx.sh/pete/test-5adb9jwb/)
+    // Remove trailing slash for easier path construction
+    const projectBaseUrl = deployedUrl.replace(/\/$/, '')
+
     // Test 1: .md file served as text/plain
-    const mdUrl = `https://${pagesDomain}/${projectName}/readme.md`
+    const mdUrl = `${projectBaseUrl}/readme.md`
     const mdResponse = await fetch(mdUrl)
     if (mdResponse.ok && mdResponse.headers.get('content-type')?.startsWith('text/plain')) {
       console.log(`${green}✓${reset} .md served as text/plain`)
@@ -207,7 +212,7 @@ export async function integrationTestAction(instance: string): Promise<void> {
     }
 
     // Test 2: .txt file served as text/plain
-    const txtUrl = `https://${pagesDomain}/${projectName}/notes.txt`
+    const txtUrl = `${projectBaseUrl}/notes.txt`
     const txtResponse = await fetch(txtUrl)
     if (txtResponse.ok && txtResponse.headers.get('content-type')?.startsWith('text/plain')) {
       console.log(`${green}✓${reset} .txt served as text/plain`)
@@ -217,7 +222,7 @@ export async function integrationTestAction(instance: string): Promise<void> {
     }
 
     // Test 3: .mdx URL redirects to .md
-    const mdxUrl = `https://${pagesDomain}/${projectName}/source.mdx`
+    const mdxUrl = `${projectBaseUrl}/source.mdx`
     const mdxResponse = await fetch(mdxUrl, { redirect: 'manual' })
     if (mdxResponse.status === 301 && mdxResponse.headers.get('location')?.endsWith('/source.md')) {
       console.log(`${green}✓${reset} .mdx redirects to .md`)
@@ -242,12 +247,60 @@ export async function integrationTestAction(instance: string): Promise<void> {
     }
 
     // Test 5: HTML page still works (source.mdx compiled to /source/)
-    const htmlUrl = `https://${pagesDomain}/${projectName}/source/`
+    const htmlUrl = `${projectBaseUrl}/source/`
     const htmlResponse = await fetch(htmlUrl)
     if (htmlResponse.ok && htmlResponse.headers.get('content-type')?.includes('text/html')) {
       console.log(`${green}✓${reset} Compiled HTML page still accessible`)
     } else {
       console.error(`${red}✗${reset} Compiled HTML page not accessible: ${htmlResponse.status}`)
+      testPassed = false
+    }
+
+    console.log()
+
+    // Step 8c: Test project enumeration prevention
+    // Non-existent projects should redirect to auth, not return 404 immediately
+    // This prevents attackers from distinguishing "doesn't exist" from "private"
+    console.log('Step 8c: Testing project enumeration prevention...')
+
+    const nonExistentUrl = `https://${pagesDomain}/nonexistent-user-12345/nonexistent-project-67890/`
+    const enumResponse = await fetch(nonExistentUrl, { redirect: 'manual' })
+
+    if (enumResponse.status === 302 || enumResponse.status === 303) {
+      const location = enumResponse.headers.get('location') || ''
+      if (location.includes('/auth/content-access')) {
+        console.log(`${green}✓${reset} Non-existent project redirects to auth (prevents enumeration)`)
+      } else {
+        console.error(`${red}✗${reset} Non-existent project redirects but not to auth: ${location}`)
+        testPassed = false
+      }
+    } else if (enumResponse.status === 404) {
+      console.error(`${red}✗${reset} Non-existent project returns 404 (allows enumeration attack)`)
+      console.error('  Expected: redirect to /auth/content-access')
+      testPassed = false
+    } else {
+      console.error(`${red}✗${reset} Unexpected status for non-existent project: ${enumResponse.status}`)
+      testPassed = false
+    }
+
+    // Also verify that public projects still return content directly (not redirect)
+    const publicProjectResponse = await fetch(deployedUrl, { redirect: 'manual' })
+    if (publicProjectResponse.status === 200) {
+      console.log(`${green}✓${reset} Public project still serves content directly`)
+    } else if (publicProjectResponse.status === 301) {
+      // Might be a trailing slash redirect, follow it
+      const redirectedUrl = publicProjectResponse.headers.get('location')
+      if (redirectedUrl) {
+        const followedResponse = await fetch(redirectedUrl, { redirect: 'manual' })
+        if (followedResponse.status === 200) {
+          console.log(`${green}✓${reset} Public project still serves content directly (after slash redirect)`)
+        } else {
+          console.error(`${red}✗${reset} Public project not serving: ${followedResponse.status}`)
+          testPassed = false
+        }
+      }
+    } else {
+      console.error(`${red}✗${reset} Public project unexpected status: ${publicProjectResponse.status}`)
       testPassed = false
     }
 
@@ -295,6 +348,7 @@ export async function integrationTestAction(instance: string): Promise<void> {
         CLI_BIN, 'publish', tempDir,
         '--server', serverUrl,
         '--no-build',
+        '--no-open',
       ])
 
       if (renameDeployResult.exitCode !== 0) {
@@ -338,6 +392,7 @@ export async function integrationTestAction(instance: string): Promise<void> {
         CLI_BIN, 'publish', tempDir,
         '--server', serverUrl,
         '--no-build',
+        '--no-open',
       ])
 
       if (invalidIdResult.exitCode === 0) {
@@ -416,8 +471,11 @@ export async function integrationTestAction(instance: string): Promise<void> {
           // Give it a moment for deployment to propagate
           await new Promise(resolve => setTimeout(resolve, 5000))
 
+          // Cache-busting param to bypass Cloudflare cache
+          const cacheBuster = `_cb=${Date.now()}`
+
           // Test www domain
-          const wwwUrl = `https://www.${baseDomain}/`
+          const wwwUrl = `https://www.${baseDomain}/?${cacheBuster}`
           console.log(`Fetching WWW domain: ${wwwUrl}`)
 
           const wwwResponse = await fetch(wwwUrl)
@@ -441,7 +499,7 @@ export async function integrationTestAction(instance: string): Promise<void> {
           }
 
           // Test naked domain
-          const nakedUrl = `https://${baseDomain}/`
+          const nakedUrl = `https://${baseDomain}/?${cacheBuster}`
           console.log(`Fetching naked domain: ${nakedUrl}`)
 
           const nakedResponse = await fetch(nakedUrl)

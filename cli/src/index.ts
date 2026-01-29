@@ -208,6 +208,7 @@ program
   .option('--name <name>', 'Override project name')
   .option('--visibility <visibility>', 'Override visibility (public, private, @domain, or email list)')
   .option('--no-build', 'Skip build step')
+  .option('--no-open', 'Skip opening browser after deploy')
   .option('--dry-run', 'Show what would be deployed without uploading')
   .action(
     withErrorHandling('Publish', async (projectPath, options) => {
@@ -216,6 +217,7 @@ program
         name: options.name,
         visibility: options.visibility,
         noBuild: options.build === false,
+        noOpen: options.open === false,
         dryRun: options.dryRun === true,
       });
     })

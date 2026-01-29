@@ -55,6 +55,7 @@ export interface PublishOptions {
   name?: string
   visibility?: string
   noBuild?: boolean
+  noOpen?: boolean
   dryRun?: boolean
 }
 
@@ -192,8 +193,10 @@ export async function publishCommand(ctx: CloudContext, projectPath: string = '.
         })
       }
 
-      // Open the deployed page in browser (primary URL)
-      await openBrowser(result.urls.primary)
+      // Open the deployed page in browser (primary URL) unless --no-open
+      if (!options.noOpen) {
+        await openBrowser(result.urls.primary)
+      }
       return
     } catch (error) {
       if (error instanceof ApiError) {
