@@ -21,265 +21,124 @@ siteUrl: "https://scratch.dev"
 
 <DocsSidebar />
 
+Scratch is two executable programs that can be used together to create and publish static websites with Markdown and React:
+
+The [Scratch CLI](#scratch-cli) is a command line utitility for scaffolding, building, and publishing [Scratch projects](#scratch-projects) as static websites.
+
+The [Scratch server](#scratch-server) is a server for serving static websites built with the Scratch CLI. There's a public server hosted on [scratch.dev](https://scratch.dev) and you can host your own on Cloudflare.
+
 ## Quick Start
 
-Scratch requires no configuration so it's easy to get started. First, install:
+Install:
 
 ```bash
-# Install scratch
 curl -fsSL https://scratch.dev/install.sh | bash
 ```
 
-Then create a project and start the dev server:
+Create a project and start the dev server:
 
 ```bash
-# Create a new project
-scratch create
-
-# Start the dev server
+scratch create my-site
+cd my-site
 scratch dev
 ```
 
-Now you're ready to start writing in `pages/index.mdx`. Use the `publish` command to share with specific people, your team, or the world:
+Write your content in `pages/index.mdx`, then publish:
 
 ```bash
-# Publish with a Scratch Server on Cloudflare
-# Grant access to specific people, @youdomain.com, or the world
 scratch publish
 ```
 
-## Project Structure
+That's it. Your site is live.
 
-Scratch uses an opinionated project structure that makes it easy to focus on your content:
+## Scratch Projects
+
+Scratch uses a simple project structure to avoid the need for boilerplate and configuration:
 
 <Files>
 ```
 my-site/
-  pages/                   # Markdown pages and components
+  pages/ (collapsed)       # Your content lives here
     posts/ (collapsed)
-      hello.md             # accessible at /posts/hello/
-      world.md             # accessible at /posts/world/
-    index.mdx              # accessible at /
-    about.mdx              # accessible at /about/
-    Counter.tsx            # auto-imported in MDX files
-  public/ (collapsed)      # Static assets (copied to dist/)
+      hello.md             # /posts/hello/
+      world.md             # /posts/world/
+    index.mdx              # /
+    about.mdx              # /about/
+    Counter.tsx            # Components can live alongside pages
+  public/ (collapsed)      # Static files (copied to dist/)
     favicon.svg
     robots.txt
-  src/ (collapsed)         # Global styles and components
+  src/ (collapsed)         # Global styles and layout
     markdown/ (collapsed)  # Override default markdown elements
       index.ts
       CodeBlock.tsx
-      Heading.tsx
-      Link.tsx
-    template/ (collapsed)  # Page layout components
+    template/ (collapsed)  # Page layout
       PageWrapper.jsx      # Wraps every page
       Header.jsx
       Footer.jsx
     tailwind.css           # Global styles
-  .scratch/ (collapsed)    # Project configuration
+  .scratch/ (collapsed)    # Project config
     project.toml           # Server and publish settings
   package.json             # Dependencies
-  .gitignore
 ```
 </Files>
 
-### pages/
+### Markdown
 
-Markdown files live in `pages/` and can be MDX (`.mdx`) or vanilla Markdown (`.md`). Scratch compiles each file into a static page:
+Markdown files in `pages/` become pages on your site:
 
 | File | URL |
 |------|-----|
 | `pages/index.mdx` | `/` |
 | `pages/about.mdx` | `/about/` |
-| `pages/posts/index.mdx` | `/posts/` |
 | `pages/posts/hello.mdx` | `/posts/hello/` |
 
-**Components** can live in `pages/` or `src/`. Components are auto-detected by filename and imported during the build process. A `Counter` component defined in `Counter.tsx` is available as `<Counter />` in any MDX file.
+Use `.md` for plain Markdown or `.mdx` to include React components.
 
-**Static assets** like images can also live in `pages/`. They're copied to the output directory and served at the same path.
+Scratch uses [mdx](https://mdxjs.com/) to translate markdown elements into React components. You can customize the default components used in this translation by adding new ones to `src/markdown/`
 
-### src/
+### Components
 
-The `src/` directory contains global styles and components:
-
-- `src/tailwind.css` — Global CSS with Tailwind
-- `src/template/PageWrapper.jsx` — Wraps all pages (headers, footers, nav)
-- `src/template/` — Layout components (Header, Footer, etc.)
-- `src/markdown/` — Override default markdown rendering
-
-### public/
-
-Static files like favicons, `robots.txt`, or `_redirects` go in `public/`. These are copied directly to `dist/`.
-
-### .scratch/
-
-Project configuration lives in `.scratch/project.toml`. This file is created when you first run `scratch publish` or `scratch config`.
-
-### package.json
-
-Scratch automatically installs build dependencies. Add your own dependencies by editing `package.json`.
-
-## Writing Content
-
-### Markdown Basics
-
-Scratch supports [CommonMark](https://commonmark.org/) and [GitHub Flavored Markdown](https://github.github.com/gfm/) (tables, strikethrough, task lists, autolinks).
-
-```markdown
-# Heading 1
-## Heading 2
-
-**Bold** and *italic* text.
-
-- List item
-- [x] Task list item
-
-| Column 1 | Column 2 |
-|----------|----------|
-| Cell     | Cell     |
-
-[Link](https://example.com) and `inline code`.
-```
-
-
-### Code
-
-Scratch uses [Tailwind Typography](https://github.com/tailwindlabs/tailwindcss-typography) to render your prose with a clean aesthetic.
-
- It supports [Github-flavored Markdown](https://github.com/remarkjs/remark-gfm) out of the box. Code blocks use syntax highlighting by [Shiki](https://shiki.style/).
-
-```python
-def greet(name: str) -> str:
-    return f"Hello, {name}!"
-
-print(greet("World"))
-```
-
-### Frontmatter
-
-Add YAML frontmatter to set page metadata.
-
-```yaml
----
-title: "My Page Title"
-description: "Brief description for SEO"
-keywords: ["react", "markdown"]
-author: "Your Name"
-image: "/og-image.png"
----
-```
-
-#### Basic Properties
-
-| Property | Description |
-|----------|-------------|
-| `title` | Page title (`<title>`, `og:title`, `twitter:title`) |
-| `description` | SEO description (meta description, `og:description`) |
-| `keywords` | Keywords for SEO (string or array) |
-| `author` | Page author (`meta[name="author"]`) |
-| `robots` | Robots directive (e.g., `"index, follow"`) |
-| `lang` | HTML language attribute (e.g., `"en"`) |
-| `canonical` | Canonical URL (`<link rel="canonical">`) |
-
-#### Open Graph Properties
-
-| Property | Description | Default |
-|----------|-------------|---------|
-| `image` | Social sharing image URL | — |
-| `url` | Canonical Open Graph URL | — |
-| `type` | Content type (`og:type`) | `"article"` |
-| `siteName` | Site name (`og:site_name`) | — |
-| `locale` | Locale (e.g., `"en_US"`) | — |
-| `siteUrl` | Base URL for relative image paths | — |
-
-#### Twitter Card Properties
-
-| Property | Description | Default |
-|----------|-------------|---------|
-| `twitterCard` | Card type (`twitter:card`) | `"summary_large_image"` |
-| `twitterSite` | Site's Twitter handle | — |
-| `twitterCreator` | Author's Twitter handle | — |
-
-#### Article Properties
-
-| Property | Description |
-|----------|-------------|
-| `publishDate` | Publication date (ISO format) |
-| `modifiedDate` | Last modified date (ISO format) |
-| `tags` | Article tags (string or array) |
-
-### Using Components
-
-Scratch uses [MDX](https://mdxjs.com) to render JSX in your Markdown content:
+Components in `pages/` or `src/` are automatically available in MDX files. A `Counter.tsx` file lets you write `<Counter />` in any page without importing it.
 
 ```mdx
 # My Page
 
-Here's a counter: 
-
-<Counter />
-
-and here's a button:
-
-<Button>Click me</Button>
+Here's a counter: <Counter />
 ```
 
-Components can live in `pages/` or `src/`. A `Counter` component defined in `Counter.tsx` is available as `<Counter />` in any MDX file and does not need to be explicitly imported.
+### The `PageWrapper` component
 
-### Component Patterns
+The page wrapper component (`your-project/src/template/PageWrapper.tsx`) is used in Scratch's html template to wrap your pages. It is the only component that the [build process](#build-pipeline) expects to exist. 
 
-**Self-closing components** embedded in MDX files are wrapped in a `not-prose` div automatically during the build process in order to isolate them from the [Tailwind Typography](https://github.com/tailwindlabs/tailwindcss-typography) styling used to render Markdown:
-```mdx
-<Chart />
-```
+You can modify this component to change the look and feel of your site.
 
-**inline children** inherit [Tailwind Typography](https://github.com/tailwindlabs/tailwindcss-typography) styles:
-```mdx
-<Button>Click me</Button>
-```
+### Static Files
 
-**Block children** are converted to markdown when there are blank lines between the component tags and the content:
-```mdx
-<Callout>
-
-## Warning
-
-This is **markdown** inside a component.
-
-</Callout>
-```
-
-### Static Assets
-
-Images and other assets can live in `pages/` or `public/`:
+Put static content like images in the `public/` directory. These files will be copied directly to your built site.
 
 ```mdx
-![My image](./image.png)
-
-![From public](/logo.svg)
+![Logo](/logo.png)
 ```
 
-Relative paths are resolved during the Scratch build process and work correctly at any base path.
+Static files can also live in `pages/` next to your content. Scratch will automatically translate relative file system paths like this...
 
-## Styling
+```mdx
+![Diagram](./diagram.png)
+```
 
-### Tailwind CSS
+...into their corresponding URL path equivalents.
 
-Scratch uses [Tailwind CSS](https://tailwindcss.com/) v4. Edit `src/tailwind.css` to customize global styles:
+### Styling
+
+Scratch uses Tailwind CSS. Edit `src/tailwind.css` to change the styling of your pages:
 
 ```css
 @import 'tailwindcss';
 @plugin "@tailwindcss/typography";
-
-/* Custom styles */
-.prose a {
-  @apply text-blue-600 hover:text-blue-800;
-}
 ```
 
-### Typography
-
-Markdown content is styled with [Tailwind Typography](https://github.com/tailwindlabs/tailwindcss-typography). Configure in `src/template/PageWrapper.jsx`:
+Markdown components are styled with [Tailwind Typography](https://github.com/tailwindlabs/tailwindcss-typography).
 
 ```jsx
 <div className="prose prose-lg prose-slate">
@@ -287,654 +146,379 @@ Markdown content is styled with [Tailwind Typography](https://github.com/tailwin
 </div>
 ```
 
-### Excluding from Prose
+### Frontmatter
 
-Use `not-prose` to exclude elements from typography styling:
+Add YAML frontmatter for page metadata:
 
-```jsx
-<div className="not-prose">
-  <CustomComponent />
-</div>
+```yaml
+---
+title: "My Page"
+description: "Brief description for SEO"
+author: "Your Name"
+image: "/og-image.png"
+---
 ```
 
-Scratch automatically wraps self-closing components in `not-prose` divs.
+Common properties: `title`, `description`, `keywords`, `author`, `image`, `robots`, `lang`, `canonical`.
 
-### Custom Markdown Components
+For social sharing: `url`, `type`, `siteName`, `locale`, `twitterCard`, `twitterSite`.
 
-Override default markdown elements by creating components in `src/markdown/`:
+For articles: `publishDate`, `modifiedDate`, `tags`.
 
-```tsx
-// src/markdown/Link.tsx
-export default function Link({ href, children, ...props }) {
-  const isExternal = href?.startsWith('http');
-  return (
-    <a
-      href={href}
-      target={isExternal ? '_blank' : undefined}
-      rel={isExternal ? 'noopener noreferrer' : undefined}
-      {...props}
-    >
-      {children}
-    </a>
-  );
-}
-```
+## Scratch CLI
 
-Export from `src/markdown/index.ts`:
+### Overview
 
-```ts
-export { default as a } from './Link';
-export { default as pre } from './CodeBlock';
-export { default as h1, default as h2 } from './Heading';
-```
-
-### PageWrapper
-
-The `PageWrapper.jsx` component is exactly what it sounds like: a default wrapper for every markdown page. It's used to set global styles and insert header and footer components (which are also also defined in `src/template/`). Changes you make to this component will affect every page in your project.
-
-## Commands
-
-### scratch create
-
-Create a new Scratch project.
+The CLI builds your project and publishes it to a Scratch server. Install it with:
 
 ```bash
-scratch create [path]
+curl -fsSL https://scratch.dev/install.sh | bash
 ```
 
-| Option | Description |
-|--------|-------------|
-| `--no-src` | Skip the `src/` template directory |
-| `--no-package` | Skip `package.json` template |
-| `--minimal` | Skip example content |
-
-**Example:**
-```bash
-scratch create my-blog
-scratch create docs --minimal
-```
-
-### scratch dev
-
-Start the development server with hot module reloading.
-
-```bash
-scratch dev [path]
-```
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `-p, --port <port>` | `5173` | Server port |
-| `-n, --no-open` | — | Don't open browser |
-| `-d, --development` | — | Unminified output with source maps |
-| `-b, --base <path>` | `/` | Base path for deployment |
-| `--static <mode>` | `assets` | Static file handling (see below) |
-| `--strict` | — | Disable auto-injection of imports |
-| `--highlight <mode>` | `auto` | Syntax highlighting mode |
-
-**Static modes:**
-- `public` — Only serve files from `public/`
-- `assets` — Serve images and media from `pages/`, but not JS/TS files
-- `all` — Serve all static files including code
-
-**Highlight modes:**
-- `off` — No syntax highlighting
-- `popular` — Common languages only
-- `auto` — Detect from code blocks (default)
-- `all` — All languages
-
-### scratch build
-
-Build the project for production.
-
-```bash
-scratch build [path]
-```
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `-o, --out-dir <path>` | `dist` | Output directory |
-| `-d, --development` | — | Unminified output with source maps |
-| `-b, --base <path>` | `/` | Base path for deployment |
-| `--no-ssg` | — | Disable static site generation |
-| `--static <mode>` | `assets` | Static file handling |
-| `--strict` | — | Disable auto-injection |
-| `--highlight <mode>` | `auto` | Syntax highlighting mode |
-
-**Example:**
-```bash
-scratch build
-scratch build --base /docs/ -o build
-```
-
-### scratch preview
-
-Preview the production build locally.
-
-```bash
-scratch preview [path]
-```
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `-p, --port <port>` | `4173` | Server port |
-| `-n, --no-open` | — | Don't open browser |
-
-Requires `dist/` to exist; make sure to run `scratch build` first.
-
-### scratch watch
-
-Quick preview of a single file or directory. Useful for viewing README files.
-
-```bash
-scratch watch [path]
-```
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `-p, --port <port>` | `5173` | Server port |
-| `-n, --no-open` | — | Don't open browser |
-
-**Example:**
-```bash
-scratch watch README.md
-scratch watch ./notes/
-```
-
-### scratch clean
-
-Remove build artifacts.
-
-```bash
-scratch clean [path]
-```
-
-Removes `dist/`, `.scratch/cache/`, and `.scratch/dev/`.
-
-### scratch eject
-
-Revert a given template file or directory to the built-in template version.
-
-```bash
-scratch eject [file]
-```
-
-| Option | Description |
-|--------|-------------|
-| `-l, --list` | List available template files |
-| `-f, --force` | Overwrite existing files without confirmation |
-
-**Example:**
-```bash
-scratch eject --list
-scratch eject src/markdown/CodeBlock.tsx
-scratch eject package.json
-```
-
-### scratch config
-
-Configure project settings interactively.
-
-```bash
-scratch config [path]
-```
-
-Creates or updates `.scratch/project.toml` with:
-- `server_url` — Which server to publish to
-- `name` — Project name
-- `visibility` — Access control setting
-
-### scratch update
-
-Update Scratch to the latest version.
+Update to the latest version:
 
 ```bash
 scratch update
 ```
 
-Downloads the latest release from GitHub, verifies the checksum, and replaces the executable.
+All commands support these flags:
 
-### Global Options
-
-Available on all commands:
-
-| Option | Description |
-|--------|-------------|
-| `-v, --verbose` | Verbose output for debugging |
-| `-q, --quiet` | Quiet mode (errors only) |
-| `--show-bun-errors` | Show full Bun error stack traces |
-| `--version` | Show CLI version |
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Show detailed output |
+| `-q, --quiet` | Errors only |
+| `--show-bun-errors` | Full Bun stack traces |
+| `--version` | Show version |
 | `--help` | Show help |
 
-## Authentication
+### Creating and Building
 
-You can use Scratch to publish your projects to [app.scratch.dev](https://app.scratch.dev) or a self-hosted server.
+#### scratch create
 
-### scratch login
-
-Log in to a Scratch server.
+Create a new project:
 
 ```bash
-scratch login [server-url]
+scratch create my-site
 ```
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--timeout <minutes>` | `10` | Timeout for login approval |
+Options:
+- `--no-src` — Skip the `src/` directory
+- `--no-package` — Skip `package.json`
+- `--minimal` — Skip example content
 
-**How it works:**
-1. CLI displays a verification code
-2. Browser opens to the login page
-3. Sign in and approve the device
-4. CLI receives a token and saves it
+#### scratch dev
+
+Start a development server with hot reload:
 
 ```bash
-$ scratch login
-Logging in to https://app.scratch.dev...
-
-Your verification code is: ABCD-1234
-
-Press Enter to open the browser, or visit:
-https://app.scratch.dev/device?user_code=ABCD-1234
-
-Waiting for approval...
-✓ Logged in as you@example.com
+scratch dev
 ```
 
-Credentials are stored in `~/.scratch/credentials.json`.
+Options:
+- `-p, --port <port>` — Server port (default: 5173)
+- `-n, --no-open` — Don't open browser
+- `-d, --development` — Unminified output with source maps
+- `-b, --base <path>` — Base path for deployment
+- `--static <mode>` — `public`, `assets` (default), or `all`
+- `--highlight <mode>` — `off`, `popular`, `auto` (default), or `all`
 
-### scratch logout
+#### scratch build
 
-Log out from a server.
+Build for production:
 
 ```bash
-scratch logout [server-url]
+scratch build
 ```
 
-Clears saved credentials for the specified server.
+Output goes to `dist/`. Options are the same as `scratch dev`, plus:
+- `-o, --out-dir <path>` — Output directory (default: dist)
+- `--no-ssg` — Skip static site generation
 
-### scratch whoami
+For more on how the build works, see [Build Pipeline](#build-pipeline).
 
-Show the current logged-in user.
+#### scratch preview
+
+Preview your production build locally:
 
 ```bash
-scratch whoami [server-url]
+scratch preview
 ```
+
+Runs a local server for `dist/`. Build first with `scratch build`.
+
+#### scratch clean
+
+Remove build artifacts:
 
 ```bash
-$ scratch whoami
-Logged in as you@example.com
-Server: https://app.scratch.dev
+scratch clean
 ```
 
-## Publishing Your Site
+Deletes `dist/`, `.scratch/cache/`, and `.scratch/dev/`.
 
-### scratch publish
+#### scratch eject
 
-Build and deploy your project.
+Reset a template file to its default:
 
 ```bash
-scratch publish [path]
+scratch eject --list              # See available files
+scratch eject src/markdown/CodeBlock.tsx
 ```
 
-| Option | Description |
-|--------|-------------|
-| `--server <url>` | Server URL (uses config or prompts) |
-| `--name <name>` | Override project name |
-| `--visibility <v>` | Override visibility setting |
-| `--no-build` | Skip build step (deploy existing `dist/`) |
-| `--dry-run` | Show what would be deployed |
+### Publishing
 
-**Example:**
+#### scratch publish
+
+Build and deploy your project:
+
 ```bash
 scratch publish
-scratch publish --visibility private
-scratch publish --name my-docs --server https://my-server.com
 ```
 
-**First publish flow:**
-1. Prompts for project name if not configured
-2. Prompts for visibility setting
-3. Builds the project
-4. Uploads to server
-5. Opens the deployed URL
+On first publish, you'll be asked for:
+1. A project name (if not configured)
+2. Visibility setting
+3. Which server to publish to (if not logged in)
 
-### Project Naming
+Options:
+- `--server <url>` — Server URL
+- `--name <name>` — Project name
+- `--visibility <v>` — Access control
+- `--no-build` — Deploy existing `dist/`
+- `--dry-run` — Show what would be deployed
 
-Project names must be:
-- 3-63 characters long
-- Lowercase letters, numbers, and hyphens only
-- Start with a letter
+Project names must be 3-63 characters, lowercase letters/numbers/hyphens, starting with a letter. Reserved names: `api`, `auth`, `admin`, `www`, `app`, `help`, `support`, `static`, `assets`, `cdn`, `files`, `upload`, `download`.
 
-Reserved names: `api`, `auth`, `admin`, `www`, `app`, `help`, `support`, `static`, `assets`, `cdn`, `files`, `upload`, `download`
+For more on servers and URLs, see [Scratch Server](#scratch-server).
 
-### URL Structure
+#### scratch login
 
-Your published site URL is:
+Log in to a Scratch server:
+
+```bash
+scratch login                     # Default: app.scratch.dev
+scratch login https://my-server.com
+```
+
+The CLI shows a verification code and opens your browser. Sign in and approve the device. Credentials are saved to `~/.scratch/credentials.json`.
+
+You can be logged in to multiple servers at once. Each server has its own entry in the credentials file.
+
+Options:
+- `--timeout <minutes>` — How long to wait for approval (default: 10)
+
+#### scratch logout
+
+Log out from a server:
+
+```bash
+scratch logout
+scratch logout https://my-server.com
+```
+
+#### scratch config
+
+Configure project settings interactively:
+
+```bash
+scratch config
+```
+
+Updates `.scratch/project.toml` with server URL, project name, and visibility.
+
+#### scratch whoami
+
+Check who you're logged in as:
+
+```bash
+scratch whoami
+```
+
+#### scratch projects
+
+Manage your projects on a server.
+
+**List projects:**
+```bash
+scratch projects              # or: scratch projects ls
+```
+
+**Get project info:**
+```bash
+scratch projects info my-blog
+```
+
+**Delete a project:**
+```bash
+scratch projects rm my-blog
+scratch projects rm my-blog -f    # Skip confirmation
+```
+
+#### scratch share
+
+Create time-limited links for sharing private projects without requiring login.
+
+**Create a share link:**
+```bash
+scratch share my-blog --name "Client review" --duration 1w
+```
+
+Durations: `1d` (1 day), `1w` (1 week), `1m` (1 month).
+
+**List share tokens:**
+```bash
+scratch share ls my-blog
+```
+
+**Revoke a token:**
+```bash
+scratch share revoke tok_abc123 my-blog
+```
+
+#### scratch cf-access
+
+Configure Cloudflare Access credentials for servers that use it:
+
+```bash
+scratch cf-access https://my-server.com
+```
+
+Prompts for Client ID and Client Secret from your Cloudflare Access service token. Only needed for self-hosted servers using Cloudflare Access.
+
+### Build Pipeline
+
+When you run `scratch build`, here's what happens:
+
+1. **Dependencies** — Auto-install npm packages from `package.json`
+2. **MDX Compilation** — Process Markdown through remark/rehype plugins
+3. **Tailwind** — Compile CSS with only used utilities
+4. **Server Build** — Build for pre-rendering
+5. **Client Build** — Bundle JavaScript with minification
+6. **HTML Generation** — Render static HTML with meta tags
+7. **Static Assets** — Copy files from `public/`
+8. **Output** — Write to `dist/`
+
+**Remark plugins** (Markdown processing):
+- remark-gfm — Tables, strikethrough, task lists
+- remark-frontmatter — YAML metadata
+- remark-auto-import — Auto-import components
+- remark-not-prose — Wrap components in `not-prose`
+
+**Rehype plugins** (HTML processing):
+- rehype-raw — Allow raw HTML
+- rehype-image-paths — Transform relative image paths
+- rehype-shiki — Syntax highlighting
+- rehype-footnotes — Position footnotes
+
+**Syntax highlighting** uses [Shiki](https://shiki.style/). Control with `--highlight`:
+
+```bash
+scratch build --highlight popular   # Common languages only
+scratch build --highlight all       # All languages
+scratch build --highlight off       # Disable
+```
+
+**Build cache** lives in `.scratch/cache/`. Clear it with `scratch clean`.
+
+### scratch watch
+
+Quick preview for a single file or directory. Useful for viewing README files:
+
+```bash
+scratch watch README.md
+scratch watch ./notes/
+```
+
+Options:
+- `-p, --port <port>` — Server port (default: 5173)
+- `-n, --no-open` — Don't open browser
+
+## Scratch Server
+
+### Overview
+
+A Scratch server lets you share your work with others. Publish privately to share with specific people or your team, or make it public for anyone to see.
+
+The server runs on Cloudflare (Workers, D1, and R2). You can use the hosted version on scratch.dev or run your own.
+
+### scratch.dev
+
+[scratch.dev](https://scratch.dev) is the hosted Scratch server. Anyone can publish for free while Scratch is in Preview.
+
+**Note:** Projects on scratch.dev expire after 30 days during the Preview period.
+
+When you publish, your site is available at either of the following:
 
 ```
-https://pages.scratch.dev/<username>/<project-name>/
+https://pages.scratch.dev/<your-email>/<project-name>/
+https://pages.scratch.dev/<your-user-id>/<project-name>/
 ```
 
-For example, if your email is `pete@example.com` and project is `my-blog`:
+For example, if you're `pete@example.com` and your project is `my-blog`:
+
 ```
 https://pages.scratch.dev/pete@example.com/my-blog/
+https://pages.scratch.dev/abc123/my-blog/
 ```
 
-On single-domain deployments, the URL uses just the local part:
+Self-hosted Scratch servers that are restricted to accounts on @example.com support simpler routing:
+
 ```
-https://pages.scratch.dev/pete/my-blog/
-```
-
-### Updating Your Site
-
-Run `scratch publish` again to deploy updates. Each deploy creates a new version and immediately becomes live.
-
-## Project Management
-
-### scratch projects ls
-
-List all your projects.
-
-```bash
-scratch projects ls [server-url]
-scratch projects [server-url]  # shorthand
+https://pages.mydomain.com/pete/my-blog/
 ```
 
-```bash
-$ scratch projects
-Projects on https://app.scratch.dev:
+**Preview warning:** Scratch is in preview. Don't use it for anything sensitive or critical. The code is open source—if you need more security, self-host behind Cloudflare Access.
 
-  my-blog (v3)
-  https://pages.scratch.dev/pete/my-blog/
+### Visibility
 
-  docs (v1)
-  https://pages.scratch.dev/pete/docs/
-```
-
-### scratch projects info
-
-Show detailed information about a project.
-
-```bash
-scratch projects info [name] [server-url]
-```
-
-```bash
-$ scratch projects info my-blog
-Project: my-blog
-ID: abc123
-Live version: 3
-Total deploys: 3
-Visibility: public
-Created: 2025-01-15
-Last deploy: 2025-01-20
-
-URLs:
-  https://pages.scratch.dev/pete/my-blog/
-  https://pages.scratch.dev/abc123/my-blog/
-```
-
-### scratch projects rm
-
-Delete a project and all its deploys.
-
-```bash
-scratch projects rm [name] [server-url]
-```
-
-| Option | Description |
-|--------|-------------|
-| `-f, --force` | Skip confirmation prompt |
-
-```bash
-$ scratch projects rm my-blog
-⚠ This will permanently delete project 'my-blog' and all 3 deploys.
-Type 'my-blog' to confirm: my-blog
-✓ Project deleted
-```
-
-## Visibility
-
-Control who can access your published site.
-
-### Visibility Modes
+Control who can access your site:
 
 | Mode | Description |
 |------|-------------|
-| `public` | Anyone can access |
-| `private` | Only you can access |
-| `@domain.com` | Anyone with email at that domain |
-| `user@example.com` | Specific email address |
-| `a@x.com,b@y.com` | Multiple addresses (comma-separated) |
-
-**Examples:**
-```bash
-# Public site
-scratch publish --visibility public
-
-# Private site (only you)
-scratch publish --visibility private
-
-# Team access by domain
-scratch publish --visibility @mycompany.com
-
-# Specific people
-scratch publish --visibility "alice@x.com,bob@y.com"
-
-# Mix domains and emails
-scratch publish --visibility "@mycompany.com,contractor@gmail.com"
-```
-
-### Setting Visibility
+| `public` | Anyone |
+| `private` | Only you |
+| `@domain.com` | Anyone with that email domain |
+| `user@example.com` | Specific person |
+| `a@x.com,b@y.com` | Multiple people |
 
 Set visibility when publishing:
+
 ```bash
 scratch publish --visibility private
+scratch publish --visibility @mycompany.com
+scratch publish --visibility "alice@x.com,bob@y.com"
 ```
 
-Or configure it in `.scratch/project.toml`:
+Or in `.scratch/project.toml`:
+
 ```toml
 [project]
 name = "my-blog"
 visibility = "private"
 ```
 
-Or run the interactive config:
-```bash
-scratch config
-```
+When someone without an access token visits your project, they'll be prompted to sign in. If they authenticate and don't have access, they'll see a 404 error.
 
-When someone without access visits a private site, they're prompted to sign in. If they still don't have access, they see a 403 error.
+### Self-Hosting
 
-## Share Tokens
-
-Share tokens provide time-limited anonymous access to private sites. Useful for sharing previews with clients or stakeholders who don't have accounts.
-
-### scratch share create
-
-Create a share token.
-
-```bash
-scratch share create [project]
-scratch share [project]  # shorthand
-```
-
-| Option | Description |
-|--------|-------------|
-| `--name <name>` | Token name (prompts if not provided) |
-| `--duration <d>` | Duration: `1d`, `1w`, or `1m` |
-
-```bash
-$ scratch share my-blog --name "Client review" --duration 1w
-✓ Share token created
-
-Share this link (shown once):
-https://pages.scratch.dev/pete/my-blog/?_st=abc123...
-
-Expires: January 27, 2025
-```
-
-**Durations:**
-- `1d` — 1 day (24 hours)
-- `1w` — 1 week (7 days)
-- `1m` — 1 month (30 days)
-
-### scratch share ls
-
-List share tokens for a project.
-
-```bash
-scratch share ls [project]
-```
-
-```bash
-$ scratch share ls my-blog
-Share tokens for my-blog:
-
-  ID: tok_abc123
-  Name: Client review
-  Duration: 1 week
-  Status: active
-  Created: 2025-01-20
-  Expires: 2025-01-27
-
-  ID: tok_def456
-  Name: Old preview
-  Status: expired
-  Created: 2025-01-01
-  Expired: 2025-01-08
-```
-
-### scratch share revoke
-
-Revoke a share token immediately.
-
-```bash
-scratch share revoke <tokenId> [project]
-```
-
-```bash
-$ scratch share revoke tok_abc123 my-blog
-✓ Share token revoked
-```
-
-## Configuration
-
-### Project Configuration
-
-Project settings live in `.scratch/project.toml`:
-
-```toml
-[project]
-id = "abc123def456"
-name = "my-blog"
-visibility = "public"
-
-[server]
-url = "https://app.scratch.dev"
-```
-
-| Field | Description |
-|-------|-------------|
-| `project.id` | Server-assigned project ID (auto-set) |
-| `project.name` | Project name for publishing |
-| `project.visibility` | Access control setting |
-| `server.url` | Target server URL |
-
-### Credentials
-
-Authentication tokens are stored in `~/.scratch/credentials.json`:
-
-```json
-{
-  "servers": {
-    "https://app.scratch.dev": {
-      "token": "...",
-      "email": "you@example.com",
-      "name": "Your Name"
-    }
-  }
-}
-```
-
-This file is created by `scratch login` and should not be edited manually.
-
-## Build Pipeline
-
-When you run `scratch build`, Scratch compiles your MDX files into a **fully static website**—pre-rendered HTML, CSS, and JavaScript that can be hosted anywhere.
-
-### Build Steps
-
-1. **Dependency Resolution** — Auto-install npm dependencies from `package.json`
-2. **Entry Generation** — Generate client/server entry files for each page
-3. **MDX Compilation** — Process markdown through remark/rehype plugins
-4. **Tailwind Compilation** — Compile CSS with only used utilities
-5. **Server Build** — Build server bundle for pre-rendering
-6. **Client Build** — Bundle client JavaScript with minification
-7. **HTML Generation** — Render static HTML with meta tags
-8. **Static Assets** — Copy files from `public/`
-9. **Output** — Write to `dist/`
-
-### MDX Plugins
-
-**Remark plugins** (Markdown AST):
-- **remark-gfm** — Tables, strikethrough, task lists
-- **remark-frontmatter** — YAML metadata extraction
-- **remark-auto-import** — Auto-import components
-- **remark-not-prose** — Wrap components in `not-prose`
-
-**Rehype plugins** (HTML AST):
-- **rehype-raw** — Allow raw HTML in markdown
-- **rehype-image-paths** — Transform relative image paths
-- **rehype-shiki** — Syntax highlighting
-- **rehype-footnotes** — Position footnotes correctly
-
-### Syntax Highlighting
-
-Code blocks are highlighted with [Shiki](https://shiki.style/). Control with `--highlight`:
-
-```bash
-scratch build --highlight popular  # Common languages only
-scratch build --highlight all      # All languages
-scratch build --highlight off      # No highlighting
-```
-
-### Cache Management
-
-Build cache lives in `.scratch/cache/`. Clear it with:
-
-```bash
-scratch clean
-```
-
-## Self-Hosting
-
-You can run your own Scratch server instead of using app.scratch.dev.
-
-### When to Self-Host
-
-**Use app.scratch.dev when:**
-- You want zero infrastructure management
-- Public or personal private sites
-- Standard authentication (Google OAuth)
-
-**Self-host when:**
-- You need enterprise SSO (Cloudflare Access)
-- Data must stay on your infrastructure
-- Custom domain requirements
+Run your own Scratch server when you need:
+- Enterprise SSO via Cloudflare Access
+- Data on your own infrastructure
+- Custom domains
 - Organization-wide deployment
 
-### Infrastructure Requirements
+Self-hosting is also useful for a personal website or a shared space where colleagues can share writing privately.
 
-A Scratch server runs on Cloudflare:
-- **Workers** — Server code
+#### Setting up Cloudflare
+
+A Scratch server needs:
+- **Cloudflare Workers** — Runs the server code
 - **D1** — SQLite database
 - **R2** — File storage
 
-### Setup
+#### Configuring Your Server
 
-1. Clone the repository:
+1. Clone the repo:
 ```bash
 git clone https://github.com/scratch/scratch
 cd scratch
@@ -942,177 +526,111 @@ cd scratch
 
 2. Run the setup wizard:
 ```bash
-bun ops server -i prod setup
+bun ops server -i <server-name> setup
 ```
 
-This creates:
-- `server/.prod.vars` — Environment variables
-- `server/wrangler.prod.toml` — Cloudflare config
+**Authentication modes:**
 
-3. Configure required variables in `.prod.vars`:
+*BetterAuth (default)* — Users sign in with oogle OAuth to authenticate their CLI and view private pages.
 
 ```bash
-# Domain configuration
-BASE_DOMAIN=scratch.example.com
-APP_SUBDOMAIN=app
-CONTENT_SUBDOMAIN=pages
-
-# Authentication
-BETTER_AUTH_SECRET=<random-string>
-AUTH_MODE=better-auth
+AUTH_MODE=local
 GOOGLE_CLIENT_ID=<from-google-console>
 GOOGLE_CLIENT_SECRET=<from-google-console>
-
-# Access control
-ALLOWED_USERS=@yourcompany.com
-MAX_VISIBILITY=@yourcompany.com
-
-# Resource IDs (from Cloudflare dashboard)
-D1_DATABASE_ID=<your-d1-id>
 ```
 
-4. Push secrets and deploy:
-```bash
-bun ops server -i prod config push
-bun ops server -i prod db migrate
-bun ops server -i prod deploy
-```
+*Cloudflare Access* — Enterprise SSO. Supports SAML, OIDC, Okta, Azure AD. Good for corporate deployments.
 
-### Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `BASE_DOMAIN` | Base domain (e.g., `scratch.example.com`) |
-| `APP_SUBDOMAIN` | App subdomain (e.g., `app`) |
-| `CONTENT_SUBDOMAIN` | Content subdomain (e.g., `pages`) |
-| `BETTER_AUTH_SECRET` | Session encryption key |
-| `AUTH_MODE` | `better-auth` or `cloudflare-access` |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `ALLOWED_USERS` | Who can create accounts (`*`, `@domain.com`, or emails) |
-| `MAX_VISIBILITY` | Maximum visibility for projects |
-| `D1_DATABASE_ID` | Cloudflare D1 database ID |
-
-### Authentication Modes
-
-**BetterAuth (default)** — Google OAuth
-- Users sign in with Google
-- Sessions stored in D1 database
-- Good for public or semi-public deployments
-
-**Cloudflare Access** — Enterprise SSO
-- Authentication handled at Cloudflare edge
-- Supports SAML, OIDC, Okta, Azure AD, etc.
-- Server validates Cloudflare JWT
-- Good for corporate deployments
-
-To use Cloudflare Access:
 ```bash
 AUTH_MODE=cloudflare-access
 CF_ACCESS_TEAM_NAME=your-team
 CF_ACCESS_AUD=<application-aud>
 ```
 
-### Domain Configuration
+**Domain configuration:**
 
-Scratch uses two subdomains for security:
+Scratch uses two subdomains:
+- **App subdomain** (`app.example.com`) — API, login, dashboard
+- **Content subdomain** (`pages.example.com`) — Published sites
 
-- **App subdomain** (`app.scratch.dev`) — API, authentication, dashboard
-- **Content subdomain** (`pages.scratch.dev`) — User-uploaded content
+This separation prevents malicious uploaded JavaScript from stealing app session cookies.
 
-This separation prevents malicious uploaded JavaScript from stealing session cookies.
-
-## Cloudflare Access
-
-For servers behind Cloudflare Access, configure service tokens in the CLI.
-
-### scratch cf-access
-
-Configure Cloudflare Access credentials.
+#### Deploying Your Server
 
 ```bash
-scratch cf-access [server-url]
+# Run any needed migrations on your Scratch Server database
+bun ops server -i <server-name> db migrate
+
+# Deploy the scratch server
+bun ops server -i <server-name> deploy
 ```
 
-Prompts for:
-- **Client ID** — From Cloudflare Access service token
-- **Client Secret** — From Cloudflare Access service token
+#### Publishing to www and root domain
 
-These credentials are sent with API requests to pass through Cloudflare Access.
+You can configure your Scratch server to serve a specific project on the root domain and `www` subdomain:
 
-**When to use:** Only needed for self-hosted servers using Cloudflare Access authentication mode.
+1. Deploy a Scratch server without setting this value
+2. Publish your project to this server. Note the project ID in the server's response.
+3. Update `WWW_PROJECT_ID` in `server/.<your-server-name>.vars` with this value.
+4. Run `bun ops server -i <server-name> config push` to update your server's Cloudflare Secrets config
 
-## API Reference
+### Security
 
-The Scratch server exposes a REST API for programmatic access.
+Scratch separates the app and content subdomains for security. The app handles authentication and API requests. Content serves user-uploaded files.
 
-### Authentication
+This is important because published sites can include JavaScript. If session cookies were shared across subdomains, a malicious site could make authenticated API requests. App session cookies are scoped to the app subdomain so that client-side JavaScript code on `pages.` can't access it.
 
-API requests use Bearer token authentication:
+When a user attempts to load content on `pages.`, the server first checks whether the URL maps to a specific project.
+
+If it does, and the project has `visibility=public`, the content will be served right away.
+
+If it does and the project has a restricted visibility setting, the user will be redirected to `app.` to authenticate. If they have access to the project in question they'll be redirected back to `pages.` with a content access token. This token is stored in an `http-only` cookie scoped to the project's base URL path. It is only valid for that project.
+
+If the URL does not map to a project, the user will be redirected to authenticate and will be served a `404` error if they do.
+
+**Preview warning:** Scratch is new and hasn't been audited. Don't rely on local authentication for sensitive content. If you need stronger security, self-host behind Cloudflare Access.
+
+### API Reference
+
+The server has a REST API. Authenticate with a Bearer token:
 
 ```bash
-curl -H "Authorization: Bearer <token>" \
-  https://app.scratch.dev/api/me
+curl -H "Authorization: Bearer <token>" https://app.scratch.dev/api/me
 ```
 
 Get your token from `~/.scratch/credentials.json` after running `scratch login`.
 
-### Endpoints
+#### Endpoints
 
-#### User
+**GET /api/me** — Current user
 
-**GET /api/me** — Get current user
 ```json
 {
   "user": {
     "id": "abc123",
     "email": "you@example.com",
-    "name": "Your Name",
-    "image": null
+    "name": "Your Name"
   }
 }
 ```
 
-#### Projects
+**GET /api/projects** — List projects
 
-**GET /api/projects** — List your projects
-```json
-{
-  "projects": [
-    {
-      "id": "abc123",
-      "name": "my-blog",
-      "owner_id": "user123",
-      "visibility": "public",
-      "live_version": 3,
-      "deploy_count": 3,
-      "urls": {
-        "primary": "https://pages.scratch.dev/pete/my-blog/",
-        "byId": "https://pages.scratch.dev/user123/my-blog/"
-      },
-      "created_at": "2025-01-15T...",
-      "updated_at": "2025-01-20T...",
-      "last_deploy_at": "2025-01-20T..."
-    }
-  ]
-}
-```
+**GET /api/projects/:name** — Get project
 
-**GET /api/projects/:name** — Get project details
+**POST /api/projects** — Create project
 
-**POST /api/projects** — Create a project
 ```bash
-curl -X POST \
-  -H "Authorization: Bearer <token>" \
+curl -X POST -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"name": "my-project"}' \
   https://app.scratch.dev/api/projects
 ```
 
 **PATCH /api/projects/:name** — Update project
+
 ```bash
-curl -X PATCH \
-  -H "Authorization: Bearer <token>" \
+curl -X PATCH -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"visibility": "private"}' \
   https://app.scratch.dev/api/projects/my-blog
@@ -1120,29 +638,21 @@ curl -X PATCH \
 
 **DELETE /api/projects/:name** — Delete project
 
-#### Deploys
+**POST /api/projects/:name/deploy** — Deploy
 
-**POST /api/projects/:name/deploy** — Deploy a project
 ```bash
-curl -X POST \
-  -H "Authorization: Bearer <token>" \
+curl -X POST -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/zip" \
   --data-binary @dist.zip \
   "https://app.scratch.dev/api/projects/my-blog/deploy?visibility=public"
 ```
 
-Query parameters:
-- `visibility` — Set project visibility
-- `project_id` — Local project ID (for rename detection)
-
-#### Share Tokens
-
 **GET /api/projects/:name/share-tokens** — List share tokens
 
 **POST /api/projects/:name/share-tokens** — Create share token
+
 ```bash
-curl -X POST \
-  -H "Authorization: Bearer <token>" \
+curl -X POST -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"name": "Client review", "duration": "1w"}' \
   https://app.scratch.dev/api/projects/my-blog/share-tokens
@@ -1150,77 +660,25 @@ curl -X POST \
 
 **DELETE /api/projects/:name/share-tokens/:id** — Revoke share token
 
-### Error Codes
+#### Error Codes
 
-| Code | Description |
-|------|-------------|
-| `PROJECT_NAME_INVALID` | Invalid project name format |
-| `PROJECT_NAME_TAKEN` | You already have a project with this name |
+| Code | Meaning |
+|------|---------|
+| `PROJECT_NAME_INVALID` | Bad project name format |
+| `PROJECT_NAME_TAKEN` | You already have this project name |
 | `PROJECT_NOT_FOUND` | Project doesn't exist or you don't own it |
-| `VISIBILITY_INVALID` | Invalid visibility format |
+| `VISIBILITY_INVALID` | Bad visibility format |
 | `VISIBILITY_EXCEEDS_MAX` | Visibility exceeds server maximum |
-| `INVALID_ZIP` | Upload is not a valid zip file |
-| `DEPLOY_TOO_LARGE` | Zip file exceeds size limit |
-| `TOO_MANY_FILES` | Deploy has too many files |
-| `SHARE_TOKEN_NOT_FOUND` | Share token doesn't exist |
-| `SHARE_TOKEN_LIMIT_EXCEEDED` | Too many active share tokens |
+| `INVALID_ZIP` | Not a valid zip file |
+| `DEPLOY_TOO_LARGE` | Zip too big |
+| `TOO_MANY_FILES` | Too many files in deploy |
+| `SHARE_TOKEN_NOT_FOUND` | Token doesn't exist |
+| `SHARE_TOKEN_LIMIT_EXCEEDED` | Too many active tokens |
 
 ## Troubleshooting
 
-### Build Errors
+If you run into an issue with Scratch, point your favorite coding agent at [our repo](https://github.com/scratch/scratch) and ask it to figure out what's going on. Feel free to open an issue with a markdown plan for fixing the problem. If your plan makes sense we'll implement it.
 
-**"Cannot find module"**
-- Run `scratch clean` then try again
-- Check `package.json` for missing dependencies
-- Run `bun install` manually
+## Feedback
 
-**"Component not found"**
-- Ensure filename matches component name (`Button.tsx` → `<Button />`)
-- Check for typos in component name
-- Verify file is in `pages/` or `src/`
-
-**Syntax highlighting not working**
-- Try `--highlight all` to include all languages
-- Check language identifier in code fence matches Shiki
-
-### Login Issues
-
-**"Device authorization timed out"**
-- Increase timeout: `scratch login --timeout 20`
-- Check browser opened to correct URL
-- Verify you approved the correct code
-
-**"Not authenticated" on publish**
-- Run `scratch whoami` to check login status
-- Run `scratch login` to re-authenticate
-- Check `~/.scratch/credentials.json` exists
-
-### Publish Failures
-
-**"Project name is reserved"**
-- Choose a different name (avoid `api`, `auth`, etc.)
-
-**"Visibility exceeds server maximum"**
-- Server restricts visibility options
-- Use `private` or allowed domain
-
-**"Deploy too large"**
-- Remove large files from `dist/`
-- Check for accidentally included `node_modules`
-- Use `.gitignore` patterns
-
-### Debugging
-
-Use verbose mode to see detailed output:
-
-```bash
-scratch dev -v
-scratch build -v
-scratch publish -v
-```
-
-For Bun-specific errors:
-
-```bash
-scratch build --show-bun-errors
-```
+Send feedback and requests to [@koomen](https://x.com/koomen)
