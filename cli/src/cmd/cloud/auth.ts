@@ -198,6 +198,7 @@ export async function loginCommand(ctxOrServerUrl: CloudContext | string, option
   // Save credentials with placeholder user (so cfToken is available for /api/me request)
   await saveCredentials({
     token: result.token,
+    type: 'session',  // Device auth tokens are session tokens
     cfToken: result.cfToken,
     user: { id: 'pending', email: 'pending@localhost', name: null },
   }, serverUrl)
@@ -208,6 +209,7 @@ export async function loginCommand(ctxOrServerUrl: CloudContext | string, option
   // Update credentials with real user info
   await saveCredentials({
     token: result.token,
+    type: 'session',  // Device auth tokens are session tokens
     cfToken: result.cfToken,
     user: { id: user.id, email: user.email, name: user.name },
   }, serverUrl)

@@ -33,10 +33,18 @@ export interface UserSecrets {
 }
 
 /**
+ * Token type for credential storage
+ * - 'session': OAuth session token (device authorization flow), uses Authorization: Bearer header
+ * - 'api_key': Long-lived API token, uses X-Api-Key header
+ */
+export type TokenType = 'session' | 'api_key'
+
+/**
  * Per-server credential entry (stored keyed by server URL)
  */
 export interface CredentialEntry {
   token: string
+  type?: TokenType  // Token type for header selection (defaults to 'session' for backwards compatibility)
   cfToken?: string  // CF Access JWT (only present when server uses cloudflare-access mode)
   user: {
     id: string

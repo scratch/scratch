@@ -21,6 +21,7 @@ import { publishCommand } from './cmd/cloud/publish';
 import { configCommand } from './cmd/cloud/config';
 import { listProjectsCommand, projectInfoCommand, projectDeleteCommand } from './cmd/cloud/projects';
 import { shareCreateCommand, shareListCommand, shareRevokeCommand } from './cmd/cloud/share';
+import { listTokensCommand, createTokenCommand, revokeTokenCommand, useTokenCommand } from './cmd/cloud/tokens';
 
 // Context created in preAction hook, used by commands
 let ctx: BuildContext;
@@ -339,6 +340,59 @@ share
     })
   );
 
+// Tokens subcommand group
+const tokens = program
+  .command('tokens')
+  .description('Manage API tokens for CI/CD and automation');
+
+tokens
+  .command('ls', { isDefault: true })
+  .description('List your API tokens')
+  .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
+  .action(
+    withErrorHandling('Tokens ls', async (serverUrl) => {
+      const ctx = createCloudContext(serverUrl);
+      await listTokensCommand(ctx);
+    })
+  );
+
+tokens
+  .command('create')
+  .description('Create a new API token')
+  .argument('<name>', 'Token name (3-40 characters, alphanumeric with hyphens/underscores)')
+  .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
+  .option('--expires <days>', 'Days until expiration', parseInt)
+  .action(
+    withErrorHandling('Tokens create', async (name, serverUrl, options) => {
+      const ctx = createCloudContext(serverUrl);
+      await createTokenCommand(ctx, name, { expires: options.expires });
+    })
+  );
+
+tokens
+  .command('revoke')
+  .description('Revoke an API token')
+  .argument('<id-or-name>', 'Token ID or name')
+  .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
+  .action(
+    withErrorHandling('Tokens revoke', async (idOrName, serverUrl) => {
+      const ctx = createCloudContext(serverUrl);
+      await revokeTokenCommand(ctx, idOrName);
+    })
+  );
+
+tokens
+  .command('use')
+  .description('Store an API token for CLI authentication')
+  .argument('<token>', 'API token (starts with scratch_)')
+  .option('--server <url>', 'Server URL (prompts if not specified)')
+  .option('--force', 'Replace existing credential without prompting')
+  .action(
+    withErrorHandling('Tokens use', async (token, options) => {
+      await useTokenCommand(token, { server: options.server, force: options.force });
+    })
+  );
+
 program
   .command('cf-access')
   .description('Configure Cloudflare Access service token')
@@ -371,7 +425,7 @@ program
 // Commands appear in help in the order listed here
 const COMMAND_GROUPS_CONFIG = [
   { name: 'Local', commands: ['create', 'dev', 'build', 'preview', 'watch', 'clean', 'eject', 'config'] },
-  { name: 'Server', commands: ['publish', 'login', 'logout', 'whoami', 'projects', 'share', 'cf-access'] },
+  { name: 'Server', commands: ['publish', 'login', 'logout', 'whoami', 'projects', 'share', 'tokens', 'cf-access'] },
   { name: 'Other', commands: ['update', 'help'] },
 ] as const;
 

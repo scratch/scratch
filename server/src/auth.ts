@@ -1,5 +1,5 @@
 import { betterAuth } from 'better-auth'
-import { bearer, deviceAuthorization } from 'better-auth/plugins'
+import { bearer, deviceAuthorization, apiKey } from 'better-auth/plugins'
 import { APIError } from 'better-auth/api'
 import { Kysely } from 'kysely'
 import { D1Dialect } from 'kysely-d1'
@@ -62,6 +62,24 @@ export function createAuth(env: Env) {
               pollingInterval: 'polling_interval',
             },
           },
+        },
+      }),
+
+      // API key support for CLI/CI authentication
+      // API keys use X-Api-Key header (NOT Authorization: Bearer)
+      // This prevents confusion between session tokens and API keys
+      apiKey({
+        defaultPrefix: 'scratch_',
+        defaultKeyLength: 32,
+        enableMetadata: true,
+        // Allow API keys to work with getSession() for seamless authentication
+        enableSessionForAPIKeys: true,
+        // Only accept X-Api-Key header (not Authorization) to distinguish from session tokens
+        apiKeyHeaders: ['x-api-key'],
+        // Key expiration defaults
+        keyExpiration: {
+          defaultExpiresIn: null,           // No default expiration
+          maxExpiresIn: 365 * 24 * 60 * 60, // 365 days maximum (in seconds)
         },
       }),
     ],

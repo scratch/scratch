@@ -459,6 +459,122 @@ export async function integrationTestAction(instance: string): Promise<void> {
 
     console.log()
 
+    // Step 8e: Test API token authentication
+    console.log('Step 8e: Testing API token authentication...')
+
+    // Create an API token
+    const tokenName = `test-token-${Date.now()}`
+    const createTokenResult = await runCommand([
+      CLI_BIN, 'tokens', 'create', tokenName, serverUrl,
+      '--expires', '1',  // 1 day expiry
+    ])
+
+    if (createTokenResult.exitCode !== 0) {
+      console.error(`${red}✗${reset} Failed to create API token: ${createTokenResult.stderr}`)
+      testPassed = false
+    } else {
+      // Extract the token from output (it should be on a line by itself after "Created API token:")
+      const tokenMatch = createTokenResult.stdout.match(/scratch_[a-zA-Z0-9]+/)
+      if (!tokenMatch) {
+        console.error(`${red}✗${reset} Could not find API token in create output`)
+        console.log('Output:', createTokenResult.stdout.slice(0, 500))
+        testPassed = false
+      } else {
+        const apiToken = tokenMatch[0]
+        console.log(`${green}✓${reset} Created API token: ${apiToken.slice(0, 12)}...`)
+
+        // Test 1: List tokens shows the new token
+        const listResult = await runCommand([CLI_BIN, 'tokens', 'ls', serverUrl])
+        if (!listResult.stdout.includes(tokenName)) {
+          console.error(`${red}✗${reset} Token not found in list`)
+          testPassed = false
+        } else {
+          console.log(`${green}✓${reset} Token appears in list`)
+        }
+
+        // Test 2: Authenticate with API token via X-Api-Key header
+        const apiResponse = await fetch(`${serverUrl}/api/me`, {
+          headers: { 'X-Api-Key': apiToken },
+        })
+        if (!apiResponse.ok) {
+          console.error(`${red}✗${reset} API token authentication failed: ${apiResponse.status}`)
+          testPassed = false
+        } else {
+          const apiUser = await apiResponse.json() as { user: { email: string } }
+          console.log(`${green}✓${reset} API token authenticated as ${apiUser.user.email}`)
+        }
+
+        // Test 3: Deploy using SCRATCH_TOKEN env var
+        // Create a simple temp project for env var test
+        const envTestDir = join(tmpdir(), `scratch-env-test-${Date.now()}`)
+        await runCommand([CLI_BIN, 'create', envTestDir])
+        const envTestProjectName = generateRandomProjectName()
+
+        // Deploy with SCRATCH_TOKEN env var (simulate CI environment)
+        const envDeployResult = await runCommand([
+          CLI_BIN, 'publish', envTestDir,
+          '--server', serverUrl,
+          '--name', envTestProjectName,
+          '--visibility', 'public',
+          '--no-open',
+        ], { env: { ...process.env, SCRATCH_TOKEN: apiToken } })
+
+        if (envDeployResult.exitCode !== 0) {
+          console.error(`${red}✗${reset} Deploy with SCRATCH_TOKEN failed: ${envDeployResult.stderr}`)
+          testPassed = false
+        } else {
+          console.log(`${green}✓${reset} Deploy with SCRATCH_TOKEN env var succeeded`)
+          // Cleanup the test project
+          await runCommand([CLI_BIN, 'projects', 'delete', envTestProjectName, serverUrl, '--force'])
+        }
+
+        // Cleanup env test dir
+        try {
+          await rm(envTestDir, { recursive: true, force: true })
+        } catch {
+          // Ignore cleanup errors
+        }
+
+        // Test 4: Revoke the token
+        const revokeResult = await runCommand([
+          CLI_BIN, 'tokens', 'revoke', tokenName, serverUrl,
+        ])
+        if (revokeResult.exitCode !== 0) {
+          console.error(`${red}✗${reset} Failed to revoke token: ${revokeResult.stderr}`)
+          testPassed = false
+        } else {
+          console.log(`${green}✓${reset} Token revoked successfully`)
+        }
+
+        // Test 5: Revoked token should no longer authenticate
+        const revokedResponse = await fetch(`${serverUrl}/api/me`, {
+          headers: { 'X-Api-Key': apiToken },
+        })
+        if (revokedResponse.ok) {
+          console.error(`${red}✗${reset} Revoked token still works (should be rejected)`)
+          testPassed = false
+        } else if (revokedResponse.status === 401) {
+          console.log(`${green}✓${reset} Revoked token correctly rejected`)
+        } else {
+          console.error(`${red}✗${reset} Unexpected status for revoked token: ${revokedResponse.status}`)
+          testPassed = false
+        }
+
+        // Test 6: Invalid token rejected
+        const invalidResponse = await fetch(`${serverUrl}/api/me`, {
+          headers: { 'X-Api-Key': 'scratch_invalid_token_12345' },
+        })
+        if (invalidResponse.status === 401) {
+          console.log(`${green}✓${reset} Invalid token correctly rejected`)
+        } else {
+          console.error(`${red}✗${reset} Invalid token not rejected: ${invalidResponse.status}`)
+          testPassed = false
+        }
+      }
+    }
+
+    console.log()
+
     // Step 9: Test project ID persistence
     console.log('Step 9: Testing project ID persistence...')
 

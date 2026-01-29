@@ -102,7 +102,22 @@ async function handleCfAccessAuth(serverUrl: string, hadCredentials: boolean): P
 }
 
 /**
+ * Get the API token from environment variable (SCRATCH_TOKEN).
+ * Returns null if not set.
+ */
+function getEnvToken(): string | null {
+  // Bun auto-loads .env from cwd into process.env at startup
+  // This covers both explicit env vars and .env file values
+  return process.env.SCRATCH_TOKEN ?? null
+}
+
+/**
  * Build headers for an API request, including auth and CF Access tokens.
+ *
+ * Authentication priority:
+ * 1. SCRATCH_TOKEN env var (always uses X-Api-Key header)
+ * 2. Token passed as parameter (uses header based on credential type)
+ * 3. Stored credentials from ~/.scratch/credentials.json
  */
 async function buildHeaders(
   serverUrl: string,
@@ -118,13 +133,29 @@ async function buildHeaders(
     headers['Content-Type'] = contentType
   }
 
-  // Add Bearer token
+  // Check environment variable first (always treated as API key)
+  const envToken = getEnvToken()
+  if (envToken) {
+    headers['X-Api-Key'] = envToken
+    return { headers, hasCfAccess: cfHeaders !== undefined }
+  }
+
+  // Load credentials for token type and CF Access JWT
+  const credentials = await loadCredentials(serverUrl)
+
+  // Add auth header based on credential type
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+    // Use token type from credentials to determine header
+    // Default to 'session' (Bearer) for backwards compatibility
+    const tokenType = credentials?.type ?? 'session'
+    if (tokenType === 'api_key') {
+      headers['X-Api-Key'] = token
+    } else {
+      headers['Authorization'] = `Bearer ${token}`
+    }
   }
 
   // Add CF Access JWT from credentials (browser-based CF Access auth)
-  const credentials = await loadCredentials(serverUrl)
   if (credentials?.cfToken) {
     headers['cf-access-token'] = credentials.cfToken
   }
