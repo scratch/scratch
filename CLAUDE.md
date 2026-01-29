@@ -13,160 +13,57 @@ scratch/
 │   │   └── cloud/    # Cloud deployment commands
 │   ├── template/     # Embedded project templates
 │   └── test/         # Unit and e2e tests
-├── server/           # Cloudflare Worker (Hono framework)
+├── server/           # Cloudflare Worker (see server/CLAUDE.md)
 │   ├── src/
 │   │   ├── routes/   # API routes split by domain
-│   │   │   ├── api/  # /api/* endpoints (projects, deploys, users)
-│   │   │   ├── auth.ts
-│   │   │   ├── pages.ts
-│   │   │   └── ui.ts
-│   │   ├── lib/      # Shared utilities
-│   │   └── env.ts    # TypeScript env interface (auto-generated)
-│   ├── wrangler.template.toml  # Template for generating instance configs
-│   └── .vars.example           # Example/template for instance vars
+│   │   └── lib/      # Shared utilities
+│   └── schema.sql    # Database schema
 ├── shared/           # Types shared between server and client
-│   └── src/
-│       ├── api/      # API response types
-│       ├── project.ts
-│       └── visibility.ts
 ├── ops/              # CLI for dev operations
-│   ├── index.ts      # Entry point
-│   ├── commands/     # Command implementations
-│   └── lib/          # Shared utilities (config parsing, etc.)
+├── website/          # Scratch documentation site (itself a Scratch project)
 └── plan/             # Implementation plans
 ```
 
+**Note:** The `website/` directory is a Scratch project (dogfooding) that gets published to scratch.dev. It has its own `CLAUDE.md` documenting how to work with it as a Scratch site. For contributing to the Scratch CLI/server codebase, refer to this document.
+
 ## CLI Overview
 
-The `cli/` directory contains the Scratch CLI - a tool for building static MDX-based websites. Users create `.md` and `.mdx` files in a `pages/` directory with custom React components, and the CLI compiles them into a static site.
+The CLI builds static MDX-based websites. Users create `.md`/`.mdx` files in `pages/` with custom React components, and the CLI compiles them into a static site.
 
-Key commands:
-- `scratch create` - Create new project
-- `scratch build` - Build static site
-- `scratch dev` - Development server with hot reload
-- `scratch publish` - Deploy to Scratch server
-- `scratch login` - Log in to a server
-- `scratch projects` - Manage projects
+Key commands: `scratch create`, `scratch build`, `scratch dev`, `scratch publish`, `scratch projects`
 
-**For detailed CLI documentation, see `cli/CLAUDE.md`.**
-
-Client credentials are stored at `~/.scratch/credentials.json`.
+For detailed CLI documentation, see `cli/CLAUDE.md`.
 
 ## Instance-Based Configuration
 
 Server ops commands use `-i/--instance` flag (e.g., `prod`, `staging`, `dev`). Each instance has:
-- `server/.${instance}.vars` - Environment variables (e.g., `.prod.vars`)
+- `server/.${instance}.vars` - Environment variables
 - `server/wrangler.${instance}.toml` - Generated wrangler config
 
-Resource names are derived from the instance: `${instance}-scratch-server`, `${instance}-scratch-db`, `${instance}-scratch-files`.
+## Skills
 
-## Key Commands
+Use these skills for common operations:
 
-```bash
-# Git workflow (uses Claude to generate descriptions)
-bun ops commit                              # Commit all changes with AI-generated message
-bun ops pr                                  # Create PR with AI-generated description
-bun ops cli release [patch|minor|major]     # Release CLI (creates cli-v* tag)
-bun ops server release [patch|minor|major]  # Release server (creates server-v* tag)
+- **ops** - Server deployment, database operations, testing commands
+- **release** - Version bumps and releases for CLI and server
+- **cli-dev** - Patterns for CLI development
 
-# Server commands (use -i flag for instance)
-bun ops server -i <instance> setup          # Interactive setup wizard
-bun ops server -i <instance> deploy         # Deploy to Cloudflare Workers
-bun ops server -i <instance> logs           # Tail worker logs
+## Verifying Changes
 
-# Database
-bun ops server -i <instance> db migrate     # Run migrations from schema.sql
-bun ops server -i <instance> db tables      # List tables
-bun ops server -i <instance> db query "SQL" # Run arbitrary SQL
-bun ops server -i <instance> db drop-all    # Drop all tables (prod requires confirmation)
-
-# Configuration
-bun ops server -i <instance> config check [--fix]  # Validate config files and secrets
-bun ops server -i <instance> config push    # Sync vars to Cloudflare secrets
-
-# Server utilities (no instance required)
-bun ops server regenerate-env-ts            # Regenerate env.ts from .vars.example
-
-# CLI commands
-bun ops cli build                           # Build the scratch CLI
-bun ops cli build:all                       # Build for all platforms
-bun ops cli test                            # Run CLI tests
-bun ops cli test:unit                       # Run unit tests only
-bun ops cli test:e2e                        # Run e2e tests only
-
-# Development (run from server/ directory)
-cd server && bun run dev                    # Start local dev server
-```
-
-## Running Tests
-
-**The best way to verify that changes to the CLI or server are correct is to run a full integration test:**
+Run the full integration test against staging:
 ```bash
 bun ops server -i staging test
 ```
 
-### Integration test (end-to-end against a deployed instance)
-```bash
-bun ops server -i staging test    # Run integration test against staging
-bun ops server -i prod test       # Run integration test against prod
-```
-
-This runs a complete end-to-end test:
-1. Builds the CLI
-2. Runs migrations on the instance
-3. Deploys server to the instance
-4. Starts tailing logs in background (writes to `logs/<instance>.log`)
-5. Logs in with CLI (interactive if needed)
-6. Creates a scratch project in temp directory
-7. Deploys project to the instance
-8. Verifies deployed content matches local build
-9. Cleans up test project
-
-The test reads domain configuration from `server/.<instance>.vars` (BASE_DOMAIN, APP_SUBDOMAIN, CONTENT_SUBDOMAIN).
-
-**Viewing test logs:** Server logs during the test are saved to `logs/<instance>.log`. View with:
-```bash
-cat logs/staging.log
-```
-
-### CLI tests
-```bash
-bun ops cli test          # Run all CLI tests (builds first via pretest)
-bun ops cli test:unit     # Unit tests only
-bun ops cli test:e2e      # E2E tests only
-```
-
-## Testing Against Production
-
-Full automated tests require `TEST_MODE=true` which isn't enabled in production. However, if already logged in via CLI, you can manually test:
-
-```bash
-# Check CLI auth
-scratch whoami
-
-# List projects
-scratch projects
-
-# Test API directly
-curl -H "Authorization: Bearer <token>" https://<APP_SUBDOMAIN>.<BASE_DOMAIN>/api/me
-curl -H "Authorization: Bearer <token>" https://<APP_SUBDOMAIN>.<BASE_DOMAIN>/api/projects
-```
-
-Token can be read from `~/.scratch/credentials.json`. Domain config is in `server/.${instance}.vars`.
+This builds the CLI, deploys the server, and runs end-to-end tests. See the ops skill for more details.
 
 ## Environment Variables
 
 Configuration uses `.vars` files (gitignored):
 - `server/.vars.example` - Template with all variables and documentation
-- `server/.${instance}.vars` - Instance-specific values (created by `bun ops server -i <instance> setup`)
+- `server/.${instance}.vars` - Instance-specific values
 
 Secrets are synced to Cloudflare via `bun ops server -i <instance> config push`.
-
-See `server/.vars.example` for all required variables including:
-- Domain configuration (BASE_DOMAIN, APP_SUBDOMAIN, CONTENT_SUBDOMAIN)
-- Authentication (BETTER_AUTH_SECRET, AUTH_MODE, Google OAuth or Cloudflare Access)
-- Access control (ALLOWED_USERS, MAX_VISIBILITY)
-- Resource IDs (D1_DATABASE_ID)
 
 ## Authentication Architecture
 
@@ -207,6 +104,8 @@ Key files:
 - `server/src/routes/app/auth.ts` - `/auth/content-access` endpoint
 - `server/src/routes/pages.ts` - Token validation and cookie handling
 
+For additional security invariants, see `server/CLAUDE.md`.
+
 ### App Subdomain Authentication
 
 Two modes supported (set via `AUTH_MODE` env var):
@@ -238,15 +137,14 @@ The Bearer token is used for all subsequent API requests.
 Key files:
 - `server/src/auth.ts` - BetterAuth config with device authorization plugin
 - `server/src/routes/app/ui.ts` - Device approval UI
-- `server/src/ui/pages/device-approval.ts` - Approval page HTML
 
 ### Modifying Authentication Code
 
-We strive to offload as much of the authentication logic to Better Auth as possible. Before making any changes to the an auth workflow:
+We strive to offload as much of the authentication logic to Better Auth as possible. Before making any changes to an auth workflow:
 
 1. Find and read all applicable Better Auth documentation: https://www.better-auth.com/llms.txt
-2. Read this CLAUDE.md to understand why specific auth choices were made. Don't assume these decisions were correct, but understand the rationale before proposing changes.
-3. Explain the proposed changes to the user and verify they are directionally correct before implementing.
+2. Read the security model in `server/CLAUDE.md`
+3. Explain the proposed changes to the user and verify they are directionally correct before implementing
 
 ## Shared Types
 

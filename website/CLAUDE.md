@@ -2,6 +2,8 @@
 
 This is a **scratch** project - a static site built from MDX files using the scratch CLI.
 
+> **Note:** This is the Scratch documentation website (dogfooding). It's a Scratch project that gets published to scratch.dev. For contributing to the Scratch CLI/server codebase, see the root `CLAUDE.md`. This file documents how to work with this site as a Scratch project.
+
 ## What is scratch?
 
 scratch is a CLI tool that compiles MDX (Markdown + JSX) files into a static website. It uses Bun as the build tool and bundler, React for rendering, and Tailwind CSS for styling.
@@ -27,19 +29,23 @@ Run `scratch --help` to see all available commands.
 
 ```
 project/
-├── pages/           # MDX and Markdown content (required)
-│   ├── index.mdx    # Homepage (resolves to /)
-│   ├── Counter.tsx  # Components can live alongside pages
+├── pages/              # MDX and Markdown content (required)
+│   ├── index.mdx       # Homepage (resolves to /)
+│   ├── Counter.tsx     # Components can live alongside pages
 │   └── posts/
-│       └── hello.mdx  # Resolves to /posts/hello/
-├── src/             # React components and styles (optional)
-│   ├── Button.jsx
-│   ├── PageWrapper.jsx
-│   ├── tailwind.css
-│   └── markdown/    # Custom markdown renderers
-├── public/          # Static assets (optional, copied as-is)
+│       └── hello.mdx   # Resolves to /posts/hello/
+├── src/                # React components and styles (optional)
+│   ├── Button.jsx      # Custom components
+│   ├── tailwind.css    # Global styles
+│   ├── markdown/       # Custom markdown renderers
+│   └── template/       # Page layout components
+│       ├── PageWrapper.jsx  # Wraps every page
+│       ├── Header.jsx       # Site header
+│       ├── Footer.jsx       # Site footer
+│       └── ...
+├── public/             # Static assets (optional, copied as-is)
 │   └── logo.png
-└── dist/            # Build output (generated)
+└── dist/               # Build output (generated)
 ```
 
 ## Writing Content
@@ -67,7 +73,7 @@ YAML frontmatter is automatically extracted and injected as HTML meta tags:
 - `description` - Meta description and og:description
 - `image` - og:image
 - `keywords` - Meta keywords
-- `author` - Meta author
+- `author` - Meta author (also available as `window.__scratch_author__` for the Copyright component)
 
 ### URL Path Resolution
 
@@ -153,20 +159,25 @@ export function Card({ children }) {
 
 ### PageWrapper Component
 
-If you create a `src/PageWrapper.jsx`, it will **automatically wrap all page content**. Useful for layouts:
+If you create a `src/template/PageWrapper.jsx`, it will **automatically wrap all page content**. Useful for layouts:
 
 ```jsx
-// src/PageWrapper.jsx
+// src/template/PageWrapper.jsx
+import Header from './Header';
+import Footer from './Footer';
+
 export default function PageWrapper({ children }) {
   return (
     <div className="max-w-2xl mx-auto p-8">
-      <nav>...</nav>
+      <Header />
       <main>{children}</main>
-      <footer>...</footer>
+      <Footer />
     </div>
   );
 }
 ```
+
+The default template includes Header, Footer, ScratchBadge, and Copyright components in `src/template/`. Customize these to change your site's layout.
 
 ### Markdown Components
 
@@ -182,6 +193,20 @@ Files in `public/` are copied directly to the build output. Reference them with 
 ```mdx
 ![Logo](/logo.png)
 ```
+
+### Static Assets in React Components
+
+**IMPORTANT:** When loading static assets from React components, you MUST use `globalThis.__SCRATCH_BASE__` as the URL base. This ensures assets load correctly when the site is deployed to a subdirectory.
+
+```jsx
+// src/MyComponent.jsx
+export default function MyComponent() {
+  const base = globalThis.__SCRATCH_BASE__ || '';
+  return <img src={`${base}/my-image.png`} alt="My image" />;
+}
+```
+
+See `src/template/ScratchBadge.jsx` for a working example.
 
 ## Theming
 
@@ -251,4 +276,4 @@ Use `not-prose` class to exclude elements from typography styling.
 These are generated and should be in `.gitignore`:
 
 - `dist/` - Build output
-- `.scratch-build-cache/` - Build cache and auto-installed dependencies
+- `.scratch/` - Build cache and project config

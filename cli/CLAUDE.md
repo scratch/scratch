@@ -81,7 +81,7 @@ Components can be placed in two locations:
 Components from both directories are auto-imported into MDX files by basename.
 
 **Key components**:
-- `src/PageWrapper.jsx` - Base layout wrapper (optional, pages render unwrapped if not present)
+- `src/template/PageWrapper.jsx` or `src/PageWrapper.jsx` - Base layout wrapper (optional, pages render unwrapped if not present)
 - `src/markdown/CodeBlock.tsx` - Syntax-highlighted code blocks
 - `src/markdown/Heading.tsx` - Styled headings with anchor links
 - `src/markdown/Link.tsx` - Styled links
@@ -168,41 +168,17 @@ The dev server (`src/cmd/dev.ts`) provides:
 - File watching with 100ms debouncing to prevent rebuild storms
 - Automatic browser opening (platform-aware: darwin/win32/linux)
 
-## Testing
+## Testing and Development
 
-Tests are in `test/` directory. Run with:
-```bash
-bun test
-```
-
-### Testing the Default Template
-
-Do NOT build directly in `template/default/` - this pollutes the template with build artifacts. Instead, create a temp directory and use the CLI:
+Tests are in `test/` directory. For testing commands and development patterns, see the **cli-dev** skill.
 
 ```bash
-# Create a temp project from the template
-rm -rf /tmp/test-scratch && mkdir /tmp/test-scratch
-bun run src/index.ts create /tmp/test-scratch
-
-# Test the build
-bun run src/index.ts build /tmp/test-scratch
-
-# Or test dev server
-bun run src/index.ts dev /tmp/test-scratch
+bun ops cli test          # Run all tests
+bun ops cli test:unit     # Unit tests only
+bun ops cli test:e2e      # E2E tests only
 ```
 
-## Common Patterns
-
-### Adding a new CLI command
-1. Create handler in `src/cmd/`
-2. Register in `src/index.ts` using Commander
-
-### Modifying build pipeline
-1. Add/modify steps in `src/build/steps/`
-2. Update step ordering in `src/build/orchestrator.ts`
-3. Build config is in `src/build/buncfg.ts`
-
-### Adding template files
-1. Add to `template/` for user-facing files (copied to new projects)
-2. Add to `template/_build/` for internal build infrastructure (not copied to user projects)
-3. Run `bun run compile-templates` to regenerate `src/template.generated.ts`, or just run `bun run build` which does this automatically
+For full integration testing against a deployed instance:
+```bash
+bun ops server -i staging test
+```
