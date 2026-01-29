@@ -17,70 +17,17 @@ function getWritableContent(file: TemplateFile): string | Buffer {
 }
 
 // ============================================================================
-// TEMPLATE TIERS
-// ============================================================================
-
-/**
- * Files included in minimal tier (create command without --src)
- * All other project files are in the "src" tier (src/*)
- */
-const MINIMAL_FILES = new Set(['.gitignore', 'AGENTS.md', 'CLAUDE.md', 'pages/index.mdx']);
-
-/**
- * Infrastructure files included in --minimal mode.
- * These are the only public/ files included when using --minimal.
- */
-const MINIMAL_INFRASTRUCTURE_FILES = new Set([
-  'public/favicon.svg',
-  'public/scratch-logo.svg',
-]);
-
-/**
- * Check if a file belongs to the minimal tier
- */
-function isMinimalFile(relativePath: string): boolean {
-  // Check exact matches
-  if (MINIMAL_FILES.has(relativePath)) {
-    return true;
-  }
-  // public/ directory
-  if (relativePath.startsWith('public/')) {
-    return true;
-  }
-  // pages/components/ directory
-  if (relativePath.startsWith('pages/components/')) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * Check if a file belongs to the src tier (src/*)
- */
-function isSrcFile(relativePath: string): boolean {
-  return relativePath.startsWith('src/');
-}
-
-// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
 export interface MaterializeOptions {
-  /** Include src/ directory (default: true) */
-  includeSrc?: boolean;
-  /** Minimal mode: skip example pages/public content, keep infrastructure (default: false) */
-  minimal?: boolean;
   /** Overwrite existing files (default: false) */
   overwrite?: boolean;
 }
 
 /**
  * Write project templates to a target directory.
- * Excludes _build/ files (internal build infrastructure).
- *
- * Tiers:
- * - Minimal: pages/index.mdx, pages/components/, public/, .gitignore, AGENTS.md, CLAUDE.md
- * - Src: src/* (controlled by includeSrc)
+ * Excludes _build/ and _config/ files (internal build infrastructure).
  *
  * Returns list of files that were created.
  */
@@ -88,58 +35,19 @@ export async function materializeProjectTemplates(
   targetDir: string,
   options: MaterializeOptions = {}
 ): Promise<string[]> {
-  const {
-    includeSrc = true,
-    minimal = false,
-    overwrite = false,
-  } = options;
+  const { overwrite = false } = options;
   const created: string[] = [];
 
   await fs.mkdir(targetDir, { recursive: true });
 
-  // In minimal mode, create empty pages/ directory (public/ will have favicon)
-  if (minimal) {
-    const pagesDir = path.join(targetDir, 'pages');
-    await fs.mkdir(pagesDir, { recursive: true });
-    created.push('pages/');
-    log.debug('Created empty pages/ directory');
-  }
-
   for (const [relativePath, file] of Object.entries(templates)) {
-    // Skip _build/ files (internal build infrastructure) and _config/ files (config templates)
+    // Skip internal build/config files
     if (relativePath.startsWith('_build/') || relativePath.startsWith('_config/')) {
       continue;
     }
 
-    // Determine if file should be included based on tier
-    const isMinimalTier = isMinimalFile(relativePath);
-    const isSrc = isSrcFile(relativePath);
-
-    // Skip src tier files unless includeSrc is true
-    if (isSrc && !includeSrc) {
-      continue;
-    }
-
-    // In minimal mode, skip pages/ and public/ content (except infrastructure files)
-    if (minimal) {
-      if (
-        (relativePath.startsWith('pages/') || relativePath.startsWith('public/')) &&
-        !MINIMAL_INFRASTRUCTURE_FILES.has(relativePath)
-      ) {
-        continue;
-      }
-    }
-
-    // Skip files that don't belong to any known tier (shouldn't happen)
-    if (!isMinimalTier && !isSrc) {
-      log.debug(`Skipping unknown tier file: ${relativePath}`);
-      continue;
-    }
-
     const targetPath = path.join(targetDir, relativePath);
-    const targetDirPath = path.dirname(targetPath);
-
-    await fs.mkdir(targetDirPath, { recursive: true });
+    await fs.mkdir(path.dirname(targetPath), { recursive: true });
 
     const exists = await fs.exists(targetPath);
     if (exists && !overwrite) {

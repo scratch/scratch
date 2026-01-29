@@ -12,9 +12,6 @@ Commands are organized into four groups:
 
 **Local Commands:**
 - `create [path]` - Create a new Scratch project
-  - `--no-src` - Exclude src/ directory
-  - `--no-package` - Exclude package.json
-  - `--minimal` - Minimal mode: skip example content
 - `build [path]` - Build the static site
 - `dev [path]` - Development server with hot reload
 - `preview [path]` - Preview the built site

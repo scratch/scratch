@@ -6,9 +6,6 @@ import { formatFileTree } from '../util';
 import log from '../logger';
 
 interface CreateOptions {
-  src?: boolean;
-  package?: boolean;
-  minimal?: boolean;
   quiet?: boolean;
 }
 
@@ -40,31 +37,19 @@ export async function generatePackageJson(
 
 /**
  * Create a new Scratch project.
- *
- * Includes src/ and package.json by default.
- * Use --no-src or --no-package to exclude.
  */
 export async function createCommand(
   targetPath: string,
   options: CreateOptions = {}
 ) {
-  const includeSrc = options.src !== false;
-  const includePackage = options.package !== false;
-  const minimal = options.minimal === true;
+  const created = await materializeProjectTemplates(targetPath);
 
-  const created = await materializeProjectTemplates(targetPath, {
-    includeSrc,
-    minimal,
-  });
-
-  // Generate package.json if requested (skip if it already exists)
-  if (includePackage) {
-    const packageJsonPath = path.join(targetPath, 'package.json');
-    if (!(await fs.exists(packageJsonPath))) {
-      const projectName = path.basename(path.resolve(targetPath));
-      await generatePackageJson(targetPath, projectName);
-      created.push('package.json');
-    }
+  // Generate package.json if it doesn't exist
+  const packageJsonPath = path.join(targetPath, 'package.json');
+  if (!(await fs.exists(packageJsonPath))) {
+    const projectName = path.basename(path.resolve(targetPath));
+    await generatePackageJson(targetPath, projectName);
+    created.push('package.json');
   }
 
   if (!options.quiet) {

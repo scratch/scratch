@@ -57,8 +57,8 @@ export async function watchCommand(
   process.on('SIGTERM', shutdown);
 
   try {
-    // 1. Create project in temp dir (quiet, minimal mode)
-    await createCommand(tempDir, { src: true, package: true, minimal: true, quiet: true });
+    // 1. Create project in temp dir
+    await createCommand(tempDir, { quiet: true });
     log.debug(`Created temp project in ${tempDir}`);
 
     // 2. Set up cached node_modules

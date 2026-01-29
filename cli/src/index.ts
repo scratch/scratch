@@ -83,9 +83,6 @@ program
   .command('create')
   .description('Create a new Scratch project')
   .argument('[path]', 'Target directory', '.')
-  .option('--no-src', 'Skip src/ template directory')
-  .option('--no-package', 'Skip package.json template')
-  .option('--minimal', 'Minimal mode: skip example content, use simple PageWrapper')
   .action(
     withErrorHandling('Create', async (path, options) => {
       await createCommand(path, options);
