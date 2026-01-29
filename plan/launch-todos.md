@@ -8,7 +8,7 @@
   - make sure .sh, .md, and .txt files are served as text
 - [x] 03-rename-commands.md
   - Rename list and delete commands
-- [ ] 04-claude-skills.md
+- [x] 04-claude-skills.md
   - Migrate to claude skills for this repo
   - probably need a skill for running tests
   - probably need a skill for writing or updating docs
