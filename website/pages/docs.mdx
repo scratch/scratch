@@ -219,7 +219,6 @@ Options:
 - `-n, --no-open` — Don't open browser
 - `-d, --development` — Unminified output with source maps
 - `-b, --base <path>` — Base path for deployment
-- `--static <mode>` — `public`, `assets` (default), or `all`
 - `--highlight <mode>` — `off`, `popular`, `auto` (default), or `all`
 
 #### scratch build
@@ -443,7 +442,7 @@ The server runs on Cloudflare (Workers, D1, and R2). You can use the hosted vers
 
 ### scratch.dev
 
-[scratch.dev](https://scratch.dev) is the hosted Scratch server. Anyone can publish for free while Scratch is in Preview.
+We host a public Scratch server instance on [scratch.dev](https://scratch.dev) Anyone can publish public or private projects for free while Scratch is in Preview.
 
 **Note:** Projects on scratch.dev expire after 30 days during the Preview period.
 
@@ -531,7 +530,7 @@ bun ops server -i <server-name> setup
 
 **Authentication modes:**
 
-*BetterAuth (default)* — Users sign in with oogle OAuth to authenticate their CLI and view private pages.
+*BetterAuth (default)* — Users sign in with Google OAuth to authenticate their CLI and view private pages.
 
 ```bash
 AUTH_MODE=local
