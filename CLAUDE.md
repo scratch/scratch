@@ -65,6 +65,20 @@ Configuration uses `.vars` files (gitignored):
 
 Secrets are synced to Cloudflare via `bun ops server -i <instance> config push`.
 
+### Deploy vs Config Push
+
+**Important:** Use `deploy` for code/route changes, use `config push` for environment variable changes. They serve different purposes.
+
+- `bun ops server -i <instance> deploy` - Deploys worker code and wrangler config (routes, bindings). Required when code changes or routes change.
+- `bun ops server -i <instance> config push` - Syncs secrets/environment variables to the running worker via `wrangler secret put`. Takes effect immediately without redeployment.
+
+When to use each:
+- **Code changes** → `deploy`
+- **Route changes** (adding/removing domains in wrangler config) → `deploy`
+- **Environment variable changes** → `config push` only (no deploy needed)
+
+Note: `deploy` does NOT update secrets. If you change both routes and env vars, you need both `deploy` AND `config push`.
+
 ## Authentication Architecture
 
 The server uses two subdomains with **isolated authentication** for security:

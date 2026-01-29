@@ -6,8 +6,8 @@ import { join } from 'path'
 import { rm, readFile, writeFile } from 'fs/promises'
 import { green, yellow, red, reset } from '../../lib/colors'
 import { parseVarsFile, writeVarsFile, getInstanceVarsPath, getInstanceWranglerPath } from '../../lib/config'
-import { runCommand, runCommandInherit, getWranglerConfig } from '../../lib/process'
 import { generateWranglerConfig } from './setup'
+import { runCommand, runCommandInherit, getWranglerConfig } from '../../lib/process'
 
 const CLI_BIN = './cli/dist/scratch'
 
@@ -437,37 +437,35 @@ export async function integrationTestAction(instance: string): Promise<void> {
       writeVarsFile(varsPath, vars)
       console.log(`Updated WWW_PROJECT_ID to ${projectId}`)
 
-      // Regenerate wrangler config
+      // Regenerate wrangler config to add www/naked domain routes (if not already present)
       const d1DatabaseId = vars.get('D1_DATABASE_ID')
       if (!d1DatabaseId) {
         console.error(`${red}✗${reset} Missing D1_DATABASE_ID in vars`)
         testPassed = false
       } else {
+        const wranglerConfig = generateWranglerConfig(instance, d1DatabaseId)
+        const wranglerPath = getInstanceWranglerPath(instance)
+        writeFileSync(wranglerPath, wranglerConfig)
+        console.log(`Regenerated ${wranglerPath}`)
+
+        // Deploy to add the www routes (route changes require deploy)
+        console.log('Deploying to add www routes...')
+        exitCode = await runCommandInherit(['bun', 'ops', 'server', '-i', instance, 'deploy'])
+        if (exitCode !== 0) {
+          console.error(`${red}✗${reset} Deploy failed`)
+          testPassed = false
+        }
+
+        // Push config to update WWW_PROJECT_ID secret (deploy only updates routes/code, not secrets)
+        console.log('Pushing config...')
+        exitCode = await runCommandInherit(['bun', 'ops', 'server', '-i', instance, 'config', 'push'])
+        if (exitCode !== 0) {
+          console.log(`${yellow}!${reset} Config push had issues (may be ok)`)
+        }
+      }
+
+      {
         try {
-          const wranglerConfig = generateWranglerConfig(instance, d1DatabaseId)
-          const wranglerPath = getInstanceWranglerPath(instance)
-          writeFileSync(wranglerPath, wranglerConfig)
-          console.log(`Regenerated ${wranglerPath}`)
-
-          // Push secrets
-          console.log('Pushing secrets...')
-          exitCode = await runCommandInherit(['bun', 'ops', 'server', '-i', instance, 'config', 'push'])
-          if (exitCode !== 0) {
-            console.log(`${yellow}!${reset} Secret push had issues (may be ok)`)
-          }
-
-          // Redeploy server with WWW_PROJECT_ID passed directly via --var
-          console.log('Redeploying server with WWW_PROJECT_ID...')
-          const wwwWranglerPath = getInstanceWranglerPath(instance).replace('server/', '')
-          exitCode = await runCommandInherit([
-            'bun', 'run', 'wrangler', 'deploy',
-            '-c', wwwWranglerPath,
-            '--var', `WWW_PROJECT_ID:${projectId}`,
-          ], { cwd: 'server' })
-          if (exitCode !== 0) {
-            throw new Error('WWW deploy failed')
-          }
-
           // Give it a moment for deployment to propagate
           await new Promise(resolve => setTimeout(resolve, 5000))
 
@@ -522,18 +520,21 @@ export async function integrationTestAction(instance: string): Promise<void> {
           console.error(`${red}✗${reset} WWW test error: ${error instanceof Error ? error.message : error}`)
           testPassed = false
         } finally {
-          // Always restore original WWW_PROJECT_ID and redeploy, even if test failed or was interrupted
+          // Restore original WWW_PROJECT_ID (no redeploy needed - config push updates the secret,
+          // and the server returns 404 when WWW_PROJECT_ID is "_")
           console.log('Restoring original WWW_PROJECT_ID...')
           try {
             vars.set('WWW_PROJECT_ID', originalWwwProjectId)
             writeVarsFile(varsPath, vars)
 
-            const restoredWranglerConfig = generateWranglerConfig(instance, d1DatabaseId)
-            const restoredWranglerPath = getInstanceWranglerPath(instance)
-            writeFileSync(restoredWranglerPath, restoredWranglerConfig)
+            // Regenerate wrangler config to keep it in sync with vars file
+            if (d1DatabaseId) {
+              const restoredConfig = generateWranglerConfig(instance, d1DatabaseId)
+              writeFileSync(getInstanceWranglerPath(instance), restoredConfig)
+            }
 
+            // Only config push needed - no redeploy since routes don't need to change
             exitCode = await runCommandInherit(['bun', 'ops', 'server', '-i', instance, 'config', 'push'])
-            exitCode = await runCommandInherit(['bun', 'ops', 'server', '-i', instance, 'deploy'])
             console.log(`${green}✓${reset} Restored original config\n`)
           } catch (restoreError) {
             console.error(`${red}✗${reset} Failed to restore config: ${restoreError instanceof Error ? restoreError.message : restoreError}`)

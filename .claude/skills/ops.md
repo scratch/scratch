@@ -84,3 +84,17 @@ Each instance has configuration files in `server/`:
 - `server/wrangler.${instance}.toml` - Generated wrangler config
 
 Resource naming convention: `${instance}-scratch-server`, `${instance}-scratch-db`, `${instance}-scratch-files`
+
+## Deploy vs Config Push
+
+**Important:** `deploy` and `config push` serve different purposes. Use the right one for the job.
+
+| Change Type | Command |
+|-------------|---------|
+| Code changes | `deploy` |
+| Route changes (wrangler config) | `deploy` |
+| Environment variable changes | `config push` only |
+| Both routes AND env vars | `deploy` then `config push` |
+
+- `deploy` updates code and routes but does NOT update secrets
+- `config push` uses `wrangler secret put` to update secrets immediately without redeployment
