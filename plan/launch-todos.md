@@ -1,6 +1,7 @@
 # Scratch Launch Todos
 
 - [x] Add website to monorepo
+- [x] fix dev error handling
 - [x] Deploy website via scratch server
 - [x] remove width toggle
 - [x] Update docs
@@ -13,16 +14,15 @@
   - probably need a skill for running tests
   - probably need a skill for writing or updating docs
   - how about a skill for testing docs for maximal simplicity and clarity?
-- [ ] 05-pages-ctoken-url-fix.md
+- [x] 05-pages-ctoken-url-fix.md
   - fix persistent _ctoken in pages url
-- [ ] Review pass
+- [x] 06-conditional-auth-vars.md
+- [x] 07-docs-fixes.md
+- [x] 08-api-tokens.md
+- [x] 09-flags-cleanup.md
+- [ ] 10-install.md
+- [ ] 11-template-claude-skill.md
+- [ ] 12-review.md
   - [ ] auth flow
   - [ ] secrets
-- [ ] delete old branches
-- [ ] fix dev error handling
-- [ ] get rid of --minimal and --no-src flags?
-- [ ] support pass through src/ and package.json?
-- [ ] remove development flag from dev command
-- [ ] review strict mode
-- [ ] do we need --highlight flag?
-- [ ] scratch claude skill?
+- [ ] 13-delete-old-branches.md
