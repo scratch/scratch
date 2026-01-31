@@ -12,6 +12,24 @@ import { isShareTokensEnabled, validateShareToken } from './share-tokens'
 import { verifyContentToken } from './content-token'
 import { getAppBaseUrl, useHttps } from './domains'
 
+// Set a token cookie with consistent security options
+function setTokenCookie(
+  c: Context<{ Bindings: Env }>,
+  name: string,
+  value: string,
+  cookiePath: string,
+  maxAge: number
+): void {
+  const isHttps = useHttps(c.env)
+  setCookie(c, name, value, {
+    path: cookiePath,
+    httpOnly: true,
+    secure: isHttps,
+    sameSite: 'Lax',
+    maxAge,
+  })
+}
+
 export interface Project {
   id: string
   name: string
@@ -147,14 +165,7 @@ export async function authenticateContentRequest(
         // Set cookie if token came from URL (first visit after auth)
         if (tokenFromUrl) {
           contentTokenFromUrl = true
-          const isHttps = useHttps(c.env)
-          setCookie(c, contentTokenCookieName, token, {
-            path: cookiePath,
-            httpOnly: true,
-            secure: isHttps,
-            sameSite: 'Lax',
-            maxAge: 60 * 60, // 1 hour (matches token expiry)
-          })
+          setTokenCookie(c, contentTokenCookieName, token, cookiePath, 60 * 60) // 1 hour
         }
       }
     }
@@ -180,17 +191,13 @@ export async function authenticateContentRequest(
       if (shareResult && shareResult.projectId === project.id) {
         hasAccess = true
 
-        // Set cookie so subsequent requests (assets) don't need the token param
-        if (shareTokenFromUrl && !shareTokenFromCookie) {
+        // Track if token came from URL (for redirect to clean URL)
+        // Set cookie if not already present (so subsequent requests don't need the param)
+        if (shareTokenFromUrl) {
           shareTokenUsedFromUrl = true
-          const isHttps = useHttps(c.env)
-          setCookie(c, shareTokenCookieName, shareToken, {
-            path: cookiePath,
-            httpOnly: true,
-            secure: isHttps,
-            sameSite: 'Lax',
-            maxAge: 60 * 60 * 24, // 24 hours (or until token expires/revoked)
-          })
+          if (!shareTokenFromCookie) {
+            setTokenCookie(c, shareTokenCookieName, shareToken, cookiePath, 60 * 60 * 24) // 24 hours
+          }
         }
       }
     }

@@ -21,8 +21,9 @@
 - [x] 08-api-tokens.md
 - [x] 09-flags-cleanup.md
 - [x] 10-install.md
-- [ ] 11-template-claude-skill.md
-- [ ] 12-review.md
+- [x] 11-clean-up-skills.md
+- [x] 12-template-claude-skill.md
+- [ ] 13-review.md
   - [ ] auth flow
   - [ ] secrets
 - [ ] 13-delete-old-branches.md

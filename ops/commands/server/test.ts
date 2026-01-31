@@ -448,12 +448,234 @@ export async function integrationTestAction(instance: string): Promise<void> {
         }
       }
 
+      // Test: Multiple query params preserved during redirect
+      // The redirect should only remove _ctoken, keeping other params intact
+      console.log('Testing query param preservation during redirect...')
+
+      // Get CLI credentials again (reuse from above)
+      const credentialsPath2 = join(process.env.HOME || '~', '.scratch', 'credentials.json')
+      let cliToken2: string | null = null
+      try {
+        const credentials = JSON.parse(await readFile(credentialsPath2, 'utf-8'))
+        for (const [server, creds] of Object.entries(credentials)) {
+          if (server.includes(appDomain)) {
+            cliToken2 = (creds as { token: string }).token
+            break
+          }
+        }
+      } catch {
+        // Already handled above
+      }
+
+      if (cliToken2) {
+        // Get a fresh content token
+        const privateProjectTomlPath2 = join(privateTempDir, '.scratch', 'project.toml')
+        const privateProjectToml2 = await readFile(privateProjectTomlPath2, 'utf-8')
+        const privateIdMatch2 = privateProjectToml2.match(/^id\s*=\s*"([^"]+)"/m)
+        const privateProjectId2 = privateIdMatch2 ? privateIdMatch2[1] : null
+
+        if (privateProjectId2) {
+          const privateUrlMatch2 = privateDeployResult.stdout.match(/URLs:\s+(\S+)/)
+          const privateDeployedUrl2 = privateUrlMatch2 ? privateUrlMatch2[1] : null
+
+          if (privateDeployedUrl2) {
+            const returnUrl2 = privateDeployedUrl2.endsWith('/') ? privateDeployedUrl2 : `${privateDeployedUrl2}/`
+            const contentAccessUrl2 = `https://${appDomain}/auth/content-access?project_id=${privateProjectId2}&return_url=${encodeURIComponent(returnUrl2)}`
+
+            const tokenResponse2 = await fetch(contentAccessUrl2, {
+              headers: { 'Authorization': `Bearer ${cliToken2}` },
+              redirect: 'manual',
+            })
+
+            if (tokenResponse2.status === 302 || tokenResponse2.status === 303) {
+              const redirectLocation2 = tokenResponse2.headers.get('Location')
+              if (redirectLocation2) {
+                const redirectUrl2 = new URL(redirectLocation2)
+                const ctoken2 = redirectUrl2.searchParams.get('_ctoken')
+
+                if (ctoken2) {
+                  // Request with token AND extra query params
+                  const extraParams = 'foo=bar&baz=qux'
+                  const pageWithTokenAndParams = `${returnUrl2}?_ctoken=${ctoken2}&${extraParams}`
+                  const multiParamResponse = await fetch(pageWithTokenAndParams, { redirect: 'manual' })
+
+                  if (multiParamResponse.status === 302) {
+                    const cleanLocation2 = multiParamResponse.headers.get('Location')
+                    if (cleanLocation2) {
+                      const cleanUrl = new URL(cleanLocation2)
+                      const hasExtraParams = cleanUrl.searchParams.get('foo') === 'bar' && cleanUrl.searchParams.get('baz') === 'qux'
+                      const hasNoToken = !cleanUrl.searchParams.has('_ctoken')
+
+                      if (hasExtraParams && hasNoToken) {
+                        console.log(`${green}✓${reset} Other query params preserved, token removed`)
+                      } else if (!hasExtraParams) {
+                        console.error(`${red}✗${reset} Extra query params were lost during redirect`)
+                        console.error(`  Expected: foo=bar&baz=qux, Got: ${cleanUrl.search}`)
+                        testPassed = false
+                      } else {
+                        console.error(`${red}✗${reset} Token was not removed from redirect URL`)
+                        testPassed = false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
       // Cleanup private test project
       await runCommand([CLI_BIN, 'projects', 'delete', privateProjectName, serverUrl, '--force'])
       try {
         await rm(privateTempDir, { recursive: true, force: true })
       } catch {
         // Ignore cleanup errors
+      }
+    }
+
+    // Step 8d2: Test share token URL cleanup
+    // Only run if share tokens are enabled on this instance
+    console.log('Step 8d2: Testing share token URL cleanup...')
+
+    const shareTokensEnabled = vars.get('ALLOW_SHARE_TOKENS') === 'true'
+    if (!shareTokensEnabled) {
+      console.log(`${yellow}!${reset} Share tokens disabled on this instance, skipping test`)
+    } else {
+      // Create another private project for share token test
+      const shareTestProjectName = generateRandomProjectName()
+      const shareTestTempDir = join(tmpdir(), `scratch-${instance}-share-${Date.now()}`)
+      exitCode = await runCommandInherit([CLI_BIN, 'create', shareTestTempDir])
+      if (exitCode !== 0) {
+        throw new Error('Share test project creation failed')
+      }
+
+      // Deploy as private
+      const shareTestDeployResult = await runCommand([
+        CLI_BIN, 'publish', shareTestTempDir,
+        '--server', serverUrl,
+        '--visibility', 'private',
+        '--name', shareTestProjectName,
+        '--no-open',
+      ])
+
+      if (shareTestDeployResult.exitCode !== 0) {
+        console.error(`${red}✗${reset} Share test project deploy failed: ${shareTestDeployResult.stderr}`)
+        testPassed = false
+      } else {
+        // Create a share token using API directly (more reliable than CLI in test environment)
+        // Get the deployed URL from the deploy output
+        const shareUrlMatch = shareTestDeployResult.stdout.match(/URLs:\s+(\S+)/)
+        const shareDeployedUrl = shareUrlMatch ? shareUrlMatch[1] : null
+
+        if (!shareDeployedUrl) {
+          console.error(`${red}✗${reset} Could not extract deployed URL from output`)
+          testPassed = false
+        } else {
+          // Get CLI credentials to make authenticated API request
+          const shareCredentialsPath = join(process.env.HOME || '~', '.scratch', 'credentials.json')
+          let shareCliToken: string | null = null
+          try {
+            const credentials = JSON.parse(await readFile(shareCredentialsPath, 'utf-8'))
+            for (const [server, creds] of Object.entries(credentials)) {
+              if (server.includes(appDomain)) {
+                shareCliToken = (creds as { token: string }).token
+                break
+              }
+            }
+          } catch {
+            console.error(`${red}✗${reset} Could not read CLI credentials for share test`)
+          }
+
+          if (!shareCliToken) {
+            console.error(`${red}✗${reset} No CLI token found for ${appDomain}`)
+            testPassed = false
+          } else {
+            // Create share token via API
+            const createShareResponse = await fetch(
+              `${serverUrl}/api/projects/${encodeURIComponent(shareTestProjectName)}/share-tokens`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${shareCliToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name: 'test-share', duration: '1d' }),
+              }
+            )
+
+            if (!createShareResponse.ok) {
+              console.error(`${red}✗${reset} Failed to create share token via API: ${createShareResponse.status}`)
+              testPassed = false
+            } else {
+              const shareResult = await createShareResponse.json() as { share_url: string; token: string }
+              const shareUrl = shareResult.share_url
+              const shareToken = shareResult.token
+
+              if (!shareUrl || !shareToken) {
+                console.error(`${red}✗${reset} Share token API response missing url or token`)
+                testPassed = false
+              } else {
+                console.log(`${green}✓${reset} Created share token via API`)
+
+                // Request the page with share token in URL - should redirect to clean URL
+                const shareRedirectResponse = await fetch(shareUrl, { redirect: 'manual' })
+
+                if (shareRedirectResponse.status !== 302) {
+                  console.error(`${red}✗${reset} Expected 302 redirect for share token, got ${shareRedirectResponse.status}`)
+                  testPassed = false
+                } else {
+                  const shareCleanLocation = shareRedirectResponse.headers.get('Location')
+                  const shareSetCookie = shareRedirectResponse.headers.get('Set-Cookie')
+
+                  // Verify redirect is to clean URL (without token)
+                  if (!shareCleanLocation || shareCleanLocation.includes('token=')) {
+                    console.error(`${red}✗${reset} Share token redirect URL still contains token: ${shareCleanLocation}`)
+                    testPassed = false
+                  } else {
+                    console.log(`${green}✓${reset} Share token redirect to clean URL works`)
+                  }
+
+                  // Verify share token cookie was set
+                  if (!shareSetCookie || !shareSetCookie.includes('_share_')) {
+                    console.error(`${red}✗${reset} Share token cookie not set`)
+                    testPassed = false
+                  } else {
+                    console.log(`${green}✓${reset} Share token cookie was set`)
+
+                    // Extract cookie for follow-up request
+                    const shareCookieMatch = shareSetCookie.match(/(_share_[^=]+=)([^;]+)/)
+                    if (shareCookieMatch) {
+                      const shareCookieName = shareCookieMatch[1].slice(0, -1) // Remove trailing =
+                      const shareCookieValue = shareCookieMatch[2]
+
+                      // Verify content is served with just the cookie
+                      const shareCleanUrl = new URL(shareCleanLocation)
+                      const shareFinalResponse = await fetch(shareCleanUrl.toString(), {
+                        headers: { 'Cookie': `${shareCookieName}=${shareCookieValue}` },
+                      })
+
+                      if (shareFinalResponse.ok) {
+                        console.log(`${green}✓${reset} Content served with share cookie only (no URL token)`)
+                      } else {
+                        console.error(`${red}✗${reset} Failed to serve content with share cookie: ${shareFinalResponse.status}`)
+                        testPassed = false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Cleanup share test project
+        await runCommand([CLI_BIN, 'projects', 'rm', shareTestProjectName, serverUrl, '--force'])
+        try {
+          await rm(shareTestTempDir, { recursive: true, force: true })
+        } catch {
+          // Ignore cleanup errors
+        }
       }
     }
 
@@ -574,19 +796,50 @@ export async function integrationTestAction(instance: string): Promise<void> {
         // Test 7: API token must NOT work on content domain (security invariant)
         // The pages subdomain serves user-uploaded JS, so API keys must be rejected there
         // to prevent malicious JS from using a stolen API key.
-        // We verify by checking that a nonexistent private path still redirects to auth
-        // even when an API token is provided (the token should be ignored entirely).
-        const privateContentUrl = `https://${pagesDomain}/test-user/private-project-that-does-not-exist/`
-        const privateContentResponse = await fetch(privateContentUrl, {
+        // We verify by testing against the actual deployed test project (deployedUrl) and
+        // confirming that providing an API token doesn't change the response behavior.
+        // For a public project, we should get 200 both with and without the token.
+        // The key check is that the token doesn't grant any special access.
+        console.log(`Testing API token on content domain against: ${deployedUrl}`)
+
+        // First, verify the project is accessible without any auth
+        const baselineResponse = await fetch(deployedUrl, { redirect: 'manual' })
+        const baselineStatus = baselineResponse.status
+
+        // Now try with API token - should get EXACT same response (token ignored)
+        const withApiTokenResponse = await fetch(deployedUrl, {
           headers: { 'X-Api-Key': apiToken },
-          redirect: 'manual',  // Don't follow redirects so we can check the redirect
+          redirect: 'manual',
         })
-        // Should redirect to auth (302/307) or return 404, but NOT return 200
-        if (privateContentResponse.status === 200) {
-          console.error(`${red}✗${reset} API token granted access on content domain (SECURITY ISSUE)`)
+
+        if (withApiTokenResponse.status !== baselineStatus) {
+          console.error(`${red}✗${reset} API token changed content domain behavior (baseline: ${baselineStatus}, with token: ${withApiTokenResponse.status}) - SECURITY ISSUE`)
           testPassed = false
         } else {
-          console.log(`${green}✓${reset} API token correctly ignored on content domain (status: ${privateContentResponse.status})`)
+          console.log(`${green}✓${reset} API token correctly ignored on content domain (status unchanged: ${withApiTokenResponse.status})`)
+        }
+
+        // Also verify that a non-existent private path still redirects to auth even with API token
+        // (the token should not bypass auth redirect for private/non-existent paths)
+        const nonExistentPrivateUrl = `https://${pagesDomain}/_/nonexistent-private-project/`
+        const nonExistentWithTokenResponse = await fetch(nonExistentPrivateUrl, {
+          headers: { 'X-Api-Key': apiToken },
+          redirect: 'manual',
+        })
+
+        // Should redirect to auth (302/303), NOT return 200 or 404
+        if (nonExistentWithTokenResponse.status === 200) {
+          console.error(`${red}✗${reset} API token granted access to private path on content domain (SECURITY ISSUE)`)
+          testPassed = false
+        } else if (nonExistentWithTokenResponse.status === 302 || nonExistentWithTokenResponse.status === 303) {
+          const location = nonExistentWithTokenResponse.headers.get('location') || ''
+          if (location.includes('/auth/content-access')) {
+            console.log(`${green}✓${reset} Private path still redirects to auth even with API token`)
+          } else {
+            console.log(`${green}✓${reset} Private path redirects (token ignored), location: ${location.slice(0, 50)}...`)
+          }
+        } else {
+          console.log(`${green}✓${reset} API token did not bypass auth for private path (status: ${nonExistentWithTokenResponse.status})`)
         }
       }
     }
