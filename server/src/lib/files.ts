@@ -24,6 +24,7 @@ const CONTENT_TYPES: Record<string, string> = {
   '.txt': 'text/plain; charset=utf-8',
   '.md': 'text/plain; charset=utf-8',
   '.mdx': 'text/plain; charset=utf-8',
+  '.sh': 'text/plain; charset=utf-8',
   '.mp4': 'video/mp4',
   '.webm': 'video/webm',
   '.mp3': 'audio/mpeg',
