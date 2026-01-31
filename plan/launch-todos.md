@@ -20,7 +20,7 @@
 - [x] 07-docs-fixes.md
 - [x] 08-api-tokens.md
 - [x] 09-flags-cleanup.md
-- [ ] 10-install.md
+- [x] 10-install.md
 - [ ] 11-template-claude-skill.md
 - [ ] 12-review.md
   - [ ] auth flow
