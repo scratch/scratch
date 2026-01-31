@@ -224,11 +224,11 @@ program
 program
   .command('login')
   .description('Log in to a Scratch server')
-  .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
+  .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .option('--timeout <minutes>', 'Timeout in minutes for login approval (default: 10)')
   .action(
-    withErrorHandling('Login', async (serverUrl, options) => {
-      const ctx = createCloudContext(serverUrl);
+    withErrorHandling('Login', async (options) => {
+      const ctx = createCloudContext(options.server);
       await loginCommand(ctx, { timeout: options.timeout ? parseFloat(options.timeout) : undefined });
     })
   );
@@ -236,10 +236,10 @@ program
 program
   .command('logout')
   .description('Log out from a Scratch server')
-  .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
+  .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
-    withErrorHandling('Logout', async (serverUrl) => {
-      const ctx = createCloudContext(serverUrl);
+    withErrorHandling('Logout', async (options) => {
+      const ctx = createCloudContext(options.server);
       await logoutCommand(ctx);
     })
   );
@@ -247,10 +247,10 @@ program
 program
   .command('whoami')
   .description('Show current logged-in user')
-  .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
+  .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
-    withErrorHandling('Whoami', async (serverUrl) => {
-      const ctx = createCloudContext(serverUrl);
+    withErrorHandling('Whoami', async (options) => {
+      const ctx = createCloudContext(options.server);
       await whoamiCommand(ctx);
     })
   );
@@ -263,10 +263,10 @@ const projects = program
 projects
   .command('ls', { isDefault: true })
   .description('List all projects')
-  .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
+  .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
-    withErrorHandling('Projects ls', async (serverUrl) => {
-      const ctx = createCloudContext(serverUrl);
+    withErrorHandling('Projects ls', async (options) => {
+      const ctx = createCloudContext(options.server);
       await listProjectsCommand(ctx);
     })
   );
@@ -275,10 +275,10 @@ projects
   .command('info')
   .description('Show project details')
   .argument('[name]', 'Project name (uses .scratch/project.toml if not specified)')
-  .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
+  .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
-    withErrorHandling('Projects info', async (name, serverUrl) => {
-      const ctx = createCloudContext(serverUrl);
+    withErrorHandling('Projects info', async (name, options) => {
+      const ctx = createCloudContext(options.server);
       await projectInfoCommand(ctx, name);
     })
   );
@@ -287,11 +287,11 @@ projects
   .command('rm')
   .description('Delete a project and all its deploys')
   .argument('[name]', 'Project name (uses .scratch/project.toml if not specified)')
-  .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
+  .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .option('-f, --force', 'Skip confirmation prompt')
   .action(
-    withErrorHandling('Projects rm', async (name, serverUrl, options) => {
-      const ctx = createCloudContext(serverUrl);
+    withErrorHandling('Projects rm', async (name, options) => {
+      const ctx = createCloudContext(options.server);
       await projectDeleteCommand(ctx, name, { force: options.force });
     })
   );
@@ -305,11 +305,12 @@ share
   .command('create', { isDefault: true })
   .description('Create a share token')
   .argument('[project]', 'Project name (uses .scratch/project.toml if not specified)')
+  .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .option('--name <name>', 'Token name')
   .option('--duration <duration>', 'Token duration (1d, 1w, 1m)')
   .action(
     withErrorHandling('Share create', async (project, options) => {
-      const ctx = createCloudContext();
+      const ctx = createCloudContext(options.server);
       await shareCreateCommand(ctx, project, { name: options.name, duration: options.duration });
     })
   );
@@ -318,9 +319,10 @@ share
   .command('ls')
   .description('List share tokens for a project')
   .argument('[project]', 'Project name (uses .scratch/project.toml if not specified)')
+  .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
-    withErrorHandling('Share ls', async (project) => {
-      const ctx = createCloudContext();
+    withErrorHandling('Share ls', async (project, options) => {
+      const ctx = createCloudContext(options.server);
       await shareListCommand(ctx, project);
     })
   );
@@ -330,9 +332,10 @@ share
   .description('Revoke a share token')
   .argument('<tokenId>', 'Token ID to revoke')
   .argument('[project]', 'Project name (uses .scratch/project.toml if not specified)')
+  .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
-    withErrorHandling('Share revoke', async (tokenId, project) => {
-      const ctx = createCloudContext();
+    withErrorHandling('Share revoke', async (tokenId, project, options) => {
+      const ctx = createCloudContext(options.server);
       await shareRevokeCommand(ctx, tokenId, project);
     })
   );
@@ -345,10 +348,10 @@ const tokens = program
 tokens
   .command('ls', { isDefault: true })
   .description('List your API tokens')
-  .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
+  .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
-    withErrorHandling('Tokens ls', async (serverUrl) => {
-      const ctx = createCloudContext(serverUrl);
+    withErrorHandling('Tokens ls', async (options) => {
+      const ctx = createCloudContext(options.server);
       await listTokensCommand(ctx);
     })
   );
@@ -357,11 +360,11 @@ tokens
   .command('create')
   .description('Create a new API token')
   .argument('<name>', 'Token name (3-40 characters, alphanumeric with hyphens/underscores)')
-  .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
+  .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .option('--expires <days>', 'Days until expiration', parseInt)
   .action(
-    withErrorHandling('Tokens create', async (name, serverUrl, options) => {
-      const ctx = createCloudContext(serverUrl);
+    withErrorHandling('Tokens create', async (name, options) => {
+      const ctx = createCloudContext(options.server);
       await createTokenCommand(ctx, name, { expires: options.expires });
     })
   );
@@ -370,10 +373,10 @@ tokens
   .command('revoke')
   .description('Revoke an API token')
   .argument('<id-or-name>', 'Token ID or name')
-  .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
+  .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
-    withErrorHandling('Tokens revoke', async (idOrName, serverUrl) => {
-      const ctx = createCloudContext(serverUrl);
+    withErrorHandling('Tokens revoke', async (idOrName, options) => {
+      const ctx = createCloudContext(options.server);
       await revokeTokenCommand(ctx, idOrName);
     })
   );
@@ -393,10 +396,10 @@ tokens
 program
   .command('cf-access')
   .description('Configure Cloudflare Access service token')
-  .argument('[server-url]', 'Server URL (prompts if logged into multiple servers)')
+  .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
-    withErrorHandling('CF Access', async (serverUrl) => {
-      const ctx = createCloudContext(serverUrl);
+    withErrorHandling('CF Access', async (options) => {
+      const ctx = createCloudContext(options.server);
       await cfAccessCommand(ctx);
     })
   );

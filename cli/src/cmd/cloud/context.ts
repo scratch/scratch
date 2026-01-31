@@ -11,7 +11,7 @@ import {
 import log from '../../logger'
 
 export interface CloudContextOptions {
-  /** Server URL override from --server-url flag */
+  /** Server URL override from --server flag */
   serverUrl?: string
   /** Project path for loading project config */
   projectPath?: string
@@ -25,7 +25,7 @@ export const normalizeServerUrl = normalizeServerUrlInput
  * It handles server URL resolution, credential loading, and CF Access headers.
  *
  * Server URL resolution precedence:
- * 1. CLI argument (server-url positional arg)
+ * 1. CLI argument (--server flag)
  * 2. Project config (.scratch/project.toml server_url)
  * 3. If logged into exactly one server, use it
  * 4. If logged into multiple servers, prompt user to choose
@@ -166,13 +166,3 @@ export class CloudContext {
   }
 }
 
-/**
- * Create a CloudContext from Commander.js options.
- * Extracts --server-url from parent command options if present.
- */
-export function createCloudContext(options: { serverUrl?: string }, projectPath?: string): CloudContext {
-  return new CloudContext({
-    serverUrl: options.serverUrl,
-    projectPath,
-  })
-}

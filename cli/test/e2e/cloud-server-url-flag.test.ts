@@ -13,11 +13,10 @@ import { mkTempDir, scratchPath } from "./util";
  * 2. Server URL normalization
  * 3. Configuration precedence
  *
- * Note: Server URL is now passed as a positional argument to commands
- * (e.g., `scratch whoami [server-url]`), not as a --server-url flag.
+ * Note: Server URL is passed via the --server <url> option flag.
  */
 
-describe("Server URL as positional argument", () => {
+describe("Server URL as --server option", () => {
   function runCli(args: string[], cwd: string = process.cwd()): { stdout: string; stderr: string; status: number } {
     const result = spawnSync(scratchPath, args, {
       cwd,
@@ -32,15 +31,45 @@ describe("Server URL as positional argument", () => {
     };
   }
 
-  test("whoami accepts server-url as positional argument", () => {
+  test("whoami accepts --server option", () => {
     const result = runCli(["whoami", "--help"]);
-    expect(result.stdout).toContain("[server-url]");
+    expect(result.stdout).toContain("--server <url>");
     expect(result.stdout).toContain("Server URL");
   });
 
-  test("login accepts server-url as positional argument", () => {
+  test("login accepts --server option", () => {
     const result = runCli(["login", "--help"]);
-    expect(result.stdout).toContain("[server-url]");
+    expect(result.stdout).toContain("--server <url>");
+    expect(result.stdout).toContain("Server URL");
+  });
+
+  test("logout accepts --server option", () => {
+    const result = runCli(["logout", "--help"]);
+    expect(result.stdout).toContain("--server <url>");
+    expect(result.stdout).toContain("Server URL");
+  });
+
+  test("projects ls accepts --server option", () => {
+    const result = runCli(["projects", "ls", "--help"]);
+    expect(result.stdout).toContain("--server <url>");
+    expect(result.stdout).toContain("Server URL");
+  });
+
+  test("tokens ls accepts --server option", () => {
+    const result = runCli(["tokens", "ls", "--help"]);
+    expect(result.stdout).toContain("--server <url>");
+    expect(result.stdout).toContain("Server URL");
+  });
+
+  test("share create accepts --server option", () => {
+    const result = runCli(["share", "create", "--help"]);
+    expect(result.stdout).toContain("--server <url>");
+    expect(result.stdout).toContain("Server URL");
+  });
+
+  test("cf-access accepts --server option", () => {
+    const result = runCli(["cf-access", "--help"]);
+    expect(result.stdout).toContain("--server <url>");
     expect(result.stdout).toContain("Server URL");
   });
 });
