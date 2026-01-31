@@ -35,6 +35,7 @@ interface ApiKeyResponse {
   expiresAt: string | null
   createdAt: string
   updatedAt: string
+  lastRequest: string | null  // Last time the token was used
 }
 
 interface ApiKeyCreateResponse {
@@ -50,6 +51,33 @@ interface ApiKeyCreateResponse {
 
 // Better Auth returns a direct array from the list endpoint
 type ApiKeyListResponse = ApiKeyResponse[]
+
+// Maximum token expiration in days (enforced by BetterAuth server-side)
+const MAX_EXPIRATION_DAYS = 365
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+function formatRelativeTime(date: Date): string {
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) {
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    if (diffHours === 0) {
+      const diffMins = Math.floor(diffMs / (1000 * 60))
+      return diffMins <= 1 ? 'just now' : `${diffMins} minutes ago`
+    }
+    return diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`
+  }
+  if (diffDays === 1) return '1 day ago'
+  if (diffDays < 30) return `${diffDays} days ago`
+  if (diffDays < 60) return '1 month ago'
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`
+  return `${Math.floor(diffDays / 365)} year${Math.floor(diffDays / 365) > 1 ? 's' : ''} ago`
+}
 
 // =============================================================================
 // List Tokens
@@ -79,11 +107,15 @@ export async function listTokensCommand(ctx: CloudContext): Promise<void> {
       ? `expires ${new Date(token.expiresAt).toLocaleDateString()}`
       : 'no expiration'
     const status = token.enabled ? '' : ' (disabled)'
+    const lastUsed = token.lastRequest
+      ? `Last used: ${formatRelativeTime(new Date(token.lastRequest))}`
+      : 'Never used'
 
     log.info(`  ${token.name || '(unnamed)'}${status}`)
     log.info(`    ID: ${token.id}`)
     log.info(`    Preview: ${token.start}...`)
     log.info(`    Created: ${new Date(token.createdAt).toLocaleDateString()}, ${expires}`)
+    log.info(`    ${lastUsed}`)
     log.info('')
   }
 }
@@ -109,8 +141,22 @@ export async function createTokenCommand(
     throw new Error('Token name can only contain letters, numbers, hyphens, and underscores')
   }
 
+  // Validate expiration (server enforces max, but provide clear client-side error)
+  if (options.expires && options.expires > MAX_EXPIRATION_DAYS) {
+    throw new Error(`Token expiration cannot exceed ${MAX_EXPIRATION_DAYS} days`)
+  }
+
   const credentials = await ctx.requireAuth()
   const serverUrl = await ctx.getServerUrl()
+
+  // Check for duplicate token name
+  const existingTokens = await request<ApiKeyListResponse>('/auth/api-key/list', {
+    token: credentials.token,
+    serverUrl,
+  })
+  if (existingTokens.some(t => t.name === name)) {
+    throw new Error(`A token named "${name}" already exists. Use a different name or revoke the existing token first.`)
+  }
 
   const body: Record<string, unknown> = { name }
 
