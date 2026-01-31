@@ -379,6 +379,54 @@ scratch cf-access https://my-server.com
 
 Prompts for Client ID and Client Secret from your Cloudflare Access service token. Only needed for self-hosted servers using Cloudflare Access.
 
+#### scratch tokens
+
+Create and manage API tokens for CI/CD and automation. Unlike session tokens from `scratch login`, API tokens don't require browser interaction.
+
+**Create a token:**
+```bash
+scratch tokens create my-ci-token
+scratch tokens create deploy-key --expires 90  # Expires in 90 days
+```
+
+Token names must be 3-40 characters using letters, numbers, hyphens, and underscores.
+
+**List tokens:**
+```bash
+scratch tokens ls
+```
+
+**Revoke a token:**
+```bash
+scratch tokens revoke my-ci-token
+scratch tokens revoke <token-id>
+```
+
+**Store a token for CLI use:**
+```bash
+scratch tokens use scratch_abc123...
+```
+
+**Using API tokens:**
+
+```bash
+# Option 1: Environment variable (recommended for CI/CD)
+export SCRATCH_TOKEN=scratch_...
+scratch publish
+
+# Option 2: Project .env file
+echo "SCRATCH_TOKEN=scratch_..." >> .env
+scratch publish
+
+# Option 3: Store in credentials file
+scratch tokens use scratch_...
+scratch publish
+```
+
+Token resolution priority: `SCRATCH_TOKEN` env var → `.env` file → `~/.scratch/credentials.json`
+
+**With Cloudflare Access:** API tokens work with servers behind Cloudflare Access. First configure CF Access credentials with `scratch cf-access`, then use your API token normally. The CLI sends both the CF Access service token (to pass the network layer) and your API token (to authenticate).
+
 ### Build Pipeline
 
 When you run `scratch build`, here's what happens:

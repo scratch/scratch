@@ -181,6 +181,7 @@ API tokens are:
 - Revocable via `scratch tokens revoke <name>`
 - Scoped to the user who created them
 - **Only valid on the app subdomain** - API tokens do NOT grant access to the content domain (this is a security invariant to prevent malicious user-uploaded JS from using stolen tokens)
+- **Compatible with Cloudflare Access** - When the server is behind CF Access, configure a service token via `scratch cf-access`, then API tokens work normally (the CLI sends both CF Access headers and the API key)
 
 Key files:
 - `server/src/auth.ts` - BetterAuth apiKey plugin configuration

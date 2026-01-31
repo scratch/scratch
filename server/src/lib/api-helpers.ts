@@ -41,13 +41,16 @@ export interface DeployRow {
 /**
  * Get authenticated user from request.
  *
- * Session tokens work for both browser (cookies) and CLI (Bearer token).
- * The bearer plugin enables getSession() to check Authorization headers.
+ * Authentication methods (checked in order):
+ * 1. Bearer token (CLI device flow) - manual session lookup
+ * 2. X-Api-Key header (API tokens) - BetterAuth apiKey plugin
+ * 3. Cloudflare Access JWT (if AUTH_MODE=cloudflare-access)
+ * 4. Session cookies (browser)
  */
 export async function getAuthenticatedUser(
   c: { env: Env; req: { raw: Request } }
 ): Promise<AuthResult | null> {
-  // Always check for Bearer token first (CLI authentication via device flow)
+  // Check for Bearer token first (CLI authentication via device flow)
   // BetterAuth's getSession has known issues with bearer tokens, so we manually
   // look up the session from the database.
   // See: https://github.com/better-auth/better-auth/issues/3892
@@ -75,6 +78,27 @@ export async function getAuthenticatedUser(
         },
       }
     }
+  }
+
+  // Check for API key (X-Api-Key header) - works in all auth modes
+  // This uses BetterAuth's apiKey plugin which validates the key and returns a session
+  const apiKey = c.req.raw.headers.get('X-Api-Key')
+  if (apiKey) {
+    const auth = createAuth(c.env)
+    const session = await getSession(c.req.raw, auth)
+    if (session?.user) {
+      return {
+        userId: session.user.id,
+        user: {
+          id: session.user.id,
+          email: session.user.email,
+          name: session.user.name ?? null,
+          image: session.user.image ?? null,
+        },
+      }
+    }
+    // API key was provided but invalid - don't fall through to other auth methods
+    return null
   }
 
   // Cloudflare Access mode: check CF Access headers for browser sessions
