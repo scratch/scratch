@@ -22,9 +22,9 @@ describe('schema.d1.sql', () => {
   describe('required tables', () => {
     for (const tableName of REQUIRED_TABLES) {
       test(`has ${tableName} table`, () => {
-        // Match CREATE TABLE statements (with or without quotes around table name)
+        // Match CREATE TABLE statements (with or without IF NOT EXISTS, with or without quotes)
         const pattern = new RegExp(
-          `CREATE\\s+TABLE\\s+(?:"?${tableName}"?)\\s*\\(`,
+          `CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?(?:"?${tableName}"?)\\s*\\(`,
           'i'
         )
         expect(schemaContent).toMatch(pattern)
@@ -34,8 +34,8 @@ describe('schema.d1.sql', () => {
 
   describe('table count', () => {
     test('has exactly the expected number of tables', () => {
-      // Count CREATE TABLE statements
-      const tableMatches = schemaContent.match(/CREATE\s+TABLE\s+/gi)
+      // Count CREATE TABLE statements (with or without IF NOT EXISTS)
+      const tableMatches = schemaContent.match(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?/gi)
       const tableCount = tableMatches?.length ?? 0
 
       // We expect 8 required tables plus device_code (9 total)
@@ -46,9 +46,9 @@ describe('schema.d1.sql', () => {
 
   describe('apikey table structure', () => {
     test('has required columns for BetterAuth apiKey plugin', () => {
-      // Extract the apikey table definition
+      // Extract the apikey table definition (with or without IF NOT EXISTS)
       const apikeyMatch = schemaContent.match(
-        /CREATE\s+TABLE\s+apikey\s*\(([\s\S]*?)\);/i
+        /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?apikey\s*\(([\s\S]*?)\);/i
       )
       expect(apikeyMatch).not.toBeNull()
 
@@ -75,7 +75,7 @@ describe('schema.d1.sql', () => {
   describe('foreign key relationships', () => {
     test('apikey references user table', () => {
       const apikeyMatch = schemaContent.match(
-        /CREATE\s+TABLE\s+apikey\s*\(([\s\S]*?)\);/i
+        /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?apikey\s*\(([\s\S]*?)\);/i
       )
       expect(apikeyMatch).not.toBeNull()
       expect(apikeyMatch![1]).toMatch(/REFERENCES\s+user\s*\(\s*id\s*\)/i)
@@ -83,7 +83,7 @@ describe('schema.d1.sql', () => {
 
     test('session references user table', () => {
       const sessionMatch = schemaContent.match(
-        /CREATE\s+TABLE\s+session\s*\(([\s\S]*?)\);/i
+        /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?session\s*\(([\s\S]*?)\);/i
       )
       expect(sessionMatch).not.toBeNull()
       expect(sessionMatch![1]).toMatch(/REFERENCES\s+user\s*\(\s*id\s*\)/i)
@@ -91,7 +91,7 @@ describe('schema.d1.sql', () => {
 
     test('projects references user table', () => {
       const projectsMatch = schemaContent.match(
-        /CREATE\s+TABLE\s+projects\s*\(([\s\S]*?)\);/i
+        /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?projects\s*\(([\s\S]*?)\);/i
       )
       expect(projectsMatch).not.toBeNull()
       expect(projectsMatch![1]).toMatch(/REFERENCES\s+user\s*\(\s*id\s*\)/i)
@@ -99,7 +99,7 @@ describe('schema.d1.sql', () => {
 
     test('deploys references projects table', () => {
       const deploysMatch = schemaContent.match(
-        /CREATE\s+TABLE\s+deploys\s*\(([\s\S]*?)\);/i
+        /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?deploys\s*\(([\s\S]*?)\);/i
       )
       expect(deploysMatch).not.toBeNull()
       expect(deploysMatch![1]).toMatch(/REFERENCES\s+projects\s*\(\s*id\s*\)/i)
@@ -107,7 +107,7 @@ describe('schema.d1.sql', () => {
 
     test('share_tokens references projects and user tables', () => {
       const shareTokensMatch = schemaContent.match(
-        /CREATE\s+TABLE\s+share_tokens\s*\(([\s\S]*?)\);/i
+        /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?share_tokens\s*\(([\s\S]*?)\);/i
       )
       expect(shareTokensMatch).not.toBeNull()
       expect(shareTokensMatch![1]).toMatch(/REFERENCES\s+projects\s*\(\s*id\s*\)/i)
@@ -117,11 +117,11 @@ describe('schema.d1.sql', () => {
 
   describe('indexes', () => {
     test('has index on apikey.userId', () => {
-      expect(schemaContent).toMatch(/CREATE\s+INDEX\s+\w*apikey.*ON\s+apikey\s*\(\s*userId\s*\)/i)
+      expect(schemaContent).toMatch(/CREATE\s+INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?\w*apikey.*ON\s+apikey\s*\(\s*userId\s*\)/i)
     })
 
     test('has index on apikey.key', () => {
-      expect(schemaContent).toMatch(/CREATE\s+INDEX\s+\w*apikey.*ON\s+apikey\s*\(\s*key\s*\)/i)
+      expect(schemaContent).toMatch(/CREATE\s+INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?\w*apikey.*ON\s+apikey\s*\(\s*key\s*\)/i)
     })
   })
 })
