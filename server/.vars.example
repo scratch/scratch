@@ -37,10 +37,6 @@ APP_SUBDOMAIN=app
 # Subdomain for the content/pages server (e.g., "pages" → pages.example.com)
 CONTENT_SUBDOMAIN=pages
 
-# Cloudflare zone for wrangler routes (usually same as BASE_DOMAIN)
-# This is the domain you added to your Cloudflare account
-CLOUDFLARE_ZONE=
-
 # A specific project for the root and root domain. Ignored if set to _
 WWW_PROJECT_ID=_
 

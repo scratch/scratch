@@ -239,7 +239,6 @@ export const ROUTE_VARS = [
   'BASE_DOMAIN',
   'APP_SUBDOMAIN',
   'CONTENT_SUBDOMAIN',
-  'CLOUDFLARE_ZONE',
 ]
 
 // Auth mode constants

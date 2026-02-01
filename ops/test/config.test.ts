@@ -216,8 +216,7 @@ describe('validateInstanceVars auth-mode-aware validation', () => {
       BASE_DOMAIN: 'example.com',
       APP_SUBDOMAIN: 'app',
       CONTENT_SUBDOMAIN: 'pages',
-      CLOUDFLARE_ZONE: 'example.com',
-      AUTH_MODE: 'local',
+            AUTH_MODE: 'local',
       // Missing BETTER_AUTH_SECRET
       GOOGLE_CLIENT_ID: 'client-id',
       GOOGLE_CLIENT_SECRET: 'client-secret',
@@ -235,8 +234,7 @@ describe('validateInstanceVars auth-mode-aware validation', () => {
       BASE_DOMAIN: 'example.com',
       APP_SUBDOMAIN: 'app',
       CONTENT_SUBDOMAIN: 'pages',
-      CLOUDFLARE_ZONE: 'example.com',
-      AUTH_MODE: 'local',
+            AUTH_MODE: 'local',
       BETTER_AUTH_SECRET: 'some-secret-key-that-is-long-enough',
       // Missing GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
     })
@@ -254,8 +252,7 @@ describe('validateInstanceVars auth-mode-aware validation', () => {
       BASE_DOMAIN: 'example.com',
       APP_SUBDOMAIN: 'app',
       CONTENT_SUBDOMAIN: 'pages',
-      CLOUDFLARE_ZONE: 'example.com',
-      AUTH_MODE: 'local',
+            AUTH_MODE: 'local',
       BETTER_AUTH_SECRET: 'some-secret-key-that-is-long-enough',
       GOOGLE_CLIENT_ID: '_',
       GOOGLE_CLIENT_SECRET: '_',
@@ -274,8 +271,7 @@ describe('validateInstanceVars auth-mode-aware validation', () => {
       BASE_DOMAIN: 'example.com',
       APP_SUBDOMAIN: 'app',
       CONTENT_SUBDOMAIN: 'pages',
-      CLOUDFLARE_ZONE: 'example.com',
-      AUTH_MODE: 'cloudflare-access',
+            AUTH_MODE: 'cloudflare-access',
       BETTER_AUTH_SECRET: 'some-secret-key-that-is-long-enough',
       // Missing CLOUDFLARE_ACCESS_TEAM
     })
@@ -292,8 +288,7 @@ describe('validateInstanceVars auth-mode-aware validation', () => {
       BASE_DOMAIN: 'example.com',
       APP_SUBDOMAIN: 'app',
       CONTENT_SUBDOMAIN: 'pages',
-      CLOUDFLARE_ZONE: 'example.com',
-      AUTH_MODE: 'cloudflare-access',
+            AUTH_MODE: 'cloudflare-access',
       BETTER_AUTH_SECRET: 'some-secret-key-that-is-long-enough',
       CLOUDFLARE_ACCESS_TEAM: 'my-team',
       GOOGLE_CLIENT_ID: '_',
@@ -313,8 +308,7 @@ describe('validateInstanceVars auth-mode-aware validation', () => {
       BASE_DOMAIN: 'example.com',
       APP_SUBDOMAIN: 'app',
       CONTENT_SUBDOMAIN: 'pages',
-      CLOUDFLARE_ZONE: 'example.com',
-      AUTH_MODE: 'local',
+            AUTH_MODE: 'local',
       BETTER_AUTH_SECRET: 'some-secret-key-that-is-long-enough',
       GOOGLE_CLIENT_ID: 'client-id',
       GOOGLE_CLIENT_SECRET: 'client-secret',
@@ -334,8 +328,7 @@ describe('validateInstanceVars auth-mode-aware validation', () => {
       BASE_DOMAIN: 'example.com',
       APP_SUBDOMAIN: 'app',
       CONTENT_SUBDOMAIN: 'pages',
-      CLOUDFLARE_ZONE: 'example.com',
-      // No AUTH_MODE - should default to local
+            // No AUTH_MODE - should default to local
       BETTER_AUTH_SECRET: 'some-secret-key-that-is-long-enough',
       GOOGLE_CLIENT_ID: 'client-id',
       GOOGLE_CLIENT_SECRET: 'client-secret',

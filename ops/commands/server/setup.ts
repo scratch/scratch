@@ -80,20 +80,19 @@ export function generateWranglerConfig(instance: string, d1DatabaseId: string): 
   const baseDomain = vars.get('BASE_DOMAIN')
   const appSubdomain = vars.get('APP_SUBDOMAIN')
   const contentSubdomain = vars.get('CONTENT_SUBDOMAIN')
-  const zone = vars.get('CLOUDFLARE_ZONE')
 
-  if (baseDomain && appSubdomain && contentSubdomain && zone && baseDomain !== 'localhost') {
+  if (baseDomain && appSubdomain && contentSubdomain && baseDomain !== 'localhost') {
     const appDomain = `${appSubdomain}.${baseDomain}`
     const contentDomain = `${contentSubdomain}.${baseDomain}`
     config += `
 # Generated routes
 [[routes]]
 pattern = "${appDomain}/*"
-zone_name = "${zone}"
+zone_name = "${baseDomain}"
 
 [[routes]]
 pattern = "${contentDomain}/*"
-zone_name = "${zone}"
+zone_name = "${baseDomain}"
 `
 
     // Add www and naked domain routes if WWW_PROJECT_ID is configured
@@ -102,11 +101,11 @@ zone_name = "${zone}"
       config += `
 [[routes]]
 pattern = "www.${baseDomain}/*"
-zone_name = "${zone}"
+zone_name = "${baseDomain}"
 
 [[routes]]
 pattern = "${baseDomain}/*"
-zone_name = "${zone}"
+zone_name = "${baseDomain}"
 `
     }
   }
