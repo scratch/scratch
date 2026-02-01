@@ -9,7 +9,7 @@ import { VERSION } from '../version';
 import { bunInstall } from '../util';
 import log from '../logger';
 
-const CACHE_DIR = path.join(os.homedir(), '.scratch');
+export const CACHE_DIR = path.join(os.homedir(), '.scratch', 'cache');
 
 interface WatchOptions {
   port?: number;
@@ -62,8 +62,8 @@ export async function watchCommand(
     log.debug(`Created temp project in ${tempDir}`);
 
     // 2. Set up cached node_modules
-    // Structure: ~/.scratch/[version]/node_modules/
-    // Symlink temp/node_modules → ~/.scratch/[version]/node_modules/
+    // Structure: ~/.scratch/cache/[version]/node_modules/
+    // Symlink temp/node_modules → ~/.scratch/cache/[version]/node_modules/
     const cacheVersionDir = path.join(CACHE_DIR, VERSION);
     const nodeModulesCache = path.join(cacheVersionDir, 'node_modules');
     await fs.mkdir(nodeModulesCache, { recursive: true });
@@ -72,6 +72,8 @@ export async function watchCommand(
     // Install dependencies if cache is empty (first run for this version)
     const reactPath = path.join(nodeModulesCache, 'react');
     if (!(await fs.exists(reactPath))) {
+      // Clean up old cache versions before installing new one
+      await cleanupOldCacheVersions(VERSION);
       log.info('Installing dependencies (first run, this will be cached)...');
       bunInstall(tempDir);
       log.info('Dependencies installed');
@@ -145,5 +147,30 @@ export async function watchCommand(
   } catch (error) {
     await cleanup();
     throw error;
+  }
+}
+
+/**
+ * Remove all cache version directories except the current version.
+ * Called when installing dependencies for a new version to prevent accumulation.
+ * @param currentVersion - The version to keep
+ * @param cacheDir - Optional cache directory (defaults to CACHE_DIR, used for testing)
+ */
+export async function cleanupOldCacheVersions(
+  currentVersion: string,
+  cacheDir: string = CACHE_DIR
+): Promise<void> {
+  try {
+    const entries = await fs.readdir(cacheDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory() && entry.name !== currentVersion) {
+        const oldVersionDir = path.join(cacheDir, entry.name);
+        log.debug(`Removing old cache version: ${entry.name}`);
+        await fs.rm(oldVersionDir, { recursive: true, force: true });
+      }
+    }
+  } catch (error) {
+    // Ignore errors - cleanup is best-effort
+    log.debug(`Failed to cleanup old cache versions: ${error}`);
   }
 }
