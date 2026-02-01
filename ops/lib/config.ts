@@ -14,9 +14,21 @@ export function getInstanceVarsPath(instance: string): string {
   return `server/.${instance}.vars`
 }
 
-// Get the wrangler config path for an instance
+// Get the wrangler config path for an instance (full path for file operations)
 export function getInstanceWranglerPath(instance: string): string {
   return `server/wrangler.${instance}.toml`
+}
+
+// Alias for getInstanceWranglerPath - returns the full path for file operations
+// e.g., "server/wrangler.staging.toml"
+export function getWranglerConfigPath(instance: string): string {
+  return getInstanceWranglerPath(instance)
+}
+
+// Returns the wrangler config path for use with wrangler CLI (relative to server/)
+// e.g., "wrangler.staging.toml"
+export function getWranglerConfigArg(instance: string): string {
+  return `wrangler.${instance}.toml`
 }
 
 // Write a vars file from key-value pairs

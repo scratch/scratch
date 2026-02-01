@@ -1,7 +1,8 @@
-import { execSync, spawnSync } from 'child_process'
+import { spawnSync } from 'child_process'
 import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { createInterface } from 'readline'
 import path from 'path'
+import { run, runCapture } from '../lib/process'
 
 export type Component = 'cli' | 'server'
 export type BumpType = 'patch' | 'minor' | 'major'
@@ -29,15 +30,6 @@ const COMPONENT_CONFIGS: Record<Component, ComponentConfig> = {
     tagPrefix: 'server-v',
     claudeMdPath: 'CLAUDE.md',
   },
-}
-
-const run = (cmd: string) => {
-  console.log(`$ ${cmd}`)
-  return execSync(cmd, { encoding: 'utf-8', stdio: 'inherit' })
-}
-
-const runCapture = (cmd: string) => {
-  return execSync(cmd, { encoding: 'utf-8' }).trim()
 }
 
 export async function runRelease(component: Component, bumpType: BumpType): Promise<void> {
@@ -230,8 +222,8 @@ Release notes guidelines:
 
   // Stage, commit, and continue with release
   console.log('\n==> Committing changes...')
-  run(`git add ${config.packageJsonPath} ${config.changelogPath} bun.lock`)
-  run(`git commit -m "Release ${config.name} v${newVersion}"`)
+  run(['git', 'add', config.packageJsonPath, config.changelogPath, 'bun.lock'])
+  run(['git', 'commit', '-m', `Release ${config.name} v${newVersion}`])
 
   // Push commit
   console.log('\n==> Pushing to origin...')
@@ -239,8 +231,8 @@ Release notes guidelines:
 
   // Create and push tag
   console.log(`\n==> Creating tag ${newTag}...`)
-  run(`git tag ${newTag}`)
-  run(`git push origin ${newTag}`)
+  run(['git', 'tag', newTag])
+  run(['git', 'push', 'origin', newTag])
 
   console.log(`\n✓ Released ${config.name} v${newVersion}`)
   console.log(`  Tag: ${newTag}`)

@@ -1,7 +1,7 @@
 // Deploy and logs commands
 
 import { existsSync } from 'fs'
-import { getInstanceWranglerPath } from '../../lib/config'
+import { getInstanceWranglerPath, getWranglerConfigArg } from '../../lib/config'
 
 export async function deployAction(instance: string): Promise<void> {
   console.log(`Deploying server to Cloudflare Workers (instance: ${instance})...\n`)
@@ -14,7 +14,7 @@ export async function deployAction(instance: string): Promise<void> {
     process.exit(1)
   }
 
-  const proc = Bun.spawn(['bun', 'run', 'wrangler', 'deploy', '-c', wranglerPath.replace('server/', '')], {
+  const proc = Bun.spawn(['bun', 'run', 'wrangler', 'deploy', '-c', getWranglerConfigArg(instance)], {
     cwd: 'server',
     stdout: 'inherit',
     stderr: 'inherit',
@@ -42,7 +42,7 @@ export async function logsAction(instance: string): Promise<void> {
   console.log(`Tailing ${instance} worker logs (Ctrl+C to stop)...\n`)
 
   const proc = Bun.spawn(
-    ['bun', 'run', 'wrangler', 'tail', '-c', wranglerPath.replace('server/', ''), '--format', 'pretty'],
+    ['bun', 'run', 'wrangler', 'tail', '-c', getWranglerConfigArg(instance), '--format', 'pretty'],
     {
       cwd: 'server',
       stdout: 'inherit',

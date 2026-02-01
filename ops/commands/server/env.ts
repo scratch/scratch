@@ -1,7 +1,7 @@
 // Regenerate env.ts command
 
 import { writeFileSync } from 'fs'
-import { green, reset } from '../../lib/colors'
+import { green, reset } from '../../lib/output'
 import { ENV_TS, getRuntimeVars, generateEnvTs } from '../../lib/config'
 
 export async function regenerateEnvAction(): Promise<void> {

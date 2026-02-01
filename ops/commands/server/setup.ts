@@ -2,13 +2,17 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { input, select } from '@inquirer/prompts'
-import { green, yellow, reset, dim } from '../../lib/colors'
+import { green, yellow, reset, dim } from '../../lib/output'
 import {
   WRANGLER_TEMPLATE,
   parseVarsFile,
+  writeVarsFile,
   getRequiredVarsWithComments,
   getInstanceVarsPath,
   getInstanceWranglerPath,
+  COMMON_AUTH_VARS,
+  LOCAL_AUTH_VARS,
+  CF_ACCESS_AUTH_VARS,
 } from '../../lib/config'
 import { syncSecretsToCloudflare } from './config'
 
@@ -113,14 +117,6 @@ zone_name = "${zone}"
 function truncate(str: string, maxLen: number): string {
   if (str.length <= maxLen) return str
   return str.slice(0, maxLen) + '...'
-}
-
-function writeVarsFile(path: string, vars: Map<string, string>): void {
-  const lines: string[] = []
-  for (const [name, value] of vars) {
-    lines.push(`${name}=${value}`)
-  }
-  writeFileSync(path, lines.join('\n') + '\n')
 }
 
 async function createR2Bucket(bucketName: string, accountId?: string): Promise<void> {
@@ -270,10 +266,8 @@ export async function setupAction(instance: string): Promise<void> {
 
   newVars.set('D1_DATABASE_ID', d1DatabaseId)
 
-  // Variables that depend on AUTH_MODE
-  const AUTH_MODE_VARS = ['AUTH_MODE', 'BETTER_AUTH_SECRET', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'CLOUDFLARE_ACCESS_TEAM']
-  const LOCAL_AUTH_VARS = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET']
-  const CF_ACCESS_AUTH_VARS = ['CLOUDFLARE_ACCESS_TEAM']
+  // Variables that depend on AUTH_MODE - derived from the imported constants
+  const AUTH_MODE_VARS = ['AUTH_MODE', ...COMMON_AUTH_VARS, ...LOCAL_AUTH_VARS, ...CF_ACCESS_AUTH_VARS]
 
   // Helper function to prompt for a variable
   async function promptForVar(varInfo: { name: string; comments: string[]; defaultValue: string }) {

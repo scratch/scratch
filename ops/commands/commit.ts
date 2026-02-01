@@ -1,16 +1,7 @@
 import { Command } from 'commander'
-import { execSync } from 'child_process'
 import { createInterface } from 'readline'
 import Anthropic from '@anthropic-ai/sdk'
-
-const runCapture = (cmd: string) => {
-  return execSync(cmd, { encoding: 'utf-8' }).trim()
-}
-
-const run = (cmd: string) => {
-  console.log(`$ ${cmd}`)
-  return execSync(cmd, { encoding: 'utf-8', stdio: 'inherit' })
-}
+import { run, runCapture } from '../lib/process'
 
 async function runCommit(): Promise<void> {
   // Check for changes
@@ -101,10 +92,7 @@ ${diff.slice(0, 15000)}${diff.length > 15000 ? '\n... (truncated)' : ''}`
 
   // Commit
   console.log('\n==> Committing...')
-  execSync(`git commit -m "${finalMessage.replace(/"/g, '\\"')}"`, {
-    encoding: 'utf-8',
-    stdio: 'inherit'
-  })
+  run(['git', 'commit', '-m', finalMessage])
 
   console.log('\n✓ Committed')
 }

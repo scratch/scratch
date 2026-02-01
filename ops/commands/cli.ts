@@ -6,7 +6,7 @@ import { runRelease, type BumpType } from './release'
 //   bun ops cli <script> [args...]    - runs: bun run <script> in cli/
 //   bun ops cli release [type]        - release CLI with new version
 
-async function runCliScript(script: string, args: string[]): Promise<void> {
+export async function runCliScript(script: string, args: string[]): Promise<void> {
   const proc = Bun.spawn(['bun', 'run', script, ...args], {
     cwd: 'cli',
     stdout: 'inherit',
@@ -15,6 +15,11 @@ async function runCliScript(script: string, args: string[]): Promise<void> {
   })
 
   const exitCode = await proc.exited
+
+  if (exitCode !== 0) {
+    console.error(`\nScript '${script}' failed with exit code ${exitCode}`)
+  }
+
   process.exit(exitCode)
 }
 

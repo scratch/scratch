@@ -6,7 +6,7 @@ import { setupAction } from './setup'
 import { deployAction, logsAction } from './deploy'
 import { configCheckAction, configPushAction } from './config'
 import { dbTablesAction, dbQueryAction, dbMigrateAction, dbDropAllAction } from './db'
-import { integrationTestAction } from './test'
+import { integrationTestAction } from './test/index'
 import { regenerateEnvAction } from './env'
 import { runRelease, type BumpType } from '../release'
 

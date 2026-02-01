@@ -1,7 +1,7 @@
 // Database commands
 
 import { existsSync } from 'fs'
-import { green, red, reset } from '../../lib/colors'
+import { green, red, reset } from '../../lib/output'
 import { getInstanceResourceNames } from '../../lib/config'
 import { getWranglerConfig } from '../../lib/process'
 
@@ -13,66 +13,80 @@ async function promptForConfirmation(message: string): Promise<string> {
   return ''
 }
 
-export async function dbTablesAction(instance: string): Promise<void> {
-  console.log(`Listing tables for ${instance} D1 database...\n`)
-
+/**
+ * Execute a D1 query against an instance's database.
+ * Builds and runs the wrangler d1 execute command with proper configuration.
+ *
+ * @param instance - The instance name (e.g., 'staging', 'prod')
+ * @param args - Additional arguments for the wrangler d1 execute command (e.g., ['--command', 'SELECT ...'])
+ * @param options - Optional settings
+ * @param options.json - If true, adds --json flag for JSON output
+ * @returns The stdout output from the command
+ * @throws Error if the command fails (non-zero exit code)
+ */
+export async function runD1Query(
+  instance: string,
+  args: string[],
+  options?: { json?: boolean }
+): Promise<string> {
   const wranglerConfig = getWranglerConfig(instance)
   const { dbName } = getInstanceResourceNames(instance)
 
-  const proc = Bun.spawn(
-    ['bunx', 'wrangler', 'd1', 'execute', dbName, '-c', wranglerConfig, '--remote', '--command',
-      `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name`],
-    {
-      cwd: 'server',
-      stdout: 'pipe',
-      stderr: 'pipe',
-    }
-  )
+  const fullArgs = [
+    'bunx', 'wrangler', 'd1', 'execute', dbName,
+    '-c', wranglerConfig, '--remote',
+    ...(options?.json ? ['--json'] : []),
+    ...args,
+  ]
 
-  const exitCode = await proc.exited
-  const stdout = await new Response(proc.stdout).text()
-  const stderr = await new Response(proc.stderr).text()
+  const proc = Bun.spawn(fullArgs, {
+    cwd: 'server',
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ])
 
   if (exitCode !== 0) {
-    console.error(`Error: ${stderr}`)
-    process.exit(1)
+    throw new Error(stderr)
   }
 
-  console.log(stdout)
+  return stdout
+}
+
+export async function dbTablesAction(instance: string): Promise<void> {
+  console.log(`Listing tables for ${instance} D1 database...\n`)
+
+  try {
+    const result = await runD1Query(instance, [
+      '--command',
+      `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name`,
+    ])
+    console.log(result)
+  } catch (error) {
+    console.error(`Error: ${error instanceof Error ? error.message : error}`)
+    process.exit(1)
+  }
 }
 
 export async function dbQueryAction(instance: string, sql: string): Promise<void> {
   console.log(`Executing query on ${instance} D1 database...\n`)
 
-  const wranglerConfig = getWranglerConfig(instance)
-  const { dbName } = getInstanceResourceNames(instance)
-
-  const proc = Bun.spawn(
-    ['bunx', 'wrangler', 'd1', 'execute', dbName, '-c', wranglerConfig, '--remote', '--command', sql],
-    {
-      cwd: 'server',
-      stdout: 'pipe',
-      stderr: 'pipe',
-    }
-  )
-
-  const exitCode = await proc.exited
-  const stdout = await new Response(proc.stdout).text()
-  const stderr = await new Response(proc.stderr).text()
-
-  if (exitCode !== 0) {
-    console.error(`Error: ${stderr}`)
+  try {
+    const result = await runD1Query(instance, ['--command', sql])
+    console.log(result)
+  } catch (error) {
+    console.error(`Error: ${error instanceof Error ? error.message : error}`)
     process.exit(1)
   }
-
-  console.log(stdout)
 }
 
 export async function dbMigrateAction(instance: string): Promise<void> {
   console.log(`Running migrations on ${instance} D1 database...\n`)
-
-  const wranglerConfig = getWranglerConfig(instance)
-  const { dbName } = getInstanceResourceNames(instance)
 
   const schemaPath = 'server/src/db/schema.sql'
   if (!existsSync(schemaPath)) {
@@ -80,50 +94,28 @@ export async function dbMigrateAction(instance: string): Promise<void> {
     process.exit(1)
   }
 
-  const proc = Bun.spawn(
-    ['bunx', 'wrangler', 'd1', 'execute', dbName, '-c', wranglerConfig, '--remote', '--file', 'src/db/schema.sql'],
-    {
-      cwd: 'server',
-      stdout: 'pipe',
-      stderr: 'pipe',
-    }
-  )
-
-  const exitCode = await proc.exited
-  const stdout = await new Response(proc.stdout).text()
-  const stderr = await new Response(proc.stderr).text()
-
-  if (exitCode !== 0) {
-    console.error(`Migration failed: ${stderr}`)
+  try {
+    const result = await runD1Query(instance, ['--file', 'src/db/schema.sql'])
+    console.log(result)
+    console.log(`${green}✓${reset} Migrations complete!`)
+  } catch (error) {
+    console.error(`Migration failed: ${error instanceof Error ? error.message : error}`)
     process.exit(1)
   }
-
-  console.log(stdout)
-  console.log(`${green}✓${reset} Migrations complete!`)
 }
 
 export async function dbDropAllAction(instance: string): Promise<void> {
   console.log(`Dropping all tables from ${instance} D1 database...\n`)
 
-  const wranglerConfig = getWranglerConfig(instance)
-  const { dbName } = getInstanceResourceNames(instance)
-
-  const listProc = Bun.spawn(
-    ['bunx', 'wrangler', 'd1', 'execute', dbName, '-c', wranglerConfig, '--remote', '--json', '--command',
-      `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'`],
-    {
-      cwd: 'server',
-      stdout: 'pipe',
-      stderr: 'pipe',
-    }
-  )
-
-  const listExitCode = await listProc.exited
-  const listStdout = await new Response(listProc.stdout).text()
-
-  if (listExitCode !== 0) {
-    const listStderr = await new Response(listProc.stderr).text()
-    console.error(`Error listing tables: ${listStderr}`)
+  let listStdout: string
+  try {
+    listStdout = await runD1Query(
+      instance,
+      ['--command', `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'`],
+      { json: true }
+    )
+  } catch (error) {
+    console.error(`Error listing tables: ${error instanceof Error ? error.message : error}`)
     process.exit(1)
   }
 
@@ -160,22 +152,11 @@ export async function dbDropAllAction(instance: string): Promise<void> {
   for (const table of tables) {
     process.stdout.write(`  Dropping ${table}... `)
 
-    const dropProc = Bun.spawn(
-      ['bunx', 'wrangler', 'd1', 'execute', dbName, '-c', wranglerConfig, '--remote', '--command',
-        `DROP TABLE IF EXISTS "${table}"`],
-      {
-        cwd: 'server',
-        stdout: 'pipe',
-        stderr: 'pipe',
-      }
-    )
-
-    const dropExitCode = await dropProc.exited
-    if (dropExitCode === 0) {
+    try {
+      await runD1Query(instance, ['--command', `DROP TABLE IF EXISTS "${table}"`])
       console.log(`${green}✓${reset}`)
-    } else {
-      const dropStderr = await new Response(dropProc.stderr).text()
-      console.log(`${red}✗${reset} ${dropStderr.trim()}`)
+    } catch (error) {
+      console.log(`${red}✗${reset} ${error instanceof Error ? error.message.trim() : error}`)
     }
   }
 

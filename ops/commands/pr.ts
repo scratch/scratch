@@ -1,20 +1,9 @@
 import { Command } from 'commander'
-import { execSync, spawnSync } from 'child_process'
+import { spawnSync } from 'child_process'
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs'
 import { createInterface } from 'readline'
 import path from 'path'
-
-const run = (cmd: string, opts?: { stdin?: boolean }) => {
-  console.log(`$ ${cmd}`)
-  const stdio = opts?.stdin === false
-    ? ['ignore', 'inherit', 'inherit'] as const
-    : 'inherit' as const
-  return execSync(cmd, { encoding: 'utf-8', stdio })
-}
-
-const runCapture = (cmd: string) => {
-  return execSync(cmd, { encoding: 'utf-8' }).trim()
-}
+import { run, runCapture } from '../lib/process'
 
 async function runPr(): Promise<void> {
   const rootDir = process.cwd()
@@ -145,7 +134,7 @@ PR guidelines:
 
   // Push branch to remote (always push to ensure remote is up-to-date)
   console.log('\n==> Ensuring branch is pushed...')
-  run(`git push -u origin ${currentBranch}`)
+  run(['git', 'push', '-u', 'origin', currentBranch])
 
   // Create PR using gh
   console.log('\n==> Creating pull request...')
@@ -158,7 +147,7 @@ PR guidelines:
   writeFileSync(bodyFile, prBody)
 
   try {
-    run(`gh pr create --repo ${repoName} --title "${prTitle.replace(/"/g, '\\"')}" --body-file ${bodyFile}`, { stdin: false })
+    run(['gh', 'pr', 'create', '--repo', repoName, '--title', prTitle, '--body-file', bodyFile], { stdin: false })
   } finally {
     // Clean up
     unlinkSync(bodyFile)

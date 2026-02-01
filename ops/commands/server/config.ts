@@ -1,7 +1,7 @@
 // Config commands - validation and secrets management
 
 import { existsSync } from 'fs'
-import { green, yellow, red, reset, check, printResult } from '../../lib/colors'
+import { green, red, reset, printStatus } from '../../lib/output'
 import {
   VARS_EXAMPLE,
   WRANGLER_TEMPLATE,
@@ -14,6 +14,7 @@ import {
   checkEnvTs,
   getInstanceVarsPath,
   getInstanceWranglerPath,
+  getWranglerConfigArg,
   validateInstanceVars,
   CONFIG_ONLY_VARS,
 } from '../../lib/config'
@@ -23,7 +24,7 @@ async function validateShared(): Promise<boolean> {
   let allPassed = true
 
   const varsExampleExists = existsSync(VARS_EXAMPLE)
-  printResult(check(varsExampleExists, `${VARS_EXAMPLE} exists`))
+  printStatus(varsExampleExists, `${VARS_EXAMPLE} exists`)
   if (!varsExampleExists) {
     allPassed = false
     return allPassed
@@ -31,15 +32,15 @@ async function validateShared(): Promise<boolean> {
 
   const templateExists = existsSync(WRANGLER_TEMPLATE)
   if (templateExists) {
-    printResult(check(true, `${WRANGLER_TEMPLATE} exists`))
+    printStatus(true, `${WRANGLER_TEMPLATE} exists`)
   } else {
-    printResult(check(false, `${WRANGLER_TEMPLATE} not found`))
+    printStatus(false, `${WRANGLER_TEMPLATE} not found`)
     allPassed = false
   }
 
   const gitignore = checkGitignore()
-  printResult(check(gitignore.hasEnvPattern, `.gitignore covers *.env files`))
-  printResult(check(gitignore.hasVarsPattern, `.gitignore covers *.vars files`))
+  printStatus(gitignore.hasEnvPattern, `.gitignore covers *.env files`)
+  printStatus(gitignore.hasVarsPattern, `.gitignore covers *.vars files`)
   if (!gitignore.hasEnvPattern || !gitignore.hasVarsPattern) allPassed = false
 
   if (templateExists) {
@@ -47,14 +48,14 @@ async function validateShared(): Promise<boolean> {
     if (wrangler.main) {
       const mainPath = `server/${wrangler.main}`
       const mainExists = existsSync(mainPath)
-      printResult(check(mainExists, `main: ${wrangler.main} exists`))
+      printStatus(mainExists, `main: ${wrangler.main} exists`)
       if (!mainExists) allPassed = false
     }
 
     if (wrangler.r2Binding) {
-      printResult(check(true, `R2 binding: ${wrangler.r2Binding} configured`))
+      printStatus(true, `R2 binding: ${wrangler.r2Binding} configured`)
     } else {
-      printResult(check(false, 'R2 binding configured'))
+      printStatus(false, 'R2 binding configured')
       allPassed = false
     }
   }
@@ -62,9 +63,9 @@ async function validateShared(): Promise<boolean> {
   const runtimeVars = getRuntimeVars()
   const envCheck = checkEnvTs(runtimeVars)
   if (envCheck.missing.length === 0) {
-    printResult(check(true, `${ENV_TS} contains all ${runtimeVars.length} runtime variables`))
+    printStatus(true, `${ENV_TS} contains all ${runtimeVars.length} runtime variables`)
   } else {
-    printResult(check(false, `${ENV_TS} missing: ${envCheck.missing.join(', ')}`))
+    printStatus(false, `${ENV_TS} missing: ${envCheck.missing.join(', ')}`)
     console.log(`    Run: bun ops server regenerate-env-ts`)
     allPassed = false
   }
@@ -80,14 +81,14 @@ async function validateInstance(instance: string): Promise<boolean> {
   const wranglerPath = getInstanceWranglerPath(instance)
 
   const varsExists = existsSync(varsPath)
-  printResult(check(varsExists, `${varsPath} exists`))
+  printStatus(varsExists, `${varsPath} exists`)
   if (!varsExists) {
     console.log(`    Run: bun ops server -i ${instance} setup`)
     return false
   }
 
   const wranglerExists = existsSync(wranglerPath)
-  printResult(check(wranglerExists, `${wranglerPath} exists`))
+  printStatus(wranglerExists, `${wranglerPath} exists`)
   if (!wranglerExists) {
     console.log(`    Run: bun ops server -i ${instance} setup`)
     return false
@@ -118,22 +119,22 @@ async function validateInstance(instance: string): Promise<boolean> {
   const templateValidation = validateInstanceVars(instance)
 
   if (missingVars.length === 0 && emptyVars.length === 0 && templateValidation.invalid.length === 0) {
-    printResult(check(true, `All ${requiredVars.length} variables set`))
+    printStatus(true, `All ${requiredVars.length} variables set`)
   } else {
     if (missingVars.length > 0) {
-      printResult(check(false, `Missing: ${missingVars.join(', ')}`))
+      printStatus(false, `Missing: ${missingVars.join(', ')}`)
     }
     if (emptyVars.length > 0) {
-      printResult(check(false, `Empty: ${emptyVars.join(', ')}`))
+      printStatus(false, `Empty: ${emptyVars.join(', ')}`)
     }
     if (templateValidation.invalid.length > 0) {
-      printResult(check(false, `Invalid: ${templateValidation.invalid.join(', ')}`))
+      printStatus(false, `Invalid: ${templateValidation.invalid.join(', ')}`)
     }
     allPassed = false
   }
 
   if (extraVars.length > 0) {
-    printResult(check(false, `Extra (not in ${VARS_EXAMPLE}): ${extraVars.join(', ')}`))
+    printStatus(false, `Extra (not in ${VARS_EXAMPLE}): ${extraVars.join(', ')}`)
     allPassed = false
   }
 
@@ -156,7 +157,7 @@ export async function syncSecretsToCloudflare(instance: string): Promise<boolean
     return false
   }
 
-  const configArg = wranglerPath.replace('server/', '')
+  const configArg = getWranglerConfigArg(instance)
   const instanceVars = parseVarsFile(varsPath)
   const runtimeVars = getRuntimeVars()
 
@@ -271,7 +272,7 @@ async function validateSecrets(instance: string, showFix: boolean): Promise<bool
     return false
   }
 
-  const configArg = wranglerPath.replace('server/', '')
+  const configArg = getWranglerConfigArg(instance)
   const runtimeVars = getRuntimeVars()
 
   console.log('\nChecking Cloudflare secrets...')
@@ -286,10 +287,10 @@ async function validateSecrets(instance: string, showFix: boolean): Promise<bool
     if (exitCode !== 0) {
       const stderr = await new Response(proc.stderr).text()
       if (stderr.includes('not logged in') || stderr.includes('authentication')) {
-        printResult(check(false, 'Not logged in to Cloudflare'))
+        printStatus(false, 'Not logged in to Cloudflare')
         console.log('    Run: bunx wrangler login')
       } else {
-        printResult(check(false, `Failed to list secrets: ${stderr.trim()}`))
+        printStatus(false, `Failed to list secrets: ${stderr.trim()}`)
       }
       return false
     }
@@ -321,17 +322,17 @@ async function validateSecrets(instance: string, showFix: boolean): Promise<bool
     }
 
     if (missingSecrets.length === 0 && extraSecrets.length === 0) {
-      printResult(check(true, `All ${runtimeVars.length} secrets configured`))
+      printStatus(true, `All ${runtimeVars.length} secrets configured`)
       return true
     } else {
       if (missingSecrets.length > 0) {
-        printResult(check(false, `Missing secrets: ${missingSecrets.join(', ')}`))
+        printStatus(false, `Missing secrets: ${missingSecrets.join(', ')}`)
         if (showFix) {
           console.log('\n    To fix, run: bun ops server -i ' + instance + ' config push')
         }
       }
       if (extraSecrets.length > 0) {
-        printResult(check(false, `Extra secrets (not in vars): ${extraSecrets.join(', ')}`))
+        printStatus(false, `Extra secrets (not in vars): ${extraSecrets.join(', ')}`)
         if (showFix) {
           console.log('\n    To fix, run: bun ops server -i ' + instance + ' config push')
         }
@@ -339,7 +340,7 @@ async function validateSecrets(instance: string, showFix: boolean): Promise<bool
       return false
     }
   } catch (error: any) {
-    printResult(check(false, `Error checking secrets: ${error.message}`))
+    printStatus(false, `Error checking secrets: ${error.message}`)
     return false
   }
 }
