@@ -13,14 +13,13 @@ import { request, ApiError } from '../../cloud/request'
 import {
   saveCredentials,
   loadCredentials,
-  normalizeServerUrl,
-  getLoggedInServers,
 } from '../../config/credentials'
 import {
   normalizeServerUrlInput,
   promptServerUrlSelection,
 } from '../../config/prompts'
 import { CloudContext } from './context'
+import { formatRelativeTime } from './util'
 
 // =============================================================================
 // Types
@@ -54,30 +53,6 @@ type ApiKeyListResponse = ApiKeyResponse[]
 
 // Maximum token expiration in days (enforced by BetterAuth server-side)
 const MAX_EXPIRATION_DAYS = 365
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-function formatRelativeTime(date: Date): string {
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-  if (diffDays === 0) {
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-    if (diffHours === 0) {
-      const diffMins = Math.floor(diffMs / (1000 * 60))
-      return diffMins <= 1 ? 'just now' : `${diffMins} minutes ago`
-    }
-    return diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`
-  }
-  if (diffDays === 1) return '1 day ago'
-  if (diffDays < 30) return `${diffDays} days ago`
-  if (diffDays < 60) return '1 month ago'
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`
-  return `${Math.floor(diffDays / 365)} year${Math.floor(diffDays / 365) > 1 ? 's' : ''} ago`
-}
 
 // =============================================================================
 // List Tokens
@@ -262,18 +237,18 @@ export async function useTokenCommand(
   }
 
   // Validate the token by making a test request
-  const testResponse = await fetch(`${serverUrl}/api/me`, {
-    headers: { 'X-Api-Key': apiToken },
-  })
-
-  if (!testResponse.ok) {
-    if (testResponse.status === 401) {
+  let user: { user: { id: string; email: string; name: string | null } }
+  try {
+    user = await request<{ user: { id: string; email: string; name: string | null } }>('/api/me', {
+      apiKey: apiToken,
+      serverUrl,
+    })
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
       throw new Error('Invalid or expired token')
     }
-    throw new Error(`Failed to validate token: ${testResponse.status}`)
+    throw error
   }
-
-  const user = await testResponse.json() as { user: { id: string; email: string; name: string | null } }
 
   // Save to credentials file
   await saveCredentials({

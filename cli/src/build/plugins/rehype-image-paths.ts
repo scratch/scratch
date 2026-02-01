@@ -9,24 +9,8 @@ import type { Plugin } from 'unified';
 import { visit } from 'unist-util-visit';
 import path from 'path';
 import type { BuildContext } from '../context';
-import { normalizeBase, isInternalAbsolutePath } from '../util';
+import { normalizeBase, isInternalAbsolutePath, isRelativePath } from '../util';
 import log from '../../logger';
-
-/**
- * Check if a path is relative (not absolute, not a URL, not a data URI)
- */
-function isRelativePath(src: string): boolean {
-  // Skip absolute paths
-  if (src.startsWith('/')) return false;
-  // Skip URLs
-  if (src.startsWith('http://') || src.startsWith('https://')) return false;
-  // Skip data URIs
-  if (src.startsWith('data:')) return false;
-  // Skip protocol-relative URLs
-  if (src.startsWith('//')) return false;
-
-  return true;
-}
 
 export interface ImagePathsPluginOptions {
   /** Base path for deployment (e.g., '/mysite') */

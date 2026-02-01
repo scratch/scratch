@@ -154,14 +154,6 @@ describe("Multi-server credentials storage", () => {
     expect(parsed["https://staging.scratch.dev"].client_id).toBe("staging-client-id");
   });
 
-  test("credentials file permissions should be restrictive", async () => {
-    // Note: File permissions behave differently across operating systems
-    // and temp directories. The actual credential functions use chmod after write.
-    // This test documents the expected permission mode.
-    const expectedMode = 0o600; // Owner read/write only
-    expect(expectedMode).toBe(0o600);
-  });
-
   test("credentials are keyed by normalized server URL", async () => {
     // Test that URLs are normalized (lowercase, no trailing slash)
     const normalized = (url: string) => url.replace(/\/+$/, "").toLowerCase();

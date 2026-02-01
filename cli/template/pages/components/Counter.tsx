@@ -4,7 +4,7 @@ export default function Counter(): React.ReactElement {
   const [count, setCount] = useState<number>(0);
 
   return (
-    <div className="flex justify-left items-center gap-3 py-2">
+    <div className="flex justify-start items-center gap-3 py-2">
       <button
         onClick={() => setCount((c) => c - 1)}
         className="w-8 h-8 flex items-center justify-center rounded-md bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"

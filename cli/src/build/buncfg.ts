@@ -96,7 +96,7 @@ export async function getBunBuildConfig(
   ctx: BuildContext,
   options: BunBuildConfigOptions
 ): Promise<BuildConfig> {
-  const nodeModulesDir = await ctx.nodeModulesDir();
+  const nodeModulesDir = ctx.nodeModulesDir;
   const mdxPlugin = await createMdxBuildPlugin(ctx, { extractFrontmatter: true });
 
   return {
@@ -133,7 +133,7 @@ export async function getServerBunBuildConfig(
   ctx: BuildContext,
   options: BunBuildConfigOptions
 ): Promise<BuildConfig> {
-  const nodeModulesDir = await ctx.nodeModulesDir();
+  const nodeModulesDir = ctx.nodeModulesDir;
   const mdxPlugin = await createMdxBuildPlugin(ctx);
 
   return {

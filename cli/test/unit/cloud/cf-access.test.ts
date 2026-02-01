@@ -3,8 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import os from "os";
 
-// We need to mock loadUserConfig to test getCfAccessHeaders
-// Since the module uses dynamic imports, we'll test the logic directly
+// Test getCfAccessHeaders parsing logic directly
 
 describe("getCfAccessHeaders", () => {
   // Test the parsing logic directly since we can't easily mock the module

@@ -9,14 +9,9 @@ import {
   PATHS,
   DEFAULT_SERVER_URL,
   escapeTomlString,
-  parseTOML,
   generateTOML,
-  loadUserConfig,
-  saveUserConfig,
   getServerUrl,
   getDefaultServerUrl,
-  loadUserSecrets,
-  saveUserSecrets,
   getCfAccessCredentials,
   saveCfAccessCredentials,
   clearCfAccessCredentials,
@@ -27,8 +22,6 @@ import {
   saveProjectConfig,
   getCfAccessHeaders,
   isCfAccessDenied,
-  type UserConfig,
-  type UserSecrets,
   type Credentials,
   type ProjectConfig,
 } from "../../../src/config";
@@ -102,68 +95,6 @@ describe("escapeTomlString", () => {
   });
 });
 
-describe("parseTOML", () => {
-  test("parses simple key-value pairs", () => {
-    const content = `
-server_url = "https://example.com"
-namespace = "acme.com"
-`;
-    const result = parseTOML<{ server_url: string; namespace: string }>(
-      content,
-      ["server_url", "namespace"]
-    );
-    expect(result.server_url).toBe("https://example.com");
-    expect(result.namespace).toBe("acme.com");
-  });
-
-  test("ignores unknown keys", () => {
-    const content = `
-server_url = "https://example.com"
-unknown_key = "some value"
-`;
-    const result = parseTOML<{ server_url: string }>(content, ["server_url"]);
-    expect(result.server_url).toBe("https://example.com");
-    expect((result as any).unknown_key).toBeUndefined();
-  });
-
-  test("ignores comments", () => {
-    const content = `
-# This is a comment
-server_url = "https://example.com"
-# Another comment
-`;
-    const result = parseTOML<{ server_url: string }>(content, ["server_url"]);
-    expect(result.server_url).toBe("https://example.com");
-  });
-
-  test("ignores empty lines", () => {
-    const content = `
-
-server_url = "https://example.com"
-
-namespace = "acme.com"
-
-`;
-    const result = parseTOML<{ server_url: string; namespace: string }>(
-      content,
-      ["server_url", "namespace"]
-    );
-    expect(result.server_url).toBe("https://example.com");
-    expect(result.namespace).toBe("acme.com");
-  });
-
-  test("returns empty object for empty content", () => {
-    const result = parseTOML<{ server_url: string }>("", ["server_url"]);
-    expect(result).toEqual({});
-  });
-
-  test("handles whitespace around equals sign", () => {
-    const content = `server_url   =   "https://example.com"`;
-    const result = parseTOML<{ server_url: string }>(content, ["server_url"]);
-    expect(result.server_url).toBe("https://example.com");
-  });
-});
-
 describe("generateTOML", () => {
   test("generates TOML with fields", () => {
     const toml = generateTOML([
@@ -199,81 +130,34 @@ describe("generateTOML", () => {
   });
 });
 
-describe("User Config", () => {
-  let configDir: string;
-  let configPath: string;
-
-  beforeEach(async () => {
-    configDir = path.join(tempDir, `config-${Date.now()}`);
-    configPath = path.join(configDir, "config.toml");
-    await fs.mkdir(configDir, { recursive: true });
-  });
-
-  describe("loadUserConfig", () => {
-    test("returns empty object when file doesn't exist", async () => {
-      // Use a non-existent path
-      const nonExistentDir = path.join(tempDir, "nonexistent");
-      // We can't easily test this without mocking PATHS, so we test the function behavior
-      const config = await loadUserConfig();
-      // This will use the real PATHS, so just check it returns an object
-      expect(typeof config).toBe("object");
-    });
-  });
-
+describe("Server URL utilities", () => {
   describe("getDefaultServerUrl", () => {
     test("returns the default URL constant", () => {
       expect(getDefaultServerUrl()).toBe(DEFAULT_SERVER_URL);
     });
   });
-});
 
-describe("User Secrets", () => {
-  let secretsDir: string;
-  let secretsPath: string;
+  describe("getServerUrl", () => {
+    const originalEnv = process.env.SCRATCH_SERVER_URL;
 
-  beforeEach(async () => {
-    secretsDir = path.join(tempDir, `secrets-${Date.now()}`);
-    secretsPath = path.join(secretsDir, "secrets.json");
-    await fs.mkdir(secretsDir, { recursive: true });
-  });
-
-  describe("saveUserSecrets and loadUserSecrets", () => {
-    test("saves secrets with correct JSON format", async () => {
-      // We test the underlying JSON format
-      const secrets: UserSecrets = {
-        cf_access_client_id: "test-id",
-        cf_access_client_secret: "test-secret",
-      };
-
-      await fs.writeFile(secretsPath, JSON.stringify(secrets, null, 2) + "\n");
-      const content = await fs.readFile(secretsPath, "utf-8");
-      const loaded = JSON.parse(content);
-
-      expect(loaded.cf_access_client_id).toBe("test-id");
-      expect(loaded.cf_access_client_secret).toBe("test-secret");
-    });
-  });
-
-  describe("getCfAccessCredentials", () => {
-    test("returns null when both ID and secret are not set", async () => {
-      // Test the function returns null for incomplete credentials
-      const secrets: UserSecrets = {
-        cf_access_client_id: "only-id",
-      };
-
-      // Check logic: both must be present
-      const hasCredentials = secrets.cf_access_client_id && secrets.cf_access_client_secret;
-      expect(hasCredentials).toBeFalsy();
+    afterEach(() => {
+      if (originalEnv === undefined) {
+        delete process.env.SCRATCH_SERVER_URL;
+      } else {
+        process.env.SCRATCH_SERVER_URL = originalEnv;
+      }
     });
 
-    test("returns credentials when both are set", async () => {
-      const secrets: UserSecrets = {
-        cf_access_client_id: "test-id",
-        cf_access_client_secret: "test-secret",
-      };
+    test("returns default URL when env var not set", async () => {
+      delete process.env.SCRATCH_SERVER_URL;
+      const url = await getServerUrl();
+      expect(url).toBe(DEFAULT_SERVER_URL);
+    });
 
-      const hasCredentials = secrets.cf_access_client_id && secrets.cf_access_client_secret;
-      expect(hasCredentials).toBeTruthy();
+    test("returns env var when set", async () => {
+      process.env.SCRATCH_SERVER_URL = "https://custom.example.com";
+      const url = await getServerUrl();
+      expect(url).toBe("https://custom.example.com");
     });
   });
 });

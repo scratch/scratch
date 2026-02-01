@@ -3,6 +3,10 @@ import { loadProjectConfig } from '../../config'
 import { listProjects, getProject, deleteProject, ApiError } from '../../cloud/api'
 import { prompt, select, stripTrailingSlash } from '../../util'
 import { CloudContext } from './context'
+import { formatDate, formatDateTime } from './util'
+
+// Re-export date formatting functions for backward compatibility
+export { formatDate, formatDateTime } from './util'
 
 // Prompt user to select from multiple projects
 export async function promptProjectChoice(
@@ -56,29 +60,6 @@ export async function resolveProjectOrConfig(
   }
 
   return config.name
-}
-
-// Format date for display
-export function formatDate(dateString: string): string {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
-// Format date with time for display (includes timezone)
-export function formatDateTime(dateString: string): string {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZoneName: 'short',
-  })
 }
 
 export async function listProjectsCommand(ctx: CloudContext): Promise<void> {

@@ -3,6 +3,15 @@
  */
 
 /**
+ * Check if a path is relative (not absolute, not a URL, not a special protocol).
+ * Used by rehype plugins to determine if paths need transformation.
+ */
+export function isRelativePath(path: string): boolean {
+  const nonRelativePrefixes = ['/', 'http://', 'https://', '//', '#', 'mailto:', 'tel:', 'data:'];
+  return !nonRelativePrefixes.some(prefix => path.startsWith(prefix));
+}
+
+/**
  * Normalize a base path to ensure it starts with / and doesn't end with /
  * Returns empty string for undefined/null/empty/root-only input.
  */

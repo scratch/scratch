@@ -1,7 +1,6 @@
 import { getPreprocessingErrors } from './plugins';
 import log from '../logger';
-
-export type BunBuildResult = Awaited<ReturnType<typeof Bun.build>>;
+import type { BunBuildResult } from './types';
 
 /**
  * Run Bun.build with unified error handling for both server and client builds.

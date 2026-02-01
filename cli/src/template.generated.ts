@@ -421,9 +421,6 @@ export const templates: Record<string, TemplateFile> = {
 </svg>
 `, binary: false },
 
-  'public/DVD_logo.svg': { content: `<?xml version="1.0" encoding="UTF-8"?><svg width="100%" height="100%" viewBox="0 0 1058.4 465.84" xmlns="http://www.w3.org/2000/svg"><g><path d="m91.053 0-13.719 57.707 102.28 0.039063h24c65.747 0 105.91 26.44 94.746 73.4-12.147 51.133-69.613 73.4-130.67 73.4h-22.947l29.787-125.45h-102.27l-43.521 183.2h145.05c109.07 0 212.76-57.573 231.01-131.15 3.3467-13.507 2.8806-47.253-5.3594-67.359-0.21299-0.787-0.42594-1.4-1.1855-3-0.293-0.653-0.56012-3.6412 1.1465-4.2812 0.947-0.36 2.7069 1.4944 2.9336 2.041 0.853 2.24 1.5059 3.9062 1.5059 3.9062l92.293 260.6 234.97-265.21 99.535-0.089844h24c65.76 0 106.25 26.44 95.092 73.4-12.147 51.133-69.947 73.4-131 73.4h-22.959l29.799-125.47h-102.27l-43.533 183.21h145.07c109.05 0 213.48-57.4 231-131.15 17.52-73.75-59.107-131.15-168.69-131.15h-216.4s-57.319 67.88-67.959 80.693c-57.12 68.787-67.241 87.226-68.961 91.986 0.24-4.8-1.8138-23.412-26.174-92.959-6.48-18.52-27.359-79.721-27.359-79.721h-389.25zm408.77 324.16c-276.04 0-499.83 31.72-499.83 70.84s223.79 70.84 499.83 70.84c276.04 0 499.83-31.72 499.83-70.84s-223.79-70.84-499.83-70.84zm-18.094 48.627c63.04 0 114.13 10.573 114.13 23.613s-51.095 23.613-114.13 23.613c-63.027 0-114.13-10.573-114.13-23.613s51.106-23.613 114.13-23.613z"/><path d="m963.6 445.05-0.73242 5.1738h13.08l-5.1074 36.32h5.7207l5.1055-36.32h11.68l0.72071-5.1738h-30.467zm41.215 0-13.693 41.494h5.4785l10.215-31.76h0.1328l7.1718 31.76 16.668-31.453h0.1191v31.453h5.4805v-41.494h-5.4805l-14.906 28.107-6.4395-28.107h-4.746z" display="none"/></g></svg>
-`, binary: false },
-
   '.gitignore': { content: `# scratch build cache (but allow project.toml to be committed)
 .scratch/*
 !.scratch/project.toml
@@ -511,10 +508,8 @@ const component = React.createElement(
 // render and insert the component
 const mdxElement = document.getElementById('mdx')!;
 if ((window as any).__SCRATCH_SSG__) {
-  console.log('Hydrating mdx component');
   hydrateRoot(mdxElement, component);
 } else {
-  console.log('Rendering mdx component');
   createRoot(mdxElement).render(component);
 }
 `, binary: false },
@@ -965,15 +960,6 @@ export default function Marquis({ children }: MarquisProps): React.ReactElement 
         <span>{children}</span>
         <span className="mx-4">{children}</span>
       </span>
-      <style>{\`
-        @keyframes marquis {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .animate-marquis {
-          animation: marquis 3s linear infinite;
-        }
-      \`}</style>
     </span>
   );
 }
@@ -985,7 +971,7 @@ export default function Counter(): React.ReactElement {
   const [count, setCount] = useState<number>(0);
 
   return (
-    <div className="flex justify-left items-center gap-3 py-2">
+    <div className="flex justify-start items-center gap-3 py-2">
       <button
         onClick={() => setCount((c) => c - 1)}
         className="w-8 h-8 flex items-center justify-center rounded-md bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
@@ -1040,83 +1026,53 @@ const DEFAULT_TODOS: Todo[] = [
   { id: 4, text: "Publish with \`scratch publish\`", completed: false },
 ];
 
-let globalTodos: Todo[] | null = null;
-let listeners: Set<(todos: Todo[]) => void> = new Set();
-
-function getTodos(): Todo[] {
-  if (globalTodos === null) {
-    if (typeof window === "undefined") {
-      globalTodos = [];
-    } else {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      globalTodos = stored ? JSON.parse(stored) : DEFAULT_TODOS;
-    }
-  }
-  return globalTodos;
+function loadTodos(): Todo[] {
+  if (typeof window === "undefined") return DEFAULT_TODOS;
+  const stored = localStorage.getItem(STORAGE_KEY);
+  return stored ? JSON.parse(stored) : DEFAULT_TODOS;
 }
 
-function saveToStorage(todos: Todo[]) {
+function saveTodos(todos: Todo[]) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
 }
 
-function notifyListeners() {
-  listeners.forEach((listener) => listener(getTodos()));
-}
-
-function useTodos() {
-  const [todos, setTodos] = useState<Todo[]>(() => getTodos());
+export default function TodoList() {
+  const [todos, setTodos] = useState<Todo[]>(DEFAULT_TODOS);
+  const [input, setInput] = useState("");
 
   useEffect(() => {
-    setTodos(getTodos());
-
-    const listener = (newTodos: Todo[]) => setTodos(newTodos);
-    listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-    };
+    setTodos(loadTodos());
   }, []);
 
   const updateTodos = (newTodos: Todo[]) => {
-    globalTodos = newTodos;
-    saveToStorage(newTodos);
-    notifyListeners();
+    setTodos(newTodos);
+    saveTodos(newTodos);
   };
 
-  const addTodo = (text: string) => {
-    if (!text.trim()) return;
+  const addTodo = () => {
+    if (!input.trim()) return;
     updateTodos([
-      ...getTodos(),
-      { id: Date.now(), text: text.trim(), completed: false },
+      ...todos,
+      { id: Date.now(), text: input.trim(), completed: false },
     ]);
+    setInput("");
   };
 
   const toggleTodo = (id: number) => {
     updateTodos(
-      getTodos().map((t) =>
+      todos.map((t) =>
         t.id === id ? { ...t, completed: !t.completed } : t,
       ),
     );
   };
 
   const deleteTodo = (id: number) => {
-    updateTodos(getTodos().filter((t) => t.id !== id));
+    updateTodos(todos.filter((t) => t.id !== id));
   };
 
   const reset = () => {
     updateTodos([...DEFAULT_TODOS]);
-  };
-
-  return { todos, addTodo, toggleTodo, deleteTodo, reset };
-}
-
-export default function TodoList() {
-  const { todos, addTodo, toggleTodo, deleteTodo, reset } = useTodos();
-  const [input, setInput] = useState("");
-
-  const handleAdd = () => {
-    addTodo(input);
-    setInput("");
   };
 
   return (
@@ -1173,7 +1129,7 @@ export default function TodoList() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+            onKeyDown={(e) => e.key === "Enter" && addTodo()}
             placeholder="Add a todo..."
             className="flex-1 bg-transparent border-b border-transparent text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-300"
           />
@@ -1542,6 +1498,16 @@ pre > code {
 .heading-anchor {
   @apply absolute -left-6 top-0 opacity-0 group-hover:opacity-100 transition-opacity no-underline select-none;
   @apply text-gray-400 hover:text-gray-600;
+}
+
+/* Marquis animation */
+@keyframes marquis {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquis {
+  animation: marquis 3s linear infinite;
 }
 `, binary: false },
 

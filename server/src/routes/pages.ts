@@ -24,72 +24,17 @@ import {
   buildContentAccessRedirect,
 } from '../lib/content-serving'
 import { isPublicProject } from '../lib/visibility'
+import { mdxRedirectMiddleware } from '../lib/redirects'
 
 export const pagesRoutes = new Hono<{ Bindings: Env }>({ strict: true })
 
-// Resolve owner identifier to user ID
-// Tries: user ID, email, or local-part (if single domain)
-async function resolveOwnerId(
-  db: ReturnType<typeof createDbClient>,
-  ownerIdentifier: string,
-  allowedUsers: string
-): Promise<string | null> {
-  // 1. Try as user ID
-  const [byId] = await db`SELECT id FROM "user" WHERE id = ${ownerIdentifier}` as { id: string }[]
-  if (byId) {
-    return byId.id
-  }
-
-  // 2. Try as email (case-insensitive)
-  const [byEmail] = await db`SELECT id FROM "user" WHERE lower(email) = ${ownerIdentifier.toLowerCase()}` as { id: string }[]
-  if (byEmail) {
-    return byEmail.id
-  }
-
-  // 3. Try as local-part if single domain allowed
-  const singleDomain = isSingleDomainAllowedUsers(allowedUsers)
-  if (singleDomain) {
-    const fullEmail = `${ownerIdentifier.toLowerCase()}@${singleDomain}`
-    const [byLocalPart] = await db`SELECT id FROM "user" WHERE lower(email) = ${fullEmail}` as { id: string }[]
-    if (byLocalPart) {
-      return byLocalPart.id
-    }
-  }
-
-  return null
-}
-
-// Get cookie path for a project (based on owner identifier and project name)
-function getCookiePath(ownerIdentifier: string, projectName: string): string {
-  return `/${ownerIdentifier}/${projectName}/`
-}
-
-// Generate a synthetic project ID for non-existent projects
-// This is used to redirect to auth without revealing that the project doesn't exist
-// Uses a deterministic hash so the same path always produces the same ID
-async function generateSyntheticProjectId(ownerIdentifier: string, projectName: string): Promise<string> {
-  const data = new TextEncoder().encode(`${ownerIdentifier}/${projectName}`)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = new Uint8Array(hashBuffer)
-  // Convert to base36 and take first 21 chars (matches nanoid format)
-  let result = ''
-  for (const byte of hashArray) {
-    result += byte.toString(36)
-  }
-  return result.substring(0, 21)
-}
+// Apply middleware for .mdx -> .md redirects
+pagesRoutes.use('*', mdxRedirectMiddleware())
 
 // GET requests for static file serving
 pagesRoutes.get('*', async (c) => {
   const url = new URL(c.req.url)
   const pathname = url.pathname
-
-  // Redirect .mdx URLs to .md (CLI renames .mdx to .md when copying)
-  if (pathname.endsWith('.mdx')) {
-    const redirectUrl = new URL(url)
-    redirectUrl.pathname = pathname.slice(0, -4) + '.md'
-    return c.redirect(redirectUrl.toString(), 301)
-  }
 
   // Redirect /{owner}/{project} to /{owner}/{project}/
   // Preserve query params (e.g., ?_access=token) during redirect
@@ -116,7 +61,28 @@ pagesRoutes.get('*', async (c) => {
   const db = createDbClient(c.env.DB)
 
   // Resolve owner identifier to user ID
-  const ownerId = await resolveOwnerId(db, ownerIdentifier, c.env.ALLOWED_USERS || '')
+  // Tries: user ID, email (case-insensitive), or local-part (if single domain)
+  let ownerId: string | null = null
+  const [byId] = (await db`SELECT id FROM "user" WHERE id = ${ownerIdentifier}`) as { id: string }[]
+  if (byId) {
+    ownerId = byId.id
+  } else {
+    const [byEmail] = (await db`SELECT id FROM "user" WHERE lower(email) = ${ownerIdentifier.toLowerCase()}`) as {
+      id: string
+    }[]
+    if (byEmail) {
+      ownerId = byEmail.id
+    } else {
+      const singleDomain = isSingleDomainAllowedUsers(c.env.ALLOWED_USERS || '')
+      if (singleDomain) {
+        const fullEmail = `${ownerIdentifier.toLowerCase()}@${singleDomain}`
+        const [byLocalPart] = (await db`SELECT id FROM "user" WHERE lower(email) = ${fullEmail}`) as { id: string }[]
+        if (byLocalPart) {
+          ownerId = byLocalPart.id
+        }
+      }
+    }
+  }
 
   // Look up project with visibility info (only if owner exists)
   let project: Project | undefined
@@ -135,10 +101,13 @@ pagesRoutes.get('*', async (c) => {
     }
   }
 
+  // Cookie path for auth tokens (scoped to this project's URL path)
+  const cookiePath = `/${ownerIdentifier}/${projectName}/`
+
   // If project exists and is public, serve immediately
   if (project && isPublicProject(project.visibility, c.env)) {
     return serveProjectContent(c, project, filePath, {
-      cookiePath: getCookiePath(ownerIdentifier, projectName),
+      cookiePath,
       enableCaching: true,
     })
   }
@@ -148,13 +117,24 @@ pagesRoutes.get('*', async (c) => {
   if (project) {
     // Project exists but is non-public - use real project ID
     return serveProjectContent(c, project, filePath, {
-      cookiePath: getCookiePath(ownerIdentifier, projectName),
+      cookiePath,
       enableCaching: false,
     })
   }
 
-  // Project doesn't exist - redirect to auth with synthetic ID
-  // After auth, content-access will fail to find the project and show generic error
-  const syntheticId = await generateSyntheticProjectId(ownerIdentifier, projectName)
+  // Project doesn't exist - redirect to auth with synthetic project ID
+  // Security: We generate a deterministic fake ID so attackers can't distinguish
+  // "project doesn't exist" from "project is private". After auth, content-access
+  // will fail to find the project and show a generic error.
+  const data = new TextEncoder().encode(`${ownerIdentifier}/${projectName}`)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = new Uint8Array(hashBuffer)
+  // Convert to base36 and take first 21 chars (matches nanoid format)
+  let syntheticId = ''
+  for (const byte of hashArray) {
+    syntheticId += byte.toString(36)
+  }
+  syntheticId = syntheticId.substring(0, 21)
+
   return c.redirect(buildContentAccessRedirect(c.env, syntheticId, c.req.url))
 })

@@ -88,14 +88,14 @@ export async function dbQueryAction(instance: string, sql: string): Promise<void
 export async function dbMigrateAction(instance: string): Promise<void> {
   console.log(`Running migrations on ${instance} D1 database...\n`)
 
-  const schemaPath = 'server/src/db/schema.sql'
+  const schemaPath = 'server/src/db/schema.d1.sql'
   if (!existsSync(schemaPath)) {
     console.error(`Error: ${schemaPath} not found`)
     process.exit(1)
   }
 
   try {
-    const result = await runD1Query(instance, ['--file', 'src/db/schema.sql'])
+    const result = await runD1Query(instance, ['--file', 'src/db/schema.d1.sql'])
     console.log(result)
     console.log(`${green}✓${reset} Migrations complete!`)
   } catch (error) {

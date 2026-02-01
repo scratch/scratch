@@ -17,7 +17,7 @@ scratch/
 │   ├── src/
 │   │   ├── routes/   # API routes split by domain
 │   │   └── lib/      # Shared utilities
-│   └── schema.sql    # Database schema
+│   └── schema.d1.sql # Database schema (D1/SQLite)
 ├── shared/           # Types shared between server and client
 ├── ops/              # CLI for dev operations
 ├── website/          # Scratch documentation site (itself a Scratch project)

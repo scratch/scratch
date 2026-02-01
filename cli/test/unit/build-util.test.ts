@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { normalizeBase } from '../../src/build/util';
+import { normalizeBase, isRelativePath } from '../../src/build/util';
 
 describe('normalizeBase', () => {
   test('returns empty string for undefined', () => {
@@ -34,5 +34,46 @@ describe('normalizeBase', () => {
   test('handles single slash (root path)', () => {
     // Single slash should return empty string (no base path needed for root)
     expect(normalizeBase('/')).toBe('');
+  });
+});
+
+describe('isRelativePath', () => {
+  test('returns true for relative paths', () => {
+    expect(isRelativePath('foo.png')).toBe(true);
+    expect(isRelativePath('./foo.png')).toBe(true);
+    expect(isRelativePath('../images/foo.png')).toBe(true);
+    expect(isRelativePath('images/foo.png')).toBe(true);
+    expect(isRelativePath('about.md')).toBe(true);
+  });
+
+  test('returns false for absolute paths', () => {
+    expect(isRelativePath('/foo.png')).toBe(false);
+    expect(isRelativePath('/images/foo.png')).toBe(false);
+  });
+
+  test('returns false for HTTP URLs', () => {
+    expect(isRelativePath('http://example.com/foo.png')).toBe(false);
+    expect(isRelativePath('https://example.com/foo.png')).toBe(false);
+  });
+
+  test('returns false for protocol-relative URLs', () => {
+    expect(isRelativePath('//example.com/foo.png')).toBe(false);
+  });
+
+  test('returns false for hash links', () => {
+    expect(isRelativePath('#section')).toBe(false);
+    expect(isRelativePath('#top')).toBe(false);
+  });
+
+  test('returns false for mailto links', () => {
+    expect(isRelativePath('mailto:test@example.com')).toBe(false);
+  });
+
+  test('returns false for tel links', () => {
+    expect(isRelativePath('tel:+1234567890')).toBe(false);
+  });
+
+  test('returns false for data URIs', () => {
+    expect(isRelativePath('data:image/png;base64,abc123')).toBe(false);
   });
 });

@@ -14,42 +14,9 @@ import {
   type ProjectConfig,
 } from '../../config'
 import { CloudContext } from './context'
+import { createZip } from './util'
 import fs from 'fs/promises'
 import path from 'path'
-
-// Create zip from directory
-async function createZip(dirPath: string): Promise<{ data: ArrayBuffer; fileCount: number; totalBytes: number }> {
-  const JSZipModule = await import('jszip')
-  const JSZip = JSZipModule.default || JSZipModule
-  const zip = new JSZip()
-
-  let fileCount = 0
-  let totalBytes = 0
-
-  async function addDir(currentPath: string, zipPath: string) {
-    const entries = await fs.readdir(currentPath, { withFileTypes: true })
-
-    for (const entry of entries) {
-      const fullPath = path.join(currentPath, entry.name)
-      const entryZipPath = zipPath ? `${zipPath}/${entry.name}` : entry.name
-
-      if (entry.isDirectory()) {
-        await addDir(fullPath, entryZipPath)
-      } else if (entry.isFile()) {
-        const content = await fs.readFile(fullPath)
-        zip.file(entryZipPath, content)
-        fileCount++
-        totalBytes += content.length
-      }
-      // Skip symlinks and other special files
-    }
-  }
-
-  await addDir(dirPath, '')
-
-  const data = await zip.generateAsync({ type: 'arraybuffer' })
-  return { data, fileCount, totalBytes }
-}
 
 export interface PublishOptions {
   name?: string
@@ -57,6 +24,7 @@ export interface PublishOptions {
   noBuild?: boolean
   noOpen?: boolean
   dryRun?: boolean
+  www?: boolean
 }
 
 export async function publishCommand(ctx: CloudContext, projectPath: string = '.', options: PublishOptions = {}): Promise<void> {
@@ -126,8 +94,9 @@ export async function publishCommand(ctx: CloudContext, projectPath: string = '.
 
   if (!options.noBuild) {
     log.info('Building project...')
-    // Base path matches the deployed URL: /<user-id>/<project-name>/
-    const buildCtx = new BuildContext({ path: resolvedPath, base: `/${credentials.user.id}/${projectName}` })
+    // Base path: empty for www mode (served at root), otherwise /<user-id>/<project-name>/
+    const basePath = options.www ? '' : `/${credentials.user.id}/${projectName}`
+    const buildCtx = new BuildContext({ path: resolvedPath, base: basePath })
     await buildCommand(buildCtx, { ssg: true }, resolvedPath)
   }
 
@@ -169,7 +138,7 @@ export async function publishCommand(ctx: CloudContext, projectPath: string = '.
     try {
       const result = await deploy(
         credentials.token,
-        { name: projectName, visibility, project_id: config.id },
+        { name: projectName, visibility, project_id: config.id, www: options.www },
         zipData,
         effectiveServerUrl
       )
@@ -180,9 +149,27 @@ export async function publishCommand(ctx: CloudContext, projectPath: string = '.
       }
       log.info(`Deployed v${result.deploy.version}`)
       log.info('')
-      log.info('URLs:')
-      log.info(`  ${stripTrailingSlash(result.urls.primary)}`)
-      log.info(`  ${stripTrailingSlash(result.urls.byId)}`)
+
+      // Display URLs based on www mode
+      if (options.www) {
+        if (result.www?.configured && result.urls.www) {
+          // WWW_PROJECT_ID is configured for this project - show www URL
+          log.info('URL:')
+          log.info(`  ${stripTrailingSlash(result.urls.www)}`)
+        } else {
+          // WWW_PROJECT_ID not configured - show warning and fallback URLs
+          log.info('URLs:')
+          log.info(`  ${stripTrailingSlash(result.urls.primary)}`)
+          log.info(`  ${stripTrailingSlash(result.urls.byId)}`)
+          log.info('')
+          log.info('Note: To serve this project at the naked domain, configure your server with:')
+          log.info(`  WWW_PROJECT_ID=${result.www?.project_id || result.project.id}`)
+        }
+      } else {
+        log.info('URLs:')
+        log.info(`  ${stripTrailingSlash(result.urls.primary)}`)
+        log.info(`  ${stripTrailingSlash(result.urls.byId)}`)
+      }
 
       // Save project ID if it changed (new project or wasn't saved before)
       if (result.project.id !== config.id) {
@@ -193,9 +180,13 @@ export async function publishCommand(ctx: CloudContext, projectPath: string = '.
         })
       }
 
-      // Open the deployed page in browser (primary URL) unless --no-open
+      // Open the deployed page in browser unless --no-open
+      // Use www URL if in www mode and configured, otherwise use primary URL
       if (!options.noOpen) {
-        await openBrowser(result.urls.primary)
+        const urlToOpen = (options.www && result.www?.configured && result.urls.www)
+          ? result.urls.www
+          : result.urls.primary
+        await openBrowser(urlToOpen)
       }
       return
     } catch (error) {
@@ -241,6 +232,13 @@ export async function publishCommand(ctx: CloudContext, projectPath: string = '.
             log.error(`  - The .scratch/project.toml contains an ID from a different server`)
             log.error('')
             log.error('To fix, remove the "id" line from .scratch/project.toml and publish again.')
+            process.exit(1)
+          } else if (code === 'WWW_PROJECT_MISMATCH') {
+            log.error('')
+            log.error('Cannot publish with --www flag.')
+            log.error('')
+            log.error('The server\'s WWW_PROJECT_ID is already configured for a different project.')
+            log.error('Update the server configuration if you want to change which project is served at the root domain.')
             process.exit(1)
           } else if (code === 'PROJECT_NAME_TAKEN') {
             log.error('')

@@ -1,8 +1,11 @@
 import { describe, expect, test, beforeAll, afterAll } from "bun:test";
-import { findRoute, hasStaticFileExtension } from "../../src/cmd/dev";
+import { findRoute } from "../../src/cmd/dev";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
+
+// Note: hasStaticFileExtension tests are in server.test.ts since
+// that function now lives in server.ts and is re-exported by dev.ts
 
 let tempDir: string;
 
@@ -95,73 +98,5 @@ describe("findRoute", () => {
 
     // aaa/nested is found via DFS before bbb because aaa < bbb alphabetically
     expect(await findRoute(dir)).toBe("/aaa/nested");
-  });
-});
-
-describe("hasStaticFileExtension", () => {
-  // Known static extensions should return true
-  test("returns true for known web asset extensions", () => {
-    expect(hasStaticFileExtension("/style.css")).toBe(true);
-    expect(hasStaticFileExtension("/script.js")).toBe(true);
-    expect(hasStaticFileExtension("/data.json")).toBe(true);
-    expect(hasStaticFileExtension("/page.html")).toBe(true);
-    expect(hasStaticFileExtension("/module.mjs")).toBe(true);
-  });
-
-  test("returns true for known image extensions", () => {
-    expect(hasStaticFileExtension("/photo.png")).toBe(true);
-    expect(hasStaticFileExtension("/photo.jpg")).toBe(true);
-    expect(hasStaticFileExtension("/photo.jpeg")).toBe(true);
-    expect(hasStaticFileExtension("/icon.svg")).toBe(true);
-    expect(hasStaticFileExtension("/image.webp")).toBe(true);
-    expect(hasStaticFileExtension("/favicon.ico")).toBe(true);
-  });
-
-  test("returns true for known font extensions", () => {
-    expect(hasStaticFileExtension("/font.woff")).toBe(true);
-    expect(hasStaticFileExtension("/font.woff2")).toBe(true);
-    expect(hasStaticFileExtension("/font.ttf")).toBe(true);
-  });
-
-  test("returns true for known source file extensions", () => {
-    expect(hasStaticFileExtension("/file.ts")).toBe(true);
-    expect(hasStaticFileExtension("/file.tsx")).toBe(true);
-    expect(hasStaticFileExtension("/file.jsx")).toBe(true);
-    expect(hasStaticFileExtension("/file.md")).toBe(true);
-    expect(hasStaticFileExtension("/file.mdx")).toBe(true);
-  });
-
-  // Routes without known extensions should return false
-  test("returns false for paths without extensions", () => {
-    expect(hasStaticFileExtension("/about")).toBe(false);
-    expect(hasStaticFileExtension("/posts/hello")).toBe(false);
-    expect(hasStaticFileExtension("/")).toBe(false);
-  });
-
-  test("returns false for unknown extensions (dotted filenames)", () => {
-    // These are routes from files like test.file.md -> /test.file
-    expect(hasStaticFileExtension("/test.file")).toBe(false);
-    expect(hasStaticFileExtension("/my.page.name")).toBe(false);
-    expect(hasStaticFileExtension("/docs/v1.2.3")).toBe(false);
-  });
-
-  test("only considers the last path segment", () => {
-    // The dot is in a directory name, not the file
-    expect(hasStaticFileExtension("/v1.0/about")).toBe(false);
-    expect(hasStaticFileExtension("/test.dir/page")).toBe(false);
-    // But if the last segment has a known extension, return true
-    expect(hasStaticFileExtension("/v1.0/style.css")).toBe(true);
-  });
-
-  test("is case-insensitive for extensions", () => {
-    expect(hasStaticFileExtension("/style.CSS")).toBe(true);
-    expect(hasStaticFileExtension("/script.JS")).toBe(true);
-    expect(hasStaticFileExtension("/image.PNG")).toBe(true);
-  });
-
-  test("handles edge cases", () => {
-    expect(hasStaticFileExtension("")).toBe(false);
-    expect(hasStaticFileExtension(".css")).toBe(true); // just extension
-    expect(hasStaticFileExtension("/.hidden")).toBe(false); // hidden file, not extension
   });
 });

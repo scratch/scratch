@@ -1,6 +1,7 @@
 /**
  * Simple TOML utilities for our config format
- * We use a lightweight parser to avoid heavy dependencies
+ * We use smol-toml for parsing (via project-config.ts)
+ * and this file for generating TOML with comments.
  */
 
 /**
@@ -8,35 +9,6 @@
  */
 export function escapeTomlString(s: string): string {
   return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
-}
-
-/**
- * Parse a simple TOML file with string values only
- * Supports: key = "value" format with # comments
- */
-export function parseTOML<T extends Record<string, string | undefined>>(
-  content: string,
-  knownKeys: (keyof T)[]
-): Partial<T> {
-  const result: Partial<T> = {}
-  const keySet = new Set(knownKeys as string[])
-
-  for (const line of content.split('\n')) {
-    const trimmed = line.trim()
-
-    // Skip empty lines and comments
-    if (!trimmed || trimmed.startsWith('#')) continue
-
-    const match = trimmed.match(/^(\w+)\s*=\s*"(.*)"\s*$/)
-    if (match) {
-      const [, key, value] = match
-      if (keySet.has(key)) {
-        ;(result as Record<string, string>)[key] = value
-      }
-    }
-  }
-
-  return result
 }
 
 export interface TomlField {

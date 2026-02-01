@@ -94,7 +94,7 @@ export function registerServerCommands(program: Command): void {
     })
 
   db.command('migrate')
-    .description('Run database migrations from schema.sql')
+    .description('Run database migrations from schema.d1.sql')
     .action(async () => {
       const instance = requireInstance(server.opts().instance, 'db migrate')
       await dbMigrateAction(instance)

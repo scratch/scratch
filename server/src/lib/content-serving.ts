@@ -131,83 +131,131 @@ export interface ContentAuthResult {
   shareTokenFromUrl?: boolean // Share token was in URL (not cookie)
 }
 
+// Result from content token authentication
+interface ContentTokenAuthResult {
+  user: { id: string; email: string } | null
+  tokenFromUrl: boolean
+}
+
+// Authenticate via content token (project-scoped JWT)
+// Checks URL param first, then cookie. Sets cookie if token was in URL.
+async function authenticateViaContentToken(
+  c: Context<{ Bindings: Env }>,
+  projectId: string,
+  cookiePath: string
+): Promise<ContentTokenAuthResult> {
+  const url = new URL(c.req.url)
+  const contentTokenCookieName = '_content_token'
+  const tokenFromCookie = getCookie(c, contentTokenCookieName)
+  const tokenFromUrl = url.searchParams.get('_ctoken')
+  const token = tokenFromUrl || tokenFromCookie
+
+  if (!token) {
+    return { user: null, tokenFromUrl: false }
+  }
+
+  const verified = await verifyContentToken(token, projectId, c.env.BETTER_AUTH_SECRET)
+  if (!verified) {
+    return { user: null, tokenFromUrl: false }
+  }
+
+  const user = { id: verified.userId, email: verified.email }
+
+  // Set cookie if token came from URL (first visit after auth)
+  if (tokenFromUrl) {
+    setTokenCookie(c, contentTokenCookieName, token, cookiePath, 60 * 60) // 1 hour
+    return { user, tokenFromUrl: true }
+  }
+
+  return { user, tokenFromUrl: false }
+}
+
+// Result from share token authentication
+interface ShareTokenAuthResult {
+  hasAccess: boolean
+  tokenFromUrl: boolean
+}
+
+// Authenticate via share token (anonymous project access)
+// Checks URL param first, then cookie. Sets cookie if token was in URL.
+async function authenticateViaShareToken(
+  c: Context<{ Bindings: Env }>,
+  projectId: string,
+  cookiePath: string
+): Promise<ShareTokenAuthResult> {
+  // Only check if feature is enabled
+  if (!isShareTokensEnabled(c.env)) {
+    return { hasAccess: false, tokenFromUrl: false }
+  }
+
+  const url = new URL(c.req.url)
+  const db = createDbClient(c.env.DB)
+  const shareTokenCookieName = `_share_${projectId}`
+  const shareTokenFromCookie = getCookie(c, shareTokenCookieName)
+  const shareTokenFromUrl = url.searchParams.get('token')
+  const shareToken = shareTokenFromUrl || shareTokenFromCookie
+
+  if (!shareToken) {
+    return { hasAccess: false, tokenFromUrl: false }
+  }
+
+  const shareResult = await validateShareToken(db, shareToken)
+  if (!shareResult || shareResult.projectId !== projectId) {
+    return { hasAccess: false, tokenFromUrl: false }
+  }
+
+  // Token is valid - set cookie if it came from URL
+  if (shareTokenFromUrl && !shareTokenFromCookie) {
+    setTokenCookie(c, shareTokenCookieName, shareToken, cookiePath, 60 * 60 * 24) // 24 hours
+  }
+
+  return {
+    hasAccess: true,
+    tokenFromUrl: !!shareTokenFromUrl,
+  }
+}
+
 // Authenticate a content request for a specific project
-// Handles content tokens, share tokens, and Cloudflare Access
+// Orchestrates content tokens, share tokens, and Cloudflare Access authentication
 export async function authenticateContentRequest(
   c: Context<{ Bindings: Env }>,
   project: Project,
   cookiePath: string
 ): Promise<ContentAuthResult> {
-  const url = new URL(c.req.url)
   let verifiedUser: { id: string; email: string } | null = null
   let contentTokenFromUrl = false
-  let shareTokenUsedFromUrl = false
 
+  // Step 1: Authenticate user (via CF Access or content token)
   if (c.env.AUTH_MODE === 'cloudflare-access') {
-    // Cloudflare Access mode: get user from CF JWT
     const cfUser = await getOrCreateCloudflareAccessUser(c.req.raw, c.env)
     if (cfUser) {
       verifiedUser = { id: cfUser.id, email: cfUser.email }
     }
   } else {
-    // Content token auth (replaces cross-subdomain session cookies)
-    // Token is project-scoped and stored in a path-scoped cookie
-    const contentTokenCookieName = '_content_token'
-    const tokenFromCookie = getCookie(c, contentTokenCookieName)
-    const tokenFromUrl = url.searchParams.get('_ctoken')
-    const token = tokenFromUrl || tokenFromCookie
-
-    if (token) {
-      const verified = await verifyContentToken(token, project.id, c.env.BETTER_AUTH_SECRET)
-      if (verified) {
-        verifiedUser = { id: verified.userId, email: verified.email }
-
-        // Set cookie if token came from URL (first visit after auth)
-        if (tokenFromUrl) {
-          contentTokenFromUrl = true
-          setTokenCookie(c, contentTokenCookieName, token, cookiePath, 60 * 60) // 1 hour
-        }
-      }
-    }
+    const contentTokenResult = await authenticateViaContentToken(c, project.id, cookiePath)
+    verifiedUser = contentTokenResult.user
+    contentTokenFromUrl = contentTokenResult.tokenFromUrl
   }
 
+  // Step 2: Check if authenticated user has access
   let hasAccess = false
-
-  // Check if authenticated user has access to this project
   if (verifiedUser) {
     hasAccess = canAccessProject(verifiedUser.email, verifiedUser.id, project, c.env)
   }
 
-  // Check for share token (anonymous access) - only if feature is enabled and no user access
-  if (!hasAccess && isShareTokensEnabled(c.env)) {
-    const db = createDbClient(c.env.DB)
-    const shareTokenCookieName = `_share_${project.id}`
-    const shareTokenFromCookie = getCookie(c, shareTokenCookieName)
-    const shareTokenFromUrl = url.searchParams.get('token')
-    const shareToken = shareTokenFromUrl || shareTokenFromCookie
-
-    if (shareToken) {
-      const shareResult = await validateShareToken(db, shareToken)
-      if (shareResult && shareResult.projectId === project.id) {
-        hasAccess = true
-
-        // Track if token came from URL (for redirect to clean URL)
-        // Set cookie if not already present (so subsequent requests don't need the param)
-        if (shareTokenFromUrl) {
-          shareTokenUsedFromUrl = true
-          if (!shareTokenFromCookie) {
-            setTokenCookie(c, shareTokenCookieName, shareToken, cookiePath, 60 * 60 * 24) // 24 hours
-          }
-        }
-      }
-    }
+  // Step 3: If no user access, try share token (anonymous access)
+  let shareTokenFromUrl = false
+  if (!hasAccess) {
+    const shareTokenResult = await authenticateViaShareToken(c, project.id, cookiePath)
+    hasAccess = shareTokenResult.hasAccess
+    shareTokenFromUrl = shareTokenResult.tokenFromUrl
   }
 
   return {
     user: verifiedUser,
     hasAccess,
     tokenFromUrl: contentTokenFromUrl,
-    shareTokenFromUrl: shareTokenUsedFromUrl,
+    shareTokenFromUrl,
   }
 }
 

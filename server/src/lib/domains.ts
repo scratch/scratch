@@ -10,10 +10,11 @@ export function isLocalhost(env: Env): boolean {
 }
 
 /**
- * Get the full app domain (e.g., "app.example.com" or "localhost:8788")
+ * Build a full URL from a domain and environment (uses http for localhost, https otherwise)
  */
-export function getAppDomain(env: Env): string {
-  return `${env.APP_SUBDOMAIN}.${env.BASE_DOMAIN}`
+function buildBaseUrl(domain: string, env: Env): string {
+  const protocol = isLocalhost(env) ? 'http' : 'https'
+  return `${protocol}://${domain}`
 }
 
 /**
@@ -27,18 +28,15 @@ export function getContentDomain(env: Env): string {
  * Get the base URL for the app (e.g., "https://app.example.com")
  */
 export function getAppBaseUrl(env: Env): string {
-  const domain = getAppDomain(env)
-  const protocol = isLocalhost(env) ? 'http' : 'https'
-  return `${protocol}://${domain}`
+  const domain = `${env.APP_SUBDOMAIN}.${env.BASE_DOMAIN}`
+  return buildBaseUrl(domain, env)
 }
 
 /**
  * Get the base URL for content (e.g., "https://pages.example.com")
  */
 export function getContentBaseUrl(env: Env): string {
-  const domain = getContentDomain(env)
-  const protocol = isLocalhost(env) ? 'http' : 'https'
-  return `${protocol}://${domain}`
+  return buildBaseUrl(getContentDomain(env), env)
 }
 
 /**
@@ -49,14 +47,7 @@ export function useHttps(env: Env): boolean {
 }
 
 /**
- * Get the www domain (e.g., "www.example.com")
- */
-export function getWwwDomain(env: Env): string {
-  return `www.${env.BASE_DOMAIN}`
-}
-
-/**
- * Get the root/naked domain (e.g., "example.com")
+ * Get the root domain (e.g., "example.com" or "localhost:8787")
  */
 export function getRootDomain(env: Env): string {
   return env.BASE_DOMAIN
@@ -66,8 +57,8 @@ export function getRootDomain(env: Env): string {
  * Check if host matches the www or root domain (for WWW_PROJECT_ID routing)
  */
 export function isWwwOrRootDomain(host: string, env: Env): boolean {
-  const wwwDomain = getWwwDomain(env).toLowerCase()
-  const rootDomain = getRootDomain(env).toLowerCase()
+  const wwwDomain = `www.${env.BASE_DOMAIN}`.toLowerCase()
+  const rootDomain = env.BASE_DOMAIN.toLowerCase()
   const normalizedHost = host.toLowerCase()
   return normalizedHost === wwwDomain || normalizedHost === rootDomain
 }

@@ -1,9 +1,11 @@
 import type { Env } from '../env'
 import { createAuth, getSession } from '../auth'
 import { buildProjectUrls } from '@scratch/shared/project'
+import { parseGroup, validateGroupInput } from '@scratch/shared'
 import { getOrCreateCloudflareAccessUser } from './cloudflare-access'
 import { getContentDomain } from './domains'
-import { createDbClient } from '../db/client'
+import { visibilityExceedsMax } from './visibility'
+import { createDbClient, type DbClient } from '../db/client'
 
 // =============================================================================
 // Types
@@ -123,6 +125,111 @@ export async function getAuthenticatedUser(
       image: session.user.image ?? null,
     },
   }
+}
+
+// =============================================================================
+// SQL Query Builders
+// =============================================================================
+
+/**
+ * Build a SQL query for fetching project details with all related data.
+ *
+ * Returns a query that includes:
+ * - All project fields (p.*)
+ * - Owner email (from user table JOIN)
+ * - Live version (from deploys table LEFT JOIN via live_deploy_id)
+ * - Deploy count and last deploy timestamp (aggregated from all deploys)
+ *
+ * @param whereClause - SQL WHERE clause (without "WHERE" keyword), e.g., "p.owner_id = ?"
+ * @param orderByClause - Optional SQL ORDER BY clause (without "ORDER BY" keyword)
+ * @returns Complete SQL query string
+ */
+export function buildProjectDetailsQuery(whereClause: string, orderByClause?: string): string {
+  const orderBy = orderByClause ? `\n    ORDER BY ${orderByClause}` : ''
+  return `SELECT
+      p.*,
+      u.email as owner_email,
+      d.version as live_version,
+      CAST(COUNT(all_d.id) AS INTEGER) as deploy_count,
+      MAX(all_d.created_at) as last_deploy_at
+    FROM projects p
+    JOIN "user" u ON p.owner_id = u.id
+    LEFT JOIN deploys d ON p.live_deploy_id = d.id
+    LEFT JOIN deploys all_d ON all_d.project_id = p.id
+    WHERE ${whereClause}
+    GROUP BY p.id, u.email, d.version${orderBy}`
+}
+
+// =============================================================================
+// Project ownership helper
+// =============================================================================
+
+/**
+ * Get a project owned by a specific user.
+ * Returns the project ID if found and owned by the user, null otherwise.
+ */
+export async function getProjectForUser(
+  db: DbClient,
+  projectName: string,
+  userId: string
+): Promise<{ id: string } | null> {
+  const [project] = (await db`
+    SELECT id FROM projects
+    WHERE name = ${projectName} AND owner_id = ${userId}
+  `) as { id: string }[]
+
+  return project ?? null
+}
+
+// =============================================================================
+// Visibility validation helper
+// =============================================================================
+
+export type VisibilityValidationResult =
+  | { valid: false; error: string; code: string }
+  | { valid: true; value: string }
+
+/**
+ * Parse and validate a visibility string.
+ *
+ * This combines input validation, parsing, and MAX_VISIBILITY ceiling check
+ * into a single helper to reduce duplication in API endpoints.
+ *
+ * @param raw - Raw visibility string from request (e.g., "public", "@domain.com", "user@email.com")
+ * @param env - Environment with MAX_VISIBILITY setting
+ * @returns Validation result with either error info or the normalized visibility value
+ */
+export function parseAndValidateVisibility(
+  raw: string | undefined,
+  env: Env
+): VisibilityValidationResult {
+  // If no visibility provided, it's valid (caller decides default)
+  if (!raw) {
+    return { valid: true, value: 'public' }
+  }
+
+  // Validate input format
+  const inputError = validateGroupInput(raw)
+  if (inputError) {
+    return { valid: false, error: inputError, code: 'VISIBILITY_INVALID' }
+  }
+
+  // Parse into Group type
+  const parsed = parseGroup(raw)
+
+  // Check MAX_VISIBILITY ceiling
+  if (visibilityExceedsMax(parsed, env)) {
+    return {
+      valid: false,
+      error: 'Visibility cannot exceed server maximum',
+      code: 'VISIBILITY_EXCEEDS_MAX',
+    }
+  }
+
+  // Normalize to string for storage (arrays become comma-separated)
+  const value = Array.isArray(parsed) ? parsed.join(',') : parsed
+
+  return { valid: true, value }
 }
 
 // =============================================================================

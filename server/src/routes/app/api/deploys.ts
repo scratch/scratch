@@ -2,18 +2,13 @@ import { Hono } from 'hono'
 import type { Env } from '../../../env'
 import { createDbClient } from '../../../db/client'
 import { generateId } from '../../../lib/id'
-import {
-  validateProjectName,
-  buildProjectUrls,
-  getEmailLocalPart,
-  isSingleDomainAllowedUsers,
-} from '@scratch/shared/project'
-import { parseGroup, validateGroupInput, deployCreateQuerySchema } from '@scratch/shared'
+import { validateProjectName, buildProjectUrls } from '@scratch/shared/project'
+import { deployCreateQuerySchema } from '@scratch/shared'
 import { normalizePath, isValidFilePath } from '../../../lib/files'
-import { visibilityExceedsMax } from '../../../lib/visibility'
 import { unzip } from 'unzipit'
-import { getAuthenticatedUser, type DeployRow } from '../../../lib/api-helpers'
-import { getContentDomain, getContentBaseUrl } from '../../../lib/domains'
+import { getAuthenticatedUser, parseAndValidateVisibility, type DeployRow } from '../../../lib/api-helpers'
+import { getContentDomain, getRootDomain } from '../../../lib/domains'
+import { invalidateProjectCache } from '../../../lib/cache'
 
 export const deployRoutes = new Hono<{ Bindings: Env }>({ strict: true })
 
@@ -30,11 +25,12 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
   const queryResult = deployCreateQuerySchema.safeParse({
     visibility: c.req.query('visibility'),
     project_id: c.req.query('project_id'),
+    www: c.req.query('www'),
   })
   if (!queryResult.success) {
     return c.json({ error: 'Invalid query parameters', code: 'INVALID_PARAMS' }, 400)
   }
-  const { visibility: rawVisibility, project_id: projectIdParam } = queryResult.data
+  const { visibility: rawVisibility, project_id: projectIdParam, www: wwwMode } = queryResult.data
 
   // Validate project name
   const nameValidation = validateProjectName(name)
@@ -42,22 +38,12 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
     return c.json({ error: nameValidation.error, code: 'PROJECT_NAME_INVALID' }, 400)
   }
 
-  // Optional visibility for auto-created projects (defaults to 'public')
-  let projectVisibility = 'public'
-  if (rawVisibility) {
-    const visError = validateGroupInput(rawVisibility)
-    if (visError) {
-      return c.json({ error: visError, code: 'VISIBILITY_INVALID' }, 400)
-    }
-    const parsed = parseGroup(rawVisibility)
-    if (visibilityExceedsMax(parsed, c.env)) {
-      return c.json(
-        { error: 'Visibility cannot exceed server maximum', code: 'VISIBILITY_EXCEEDS_MAX' },
-        400
-      )
-    }
-    projectVisibility = Array.isArray(parsed) ? parsed.join(',') : parsed
+  // Validate and parse visibility (defaults to 'public' if not provided)
+  const visResult = parseAndValidateVisibility(rawVisibility, c.env)
+  if (!visResult.valid) {
+    return c.json({ error: visResult.error, code: visResult.code }, 400)
   }
+  const projectVisibility = visResult.value
 
   // Get deploy size limit
   const maxDeploySizeMB = parseInt(c.env.MAX_DEPLOY_SIZE || '1', 10)
@@ -155,20 +141,19 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
   const db = createDbClient(c.env.DB)
   const deployId = generateId()
 
-  // Step 1: Transaction for all DB operations (ensures atomic version assignment)
-  // Returns discriminated union to avoid exception-based control flow
+  // Step 1: DB operations (returns discriminated union to avoid exception-based control flow)
   // Note: D1's single-writer model serializes all writes, making explicit locking unnecessary
-  type TxResult =
+  type DbResult =
     | { ok: true; projectId: string; version: number; projectCreated: boolean }
     | { ok: false; reason: 'PROJECT_NOT_FOUND' | 'PROJECT_NAME_TAKEN' }
 
-  const txResult = await db.transaction(async (tx): Promise<TxResult> => {
+  const dbResult = await (async (): Promise<DbResult> => {
     let projId: string
     let created = false
 
     if (projectIdParam) {
       // Project ID provided - look up by ID
-      const [existingProject] = (await tx`
+      const [existingProject] = (await db`
         SELECT id, name, owner_id FROM projects
         WHERE id = ${projectIdParam}
       `) as { id: string; name: string; owner_id: string }[]
@@ -183,7 +168,7 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
       // Check if name changed (rename)
       if (existingProject.name !== name) {
         // Check if user already has a project with the new name
-        const [nameConflict] = (await tx`
+        const [nameConflict] = (await db`
           SELECT id FROM projects
           WHERE name = ${name} AND owner_id = ${auth.userId}
         `) as { id: string }[]
@@ -193,7 +178,7 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
         }
 
         // Update project name
-        await tx`
+        await db`
           UPDATE projects
           SET name = ${name}, updated_at = datetime('now')
           WHERE id = ${projId}
@@ -202,7 +187,7 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
 
       // Update visibility if provided
       if (rawVisibility) {
-        await tx`
+        await db`
           UPDATE projects
           SET visibility = ${projectVisibility}, updated_at = datetime('now')
           WHERE id = ${projId}
@@ -210,7 +195,7 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
       }
     } else {
       // No project ID - use existing behavior (lookup by name + owner, auto-create)
-      const [existingProject] = (await tx`
+      const [existingProject] = (await db`
         SELECT id, owner_id FROM projects
         WHERE name = ${name} AND owner_id = ${auth.userId}
       `) as { id: string; owner_id: string }[]
@@ -221,7 +206,7 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
 
         // Update visibility if provided
         if (rawVisibility) {
-          await tx`
+          await db`
             UPDATE projects
             SET visibility = ${projectVisibility}, updated_at = datetime('now')
             WHERE id = ${projId}
@@ -230,7 +215,7 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
       } else {
         // Auto-create project with specified or default visibility
         projId = generateId()
-        await tx`
+        await db`
           INSERT INTO projects (id, name, owner_id, visibility, created_at, updated_at)
           VALUES (${projId}, ${name}, ${auth.userId}, ${projectVisibility}, datetime('now'), datetime('now'))
         `
@@ -239,30 +224,49 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
     }
 
     // Get next version number
-    const [versionRow] = (await tx`
+    const [versionRow] = (await db`
       SELECT COALESCE(MAX(version), 0) + 1 as next_version
       FROM deploys WHERE project_id = ${projId}
     `) as { next_version: number }[]
 
     // Create deploy record (but don't set live_deploy_id yet!)
-    await tx`
+    await db`
       INSERT INTO deploys (id, project_id, version, file_count, total_bytes, created_at)
       VALUES (${deployId}, ${projId}, ${versionRow.next_version}, ${files.length}, ${totalExtractedBytes}, datetime('now'))
     `
 
     return { ok: true, projectId: projId, version: versionRow.next_version, projectCreated: created }
-  })
+  })()
 
-  // Handle errors from transaction
-  if (!txResult.ok) {
-    if (txResult.reason === 'PROJECT_NOT_FOUND') {
+  // Handle errors from DB operations
+  if (!dbResult.ok) {
+    if (dbResult.reason === 'PROJECT_NOT_FOUND') {
       return c.json({ error: 'Project not found', code: 'PROJECT_NOT_FOUND' }, 400)
     }
     // PROJECT_NAME_TAKEN
     return c.json({ error: 'Project name already taken', code: 'PROJECT_NAME_TAKEN' }, 400)
   }
 
-  const { projectId, version, projectCreated } = txResult
+  const { projectId, version, projectCreated } = dbResult
+
+  // Validate WWW mode if requested
+  // WWW_PROJECT_ID can be: undefined, "_" (disabled), or a project ID
+  // - If not set or "_", any project can use --www (but won't be served at root until configured)
+  // - If set to a project ID, only that project can use --www; others get WWW_PROJECT_MISMATCH
+  let wwwConfigured = false
+  if (wwwMode) {
+    const wwwProjectId = c.env.WWW_PROJECT_ID
+    // "_" is the convention for "disabled/not configured" in .vars files
+    if (wwwProjectId && wwwProjectId !== '_' && wwwProjectId !== projectId) {
+      return c.json({
+        error: 'WWW_PROJECT_ID is already configured for a different project. ' +
+               'Update your server configuration if you want to change which project is served at the root domain.',
+        code: 'WWW_PROJECT_MISMATCH',
+      }, 400)
+    }
+    // Project is configured for www only if WWW_PROJECT_ID explicitly matches
+    wwwConfigured = wwwProjectId === projectId
+  }
 
   // Step 2: Upload files to R2 (outside transaction - can't rollback R2)
   // Batch uploads with concurrency limit for performance
@@ -288,35 +292,12 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
     ownerId: auth.userId,
     ownerEmail: auth.user.email,
     allowedUsers: c.env.ALLOWED_USERS || '',
+    // Include www domain URL if www mode is requested and configured
+    wwwDomain: wwwMode && wwwConfigured ? getRootDomain(c.env) : undefined,
   })
 
   // Step 4: Invalidate cache for this project (best-effort, don't block response)
-  c.executionCtx.waitUntil(
-    (async () => {
-      const cache = caches.default
-      const contentBaseUrl = getContentBaseUrl(c.env)
-
-      // Build cache keys for all URL formats
-      const singleDomain = isSingleDomainAllowedUsers(c.env.ALLOWED_USERS || '')
-      const localPart = getEmailLocalPart(auth.user.email)
-      const email = auth.user.email.toLowerCase()
-
-      const baseUrls = [
-        `${contentBaseUrl}/${auth.userId}/${name}`,
-        `${contentBaseUrl}/${email}/${name}`,
-      ]
-      if (singleDomain && localPart) {
-        baseUrls.push(`${contentBaseUrl}/${localPart}/${name}`)
-      }
-
-      // Purge common paths for all URL formats
-      const purgePromises = baseUrls.flatMap((baseUrl) => [
-        cache.delete(new Request(`${baseUrl}/`)),
-        cache.delete(new Request(`${baseUrl}/index.html`)),
-      ])
-      await Promise.all(purgePromises)
-    })()
-  )
+  c.executionCtx.waitUntil(invalidateProjectCache(auth, name, c.env))
 
   return c.json(
     {
@@ -334,6 +315,13 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
         created: projectCreated,
       },
       urls,
+      // Include www mode info when requested
+      ...(wwwMode && {
+        www: {
+          configured: wwwConfigured,
+          project_id: projectId,
+        },
+      }),
     },
     201
   )

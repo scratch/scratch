@@ -15,83 +15,53 @@ const DEFAULT_TODOS: Todo[] = [
   { id: 4, text: "Publish with `scratch publish`", completed: false },
 ];
 
-let globalTodos: Todo[] | null = null;
-let listeners: Set<(todos: Todo[]) => void> = new Set();
-
-function getTodos(): Todo[] {
-  if (globalTodos === null) {
-    if (typeof window === "undefined") {
-      globalTodos = [];
-    } else {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      globalTodos = stored ? JSON.parse(stored) : DEFAULT_TODOS;
-    }
-  }
-  return globalTodos;
+function loadTodos(): Todo[] {
+  if (typeof window === "undefined") return DEFAULT_TODOS;
+  const stored = localStorage.getItem(STORAGE_KEY);
+  return stored ? JSON.parse(stored) : DEFAULT_TODOS;
 }
 
-function saveToStorage(todos: Todo[]) {
+function saveTodos(todos: Todo[]) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
 }
 
-function notifyListeners() {
-  listeners.forEach((listener) => listener(getTodos()));
-}
-
-function useTodos() {
-  const [todos, setTodos] = useState<Todo[]>(() => getTodos());
+export default function TodoList() {
+  const [todos, setTodos] = useState<Todo[]>(DEFAULT_TODOS);
+  const [input, setInput] = useState("");
 
   useEffect(() => {
-    setTodos(getTodos());
-
-    const listener = (newTodos: Todo[]) => setTodos(newTodos);
-    listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-    };
+    setTodos(loadTodos());
   }, []);
 
   const updateTodos = (newTodos: Todo[]) => {
-    globalTodos = newTodos;
-    saveToStorage(newTodos);
-    notifyListeners();
+    setTodos(newTodos);
+    saveTodos(newTodos);
   };
 
-  const addTodo = (text: string) => {
-    if (!text.trim()) return;
+  const addTodo = () => {
+    if (!input.trim()) return;
     updateTodos([
-      ...getTodos(),
-      { id: Date.now(), text: text.trim(), completed: false },
+      ...todos,
+      { id: Date.now(), text: input.trim(), completed: false },
     ]);
+    setInput("");
   };
 
   const toggleTodo = (id: number) => {
     updateTodos(
-      getTodos().map((t) =>
+      todos.map((t) =>
         t.id === id ? { ...t, completed: !t.completed } : t,
       ),
     );
   };
 
   const deleteTodo = (id: number) => {
-    updateTodos(getTodos().filter((t) => t.id !== id));
+    updateTodos(todos.filter((t) => t.id !== id));
   };
 
   const reset = () => {
     updateTodos([...DEFAULT_TODOS]);
-  };
-
-  return { todos, addTodo, toggleTodo, deleteTodo, reset };
-}
-
-export default function TodoList() {
-  const { todos, addTodo, toggleTodo, deleteTodo, reset } = useTodos();
-  const [input, setInput] = useState("");
-
-  const handleAdd = () => {
-    addTodo(input);
-    setInput("");
   };
 
   return (
@@ -148,7 +118,7 @@ export default function TodoList() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+            onKeyDown={(e) => e.key === "Enter" && addTodo()}
             placeholder="Add a todo..."
             className="flex-1 bg-transparent border-b border-transparent text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-300"
           />

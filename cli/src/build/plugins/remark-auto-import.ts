@@ -15,6 +15,7 @@ import { is } from 'unist-util-is';
 import { parse } from 'acorn';
 import type { Node, Root } from 'mdast';
 import log from '../../logger';
+import type { JsxElementNode } from './types';
 
 // MDAST node type representing an import/export block in MDX
 interface MdxjsEsmNode {
@@ -22,26 +23,6 @@ interface MdxjsEsmNode {
   value: string;
   data?: any;
 }
-
-// Node types for JSX elements in MDX
-type JsxElementNode = {
-  type: 'mdxJsxFlowElement' | 'mdxJsxTextElement';
-  name: string | null;
-  children?: Node[];
-  attributes?: MdxJsxAttribute[];
-};
-
-// MDX JSX attribute types
-type MdxJsxAttribute =
-  | {
-      type: 'mdxJsxAttribute';
-      name: string;
-      value: string | null;
-    }
-  | {
-      type: 'mdxJsxExpressionAttribute';
-      value: string;
-    };
 
 export type ComponentMap = Record<string, string>;
 

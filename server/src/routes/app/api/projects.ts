@@ -2,15 +2,9 @@ import { Hono } from 'hono'
 import type { Env } from '../../../env'
 import { createDbClient } from '../../../db/client'
 import { generateId } from '../../../lib/id'
-import {
-  validateProjectName,
-  getEmailLocalPart,
-  isSingleDomainAllowedUsers,
-} from '@scratch/shared/project'
-import { parseGroup, validateGroupInput } from '@scratch/shared'
-import { visibilityExceedsMax } from '../../../lib/visibility'
-import { getAuthenticatedUser, formatProject, type ProjectRow } from '../../../lib/api-helpers'
-import { getContentBaseUrl } from '../../../lib/domains'
+import { validateProjectName } from '@scratch/shared/project'
+import { getAuthenticatedUser, formatProject, buildProjectDetailsQuery, parseAndValidateVisibility, type ProjectRow } from '../../../lib/api-helpers'
+import { invalidateProjectCache } from '../../../lib/cache'
 
 export const projectRoutes = new Hono<{ Bindings: Env }>({ strict: true })
 
@@ -67,25 +61,11 @@ projectRoutes.get('/projects', async (c) => {
     return c.json({ error: 'Not authenticated' }, 401)
   }
 
-  const db = createDbClient(c.env.DB)
-
   // Get projects with live version derived from live_deploy_id
   // Uses GROUP BY to avoid N+1 subqueries for deploy_count and last_deploy_at
-  const projects = (await db`
-    SELECT
-      p.*,
-      u.email as owner_email,
-      d.version as live_version,
-      CAST(COUNT(all_d.id) AS INTEGER) as deploy_count,
-      MAX(all_d.created_at) as last_deploy_at
-    FROM projects p
-    JOIN "user" u ON p.owner_id = u.id
-    LEFT JOIN deploys d ON p.live_deploy_id = d.id
-    LEFT JOIN deploys all_d ON all_d.project_id = p.id
-    WHERE p.owner_id = ${auth.userId}
-    GROUP BY p.id, u.email, d.version
-    ORDER BY p.updated_at DESC
-  `) as (ProjectRow & { owner_email: string; live_version: number | null; deploy_count: number; last_deploy_at: string | null })[]
+  const query = buildProjectDetailsQuery('p.owner_id = ?', 'p.updated_at DESC')
+  const result = await c.env.DB.prepare(query).bind(auth.userId).all()
+  const projects = result.results as unknown as (ProjectRow & { owner_email: string; live_version: number | null; deploy_count: number; last_deploy_at: string | null })[]
 
   return c.json({
     projects: projects.map((p) =>
@@ -107,24 +87,10 @@ projectRoutes.get('/projects/:name', async (c) => {
 
   const name = c.req.param('name')
 
-  const db = createDbClient(c.env.DB)
-
   // Uses GROUP BY to avoid N+1 subqueries for deploy_count and last_deploy_at
-  const [project] = (await db`
-    SELECT
-      p.*,
-      u.email as owner_email,
-      d.version as live_version,
-      CAST(COUNT(all_d.id) AS INTEGER) as deploy_count,
-      MAX(all_d.created_at) as last_deploy_at
-    FROM projects p
-    JOIN "user" u ON p.owner_id = u.id
-    LEFT JOIN deploys d ON p.live_deploy_id = d.id
-    LEFT JOIN deploys all_d ON all_d.project_id = p.id
-    WHERE p.name = ${name}
-      AND p.owner_id = ${auth.userId}
-    GROUP BY p.id, u.email, d.version
-  `) as (ProjectRow & { owner_email: string; live_version: number | null; deploy_count: number; last_deploy_at: string | null })[]
+  const query = buildProjectDetailsQuery('p.name = ? AND p.owner_id = ?')
+  const result = await c.env.DB.prepare(query).bind(name, auth.userId).all()
+  const [project] = result.results as unknown as (ProjectRow & { owner_email: string; live_version: number | null; deploy_count: number; last_deploy_at: string | null })[]
 
   if (!project) {
     return c.json({ error: 'Project not found', code: 'PROJECT_NOT_FOUND' }, 404)
@@ -168,31 +134,16 @@ projectRoutes.patch('/projects/:name', async (c) => {
     return c.json({ error: 'Project not found', code: 'PROJECT_NOT_FOUND' }, 404)
   }
 
-  // Validate input format before parsing
-  const inputError = validateGroupInput(body.visibility)
-  if (inputError) {
-    return c.json({ error: inputError, code: 'VISIBILITY_INVALID' }, 400)
+  // Validate and parse visibility
+  const visResult = parseAndValidateVisibility(body.visibility, c.env)
+  if (!visResult.valid) {
+    return c.json({ error: visResult.error, code: visResult.code }, 400)
   }
-
-  // Parse validated input
-  const visibility = parseGroup(body.visibility)
-
-  // Check MAX_VISIBILITY ceiling
-  if (visibilityExceedsMax(visibility, c.env)) {
-    return c.json(
-      { error: 'Visibility cannot exceed server maximum', code: 'VISIBILITY_EXCEEDS_MAX' },
-      400
-    )
-  }
-
-  // Store visibility as string in DB
-  // For arrays, store as comma-separated
-  const visibilityStr = Array.isArray(visibility) ? visibility.join(',') : visibility
 
   // Update project visibility
   await db`
     UPDATE projects
-    SET visibility = ${visibilityStr}, updated_at = datetime('now')
+    SET visibility = ${visResult.value}, updated_at = datetime('now')
     WHERE id = ${project.id}
   `
 
@@ -201,20 +152,9 @@ projectRoutes.patch('/projects/:name', async (c) => {
   // the updated visibility against the user's session.
 
   // Fetch updated project with all details
-  const [updatedProject] = (await db`
-    SELECT
-      p.*,
-      u.email as owner_email,
-      d.version as live_version,
-      CAST(COUNT(all_d.id) AS INTEGER) as deploy_count,
-      MAX(all_d.created_at) as last_deploy_at
-    FROM projects p
-    JOIN "user" u ON p.owner_id = u.id
-    LEFT JOIN deploys d ON p.live_deploy_id = d.id
-    LEFT JOIN deploys all_d ON all_d.project_id = p.id
-    WHERE p.id = ${project.id}
-    GROUP BY p.id, u.email, d.version
-  `) as (ProjectRow & { owner_email: string; live_version: number | null; deploy_count: number; last_deploy_at: string | null })[]
+  const fetchQuery = buildProjectDetailsQuery('p.id = ?')
+  const fetchResult = await c.env.DB.prepare(fetchQuery).bind(project.id).all()
+  const [updatedProject] = fetchResult.results as unknown as (ProjectRow & { owner_email: string; live_version: number | null; deploy_count: number; last_deploy_at: string | null })[]
 
   return c.json({
     project: formatProject(updatedProject, c.env, {
@@ -264,28 +204,7 @@ projectRoutes.delete('/projects/:name', async (c) => {
   await db`DELETE FROM projects WHERE id = ${project.id}`
 
   // Invalidate cache for deleted project
-  const cache = caches.default
-  const contentBaseUrl = getContentBaseUrl(c.env)
-
-  // Build cache keys for all URL formats
-  const singleDomain = isSingleDomainAllowedUsers(c.env.ALLOWED_USERS || '')
-  const localPart = getEmailLocalPart(auth.user.email)
-  const email = auth.user.email.toLowerCase()
-
-  const baseUrls = [
-    `${contentBaseUrl}/${auth.userId}/${name}`,
-    `${contentBaseUrl}/${email}/${name}`,
-  ]
-  if (singleDomain && localPart) {
-    baseUrls.push(`${contentBaseUrl}/${localPart}/${name}`)
-  }
-
-  // Purge common paths for all URL formats
-  const purgePromises = baseUrls.flatMap((baseUrl) => [
-    cache.delete(new Request(`${baseUrl}/`)),
-    cache.delete(new Request(`${baseUrl}/index.html`)),
-  ])
-  await Promise.all(purgePromises)
+  await invalidateProjectCache(auth, name, c.env)
 
   return c.body(null, 204)
 })

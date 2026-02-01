@@ -1,11 +1,12 @@
 import { Hono } from 'hono'
 import type { Env } from '../../env'
-import { createAuth, getSession } from '../../auth'
+import { createAuth } from '../../auth'
 import { createDbClient } from '../../db/client'
-import { getOrCreateCloudflareAccessUser } from '../../lib/cloudflare-access'
 import { getAppBaseUrl } from '../../lib/domains'
 import { isUserAllowed } from '../../lib/access'
-import { generateId } from '../../lib/id'
+import { createSessionForUser } from '../../lib/session'
+import { getAuthenticatedUser } from '../../lib/api-helpers'
+import { buildLocalhostCallbackUrl } from '../../lib/url-helpers'
 import {
   renderHomePage,
   renderErrorPage,
@@ -18,21 +19,6 @@ import {
 const LOCALHOST_CALLBACK_PORT = 8400
 
 export const uiRoutes = new Hono<{ Bindings: Env }>({ strict: false })
-
-// Helper to get authenticated user in both auth modes
-async function getAuthenticatedUser(
-  request: Request,
-  env: Env
-): Promise<{ id: string; email: string; name: string | null } | null> {
-  if (env.AUTH_MODE === 'cloudflare-access') {
-    return getOrCreateCloudflareAccessUser(request, env)
-  }
-
-  const auth = createAuth(env)
-  const session = await getSession(request, auth)
-  if (!session?.user) return null
-  return { id: session.user.id, email: session.user.email, name: session.user.name ?? null }
-}
 
 // Helper to return HTML response with appropriate headers
 function html(content: string, status = 200): Response {
@@ -47,8 +33,8 @@ function html(content: string, status = 200): Response {
 
 // Home page - server-rendered, zero JS
 uiRoutes.get('/', async (c) => {
-  const user = await getAuthenticatedUser(c.req.raw, c.env)
-  return html(renderHomePage(user))
+  const auth = await getAuthenticatedUser(c)
+  return html(renderHomePage(auth?.user ?? null))
 })
 
 // Error page - server-rendered, zero JS
@@ -67,10 +53,10 @@ uiRoutes.get('/cli-login', async (c) => {
     return html(renderErrorPage('Missing state or code parameter'), 400)
   }
 
-  const user = await getAuthenticatedUser(c.req.raw, c.env)
+  const auth = await getAuthenticatedUser(c)
 
   // If not logged in, redirect to login (BetterAuth mode only)
-  if (!user) {
+  if (!auth) {
     if (c.env.AUTH_MODE === 'cloudflare-access') {
       // CF Access should have authenticated - something is wrong
       return html(renderDeviceErrorPage('Not authenticated via Cloudflare Access'), 401)
@@ -82,19 +68,19 @@ uiRoutes.get('/cli-login', async (c) => {
   }
 
   // Check user is allowed
-  if (!isUserAllowed(user.email, c.env)) {
+  if (!isUserAllowed(auth.user.email, c.env)) {
     return html(renderDeviceErrorPage('Access denied'), 403)
   }
 
   // Show approval page with code
-  return html(renderDevicePage(code, user.email, state))
+  return html(renderDevicePage(code, auth.user.email, state))
 })
 
 // CLI login form submission - creates session and redirects to CLI
 uiRoutes.post('/cli-login', async (c) => {
-  const user = await getAuthenticatedUser(c.req.raw, c.env)
+  const auth = await getAuthenticatedUser(c)
 
-  if (!user) {
+  if (!auth) {
     return html(renderDeviceErrorPage('Not authenticated'), 401)
   }
 
@@ -109,43 +95,26 @@ uiRoutes.post('/cli-login', async (c) => {
 
   // Handle denial
   if (action === 'deny') {
-    const callbackUrl = new URL(`http://localhost:${LOCALHOST_CALLBACK_PORT}/callback`)
-    callbackUrl.searchParams.set('state', state)
-    callbackUrl.searchParams.set('error', 'access_denied')
-    return c.redirect(callbackUrl.toString())
+    return c.redirect(buildLocalhostCallbackUrl(LOCALHOST_CALLBACK_PORT, {
+      state,
+      error: 'access_denied',
+    }))
   }
 
   // Create session token for CLI
   const db = createDbClient(c.env.DB)
-  const sessionId = generateId()
-  const sessionToken = generateId()
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+  const sessionToken = await createSessionForUser(db, auth.userId)
 
-  await db`
-    INSERT INTO session (id, user_id, token, expires_at, user_agent, created_at, updated_at)
-    VALUES (
-      ${sessionId},
-      ${user.id},
-      ${sessionToken},
-      ${expiresAt.toISOString()},
-      ${'scratch-cli'},
-      datetime('now'),
-      datetime('now')
-    )
-  `
-
-  // Build callback URL
-  const callbackUrl = new URL(`http://localhost:${LOCALHOST_CALLBACK_PORT}/callback`)
-  callbackUrl.searchParams.set('token', sessionToken)
-  callbackUrl.searchParams.set('state', state)
+  // Build callback URL params
+  const callbackParams: Record<string, string> = { token: sessionToken, state }
 
   // Include CF Access JWT if present (for CF Access mode)
   const cfAccessJwt = c.req.header('Cf-Access-Jwt-Assertion')
   if (cfAccessJwt) {
-    callbackUrl.searchParams.set('cf_token', cfAccessJwt)
+    callbackParams.cf_token = cfAccessJwt
   }
 
-  return c.redirect(callbackUrl.toString())
+  return c.redirect(buildLocalhostCallbackUrl(LOCALHOST_CALLBACK_PORT, callbackParams))
 })
 
 // Device approval page - server-rendered, zero JS
@@ -157,10 +126,10 @@ uiRoutes.get('/device', async (c) => {
     return html(renderDeviceErrorPage('Missing verification code'), 400)
   }
 
-  const user = await getAuthenticatedUser(c.req.raw, c.env)
+  const auth = await getAuthenticatedUser(c)
 
   // If not logged in, redirect to login
-  if (!user) {
+  if (!auth) {
     if (c.env.AUTH_MODE === 'cloudflare-access') {
       return html(renderDeviceErrorPage('Not authenticated'), 401)
     }
@@ -184,32 +153,21 @@ uiRoutes.get('/device', async (c) => {
   // Auto-approve and redirect to localhost callback with token
   if (c.env.AUTH_MODE === 'cloudflare-access') {
     // Check user is allowed (defense in depth - CF Access should already enforce this)
-    if (!isUserAllowed(user.email, c.env)) {
+    if (!isUserAllowed(auth.user.email, c.env)) {
       return html(renderDeviceErrorPage('Access denied'), 403)
     }
 
     // Create a session token for the CLI
-    const sessionId = generateId()
-    const sessionToken = generateId() // Use UUID as token
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
-
-    await db`
-      INSERT INTO session (id, user_id, token, expires_at, user_agent, created_at, updated_at)
-      VALUES (
-        ${sessionId},
-        ${user.id},
-        ${sessionToken},
-        ${expiresAt.toISOString()},
-        ${c.req.header('User-Agent') || null},
-        datetime('now'),
-        datetime('now')
-      )
-    `
+    const sessionToken = await createSessionForUser(
+      db,
+      auth.userId,
+      c.req.header('User-Agent')
+    )
 
     // Mark device code as approved (for consistency, though CLI will use localhost callback)
     await db`
       UPDATE device_code
-      SET status = 'approved', user_id = ${user.id}, updated_at = datetime('now')
+      SET status = 'approved', user_id = ${auth.userId}, updated_at = datetime('now')
       WHERE id = ${deviceRow.id}
     `
 
@@ -217,25 +175,23 @@ uiRoutes.get('/device', async (c) => {
     const cfAccessJwt = c.req.header('Cf-Access-Jwt-Assertion')
 
     // Redirect to localhost callback, using user_code as state for CSRF protection
-    const callbackUrl = new URL(`http://localhost:${LOCALHOST_CALLBACK_PORT}/callback`)
-    callbackUrl.searchParams.set('token', sessionToken)
-    callbackUrl.searchParams.set('state', userCode)
+    const callbackParams: Record<string, string> = { token: sessionToken, state: userCode }
     if (cfAccessJwt) {
-      callbackUrl.searchParams.set('cf_token', cfAccessJwt)
+      callbackParams.cf_token = cfAccessJwt
     }
 
-    return c.redirect(callbackUrl.toString())
+    return c.redirect(buildLocalhostCallbackUrl(LOCALHOST_CALLBACK_PORT, callbackParams))
   }
 
   // Local mode: render device approval page (user must click "Approve")
-  return html(renderDevicePage(userCode, user.email))
+  return html(renderDevicePage(userCode, auth.user.email))
 })
 
 // Device approval form submission
 uiRoutes.post('/device', async (c) => {
-  const user = await getAuthenticatedUser(c.req.raw, c.env)
+  const auth = await getAuthenticatedUser(c)
 
-  if (!user) {
+  if (!auth) {
     return html(renderDeviceErrorPage('Not authenticated'), 401)
   }
 
@@ -256,7 +212,7 @@ uiRoutes.post('/device', async (c) => {
 
       const result = await db`
         UPDATE device_code
-        SET status = ${newStatus}, user_id = ${action === 'approve' ? user.id : null}
+        SET status = ${newStatus}, user_id = ${action === 'approve' ? auth.userId : null}
         WHERE user_code = ${userCode} AND status = 'pending' AND expires_at > datetime('now')
         RETURNING id
       ` as { id: string }[]
@@ -269,16 +225,16 @@ uiRoutes.post('/device', async (c) => {
     }
 
     // Standard BetterAuth mode - use the API
-    const auth = createAuth(c.env)
+    const betterAuth = createAuth(c.env)
 
     if (action === 'approve') {
-      await auth.api.deviceApprove({
+      await betterAuth.api.deviceApprove({
         body: { userCode },
         headers: c.req.raw.headers,
       })
       return c.redirect('/device-success?result=approved')
     } else {
-      await auth.api.deviceDeny({
+      await betterAuth.api.deviceDeny({
         body: { userCode },
         headers: c.req.raw.headers,
       })

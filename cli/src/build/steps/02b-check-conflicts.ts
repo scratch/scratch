@@ -67,20 +67,6 @@ function getStaticCopyDistPath(relPath: string): string {
 }
 
 /**
- * Get the HTML output path for an entry (relative to buildDir).
- * This mirrors Entry.getArtifactPath but returns a relative path.
- */
-function getHtmlOutputPath(entry: Entry): string {
-  const basename = path.basename(entry.name);
-  if (basename === 'index') {
-    // index.mdx → name.html (e.g., "foo/index" → "foo/index.html")
-    return entry.name + '.html';
-  }
-  // foo.mdx → foo/index.html
-  return entry.name + '/index.html';
-}
-
-/**
  * Compute HTML output path and entry name for an MD/MDX file.
  */
 function computeMdxOutputPaths(relPath: string): { entryName: string; htmlPath: string; staticPath: string } {

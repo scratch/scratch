@@ -18,8 +18,12 @@ import {
   validateFilePath,
   serveProjectContent,
 } from '../lib/content-serving'
+import { mdxRedirectMiddleware } from '../lib/redirects'
 
 export const wwwRoutes = new Hono<{ Bindings: Env }>({ strict: true })
+
+// Apply middleware for .mdx -> .md redirects
+wwwRoutes.use('*', mdxRedirectMiddleware())
 
 // GET requests for static file serving
 wwwRoutes.get('*', async (c) => {
@@ -31,13 +35,6 @@ wwwRoutes.get('*', async (c) => {
 
   const url = new URL(c.req.url)
   const pathname = url.pathname
-
-  // Redirect .mdx URLs to .md (CLI renames .mdx to .md when copying)
-  if (pathname.endsWith('.mdx')) {
-    const redirectUrl = new URL(url)
-    redirectUrl.pathname = pathname.slice(0, -4) + '.md'
-    return c.redirect(redirectUrl.toString(), 301)
-  }
 
   // Normalize pathname for www routes:
   // - Remove leading slash for file path validation

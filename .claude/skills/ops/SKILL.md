@@ -22,7 +22,7 @@ bun ops server -i <instance> config check --fix    # Show commands to fix issues
 bun ops server -i <instance> config push           # Sync vars to Cloudflare secrets
 
 # Database operations
-bun ops server -i <instance> db migrate     # Run migrations from schema.sql
+bun ops server -i <instance> db migrate     # Run migrations from schema.d1.sql
 bun ops server -i <instance> db tables      # List all tables
 bun ops server -i <instance> db query "SQL" # Run arbitrary SQL query
 bun ops server -i <instance> db drop-all    # Drop all tables (prod requires confirmation)
@@ -41,11 +41,9 @@ bun ops server regenerate-env-ts    # Regenerate server/src/env.ts from .vars.ex
 
 ```bash
 bun ops cli build            # Build the scratch CLI
-bun ops cli test             # Run all CLI tests
+bun ops cli test             # Run all CLI tests (uses Bun's built-in parallelism)
 bun ops cli test:unit        # Run unit tests only
 bun ops cli test:e2e         # Run e2e tests only
-bun ops cli test:parallel    # Run all tests in parallel (uses all CPU cores)
-bun ops cli test:parallel -j 4  # Run tests with 4 concurrent processes
 bun ops cli run <script>     # Run any CLI script (pass-through)
 ```
 

@@ -82,3 +82,13 @@ pre > code {
   @apply absolute -left-6 top-0 opacity-0 group-hover:opacity-100 transition-opacity no-underline select-none;
   @apply text-gray-400 hover:text-gray-600;
 }
+
+/* Marquis animation */
+@keyframes marquis {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquis {
+  animation: marquis 3s linear infinite;
+}

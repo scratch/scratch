@@ -1,7 +1,5 @@
-import { mkdir, writeFile, readFile, chmod } from 'fs/promises'
-import { dirname } from 'path'
 import { PATHS } from './paths'
-import { getServerUrl } from './user-config'
+import { loadSecureJsonFile, saveSecureJsonFile } from './secure-json'
 import type { Credentials, CredentialEntry, CredentialsFile } from './types'
 
 /**
@@ -17,17 +15,7 @@ export function normalizeServerUrl(url: string): string {
  * Returns empty object if file doesn't exist or is invalid
  */
 async function loadCredentialsFile(): Promise<CredentialsFile> {
-  try {
-    const content = await readFile(PATHS.credentials, 'utf-8')
-    const data = JSON.parse(content)
-    // Basic validation - should be an object
-    if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-      return {}
-    }
-    return data as CredentialsFile
-  } catch {
-    return {}
-  }
+  return loadSecureJsonFile<CredentialsFile>(PATHS.credentials)
 }
 
 /**
@@ -35,9 +23,7 @@ async function loadCredentialsFile(): Promise<CredentialsFile> {
  * Permissions: 0o600 (owner read/write only)
  */
 async function saveCredentialsFile(credentials: CredentialsFile): Promise<void> {
-  await mkdir(dirname(PATHS.credentials), { recursive: true })
-  await writeFile(PATHS.credentials, JSON.stringify(credentials, null, 2) + '\n', { mode: 0o600 })
-  await chmod(PATHS.credentials, 0o600)
+  await saveSecureJsonFile(PATHS.credentials, credentials)
 }
 
 /**

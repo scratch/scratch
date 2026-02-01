@@ -14,23 +14,63 @@ describe("Request Header Construction", () => {
     test("includes Authorization header when token provided", () => {
       const token = "test-bearer-token"
       const headers: Record<string, string> = {}
-      
+
       if (token) {
         headers["Authorization"] = `Bearer ${token}`
       }
-      
+
       expect(headers["Authorization"]).toBe("Bearer test-bearer-token")
     })
 
     test("omits Authorization header when no token", () => {
       const token: string | undefined = undefined
       const headers: Record<string, string> = {}
-      
+
       if (token) {
         headers["Authorization"] = `Bearer ${token}`
       }
-      
+
       expect(headers["Authorization"]).toBeUndefined()
+    })
+  })
+
+  describe("API Key", () => {
+    test("includes X-Api-Key header when apiKey provided", () => {
+      const apiKey = "scratch_test_key_12345"
+      const headers: Record<string, string> = {}
+
+      if (apiKey) {
+        headers["X-Api-Key"] = apiKey
+      }
+
+      expect(headers["X-Api-Key"]).toBe("scratch_test_key_12345")
+    })
+
+    test("apiKey takes priority over environment token", () => {
+      // When both apiKey and env token are present, apiKey should win
+      const apiKey = "scratch_explicit_key"
+      const envToken = "scratch_env_key"
+      const headers: Record<string, string> = {}
+
+      // Simulating buildHeaders priority logic
+      if (apiKey) {
+        headers["X-Api-Key"] = apiKey
+      } else if (envToken) {
+        headers["X-Api-Key"] = envToken
+      }
+
+      expect(headers["X-Api-Key"]).toBe("scratch_explicit_key")
+    })
+
+    test("omits X-Api-Key header when no apiKey", () => {
+      const apiKey: string | undefined = undefined
+      const headers: Record<string, string> = {}
+
+      if (apiKey) {
+        headers["X-Api-Key"] = apiKey
+      }
+
+      expect(headers["X-Api-Key"]).toBeUndefined()
     })
   })
 
@@ -227,6 +267,134 @@ describe("ApiError", () => {
   test("is instanceof Error", () => {
     const error = new ApiError("Test error", 500)
     
+    expect(error instanceof Error).toBe(true)
+  })
+})
+
+describe("shouldRetryCfAccess", () => {
+  const { shouldRetryCfAccess, CfAccessError } = require("../../../src/cloud/request")
+
+  // Helper to create a mock Response with headers
+  function createMockResponse(status: number, contentType: string): Response {
+    return {
+      ok: status >= 200 && status < 300,
+      status,
+      statusText: status === 200 ? "OK" : "Error",
+      headers: new Headers({ "content-type": contentType }),
+    } as Response
+  }
+
+  describe("returns false when it should not retry", () => {
+    test("returns false when isRetry is true", async () => {
+      const response = createMockResponse(403, "text/html")
+      const responseText = "<html>cloudflareaccess login page</html>"
+
+      const result = await shouldRetryCfAccess(
+        response,
+        responseText,
+        "https://example.com",
+        false,
+        true,  // isRetry = true
+        false
+      )
+
+      expect(result).toBe(false)
+    })
+
+    test("returns false when response is not a CF Access auth page", async () => {
+      const response = createMockResponse(404, "application/json")
+      const responseText = '{"error": "not found"}'
+
+      const result = await shouldRetryCfAccess(
+        response,
+        responseText,
+        "https://example.com",
+        false,
+        false,
+        false
+      )
+
+      expect(result).toBe(false)
+    })
+
+    test("returns false when response is HTML but not CF Access", async () => {
+      const response = createMockResponse(500, "text/html")
+      const responseText = "<html><body>Internal Server Error</body></html>"
+
+      const result = await shouldRetryCfAccess(
+        response,
+        responseText,
+        "https://example.com",
+        false,
+        false,
+        false
+      )
+
+      expect(result).toBe(false)
+    })
+  })
+
+  describe("throws CfAccessError when skipCfAccessPrompt is true", () => {
+    test("throws CfAccessError with hadServiceToken=true when hasCfAccess is true", async () => {
+      const response = createMockResponse(403, "text/html")
+      const responseText = "<html>cloudflareaccess login required</html>"
+
+      await expect(
+        shouldRetryCfAccess(
+          response,
+          responseText,
+          "https://example.com",
+          true,  // hasCfAccess = true
+          false,
+          true   // skipCfAccessPrompt = true
+        )
+      ).rejects.toThrow(CfAccessError)
+    })
+
+    test("throws CfAccessError with hadServiceToken=false when hasCfAccess is false", async () => {
+      const response = createMockResponse(403, "text/html")
+      const responseText = "<html>cf-access login page</html>"
+
+      try {
+        await shouldRetryCfAccess(
+          response,
+          responseText,
+          "https://example.com",
+          false,  // hasCfAccess = false
+          false,
+          true    // skipCfAccessPrompt = true
+        )
+        expect.unreachable("Expected CfAccessError to be thrown")
+      } catch (error: any) {
+        expect(error).toBeInstanceOf(CfAccessError)
+        expect(error.hadServiceToken).toBe(false)
+        expect(error.message).toBe("Cloudflare Access authentication required")
+      }
+    })
+  })
+})
+
+describe("CfAccessError", () => {
+  const { CfAccessError } = require("../../../src/cloud/request")
+
+  test("creates error with message and hadServiceToken=true", () => {
+    const error = new CfAccessError("CF Access required", true)
+
+    expect(error.message).toBe("CF Access required")
+    expect(error.hadServiceToken).toBe(true)
+    expect(error.name).toBe("CfAccessError")
+  })
+
+  test("creates error with message and hadServiceToken=false", () => {
+    const error = new CfAccessError("Authentication required", false)
+
+    expect(error.message).toBe("Authentication required")
+    expect(error.hadServiceToken).toBe(false)
+  })
+
+  test("is instanceof Error", () => {
+    const error = new CfAccessError("Test error", false)
+
     expect(error instanceof Error).toBe(true)
   })
 })

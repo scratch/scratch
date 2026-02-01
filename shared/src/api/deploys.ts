@@ -17,6 +17,9 @@ export const deployCreateQuerySchema = z.object({
   ]).optional(),
   // Project ID from local config - enables rename detection
   project_id: z.string().optional(),
+  // WWW mode - deploy this project to be served at the naked domain
+  // Server validates that WWW_PROJECT_ID matches this project (if configured)
+  www: z.coerce.boolean().optional(),
 })
 
 export type DeployCreateQuery = z.infer<typeof deployCreateQuerySchema>
@@ -31,4 +34,6 @@ export interface DeployCreateParams {
   visibility?: string
   // Project ID from local config - enables rename detection
   project_id?: string
+  // WWW mode - deploy to be served at the naked domain
+  www?: boolean
 }
