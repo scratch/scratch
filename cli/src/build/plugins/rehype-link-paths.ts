@@ -9,22 +9,8 @@
 import type { Plugin } from 'unified';
 import { visit } from 'unist-util-visit';
 import type { BuildContext } from '../context';
-import { normalizeBase, isInternalAbsolutePath } from '../util';
+import { normalizeBase, isInternalAbsolutePath, isRelativePath } from '../util';
 import log from '../../logger';
-
-/**
- * Check if a path is relative (not absolute, not external).
- */
-function isRelativePath(href: string): boolean {
-  return !href.startsWith('/') &&
-         !href.startsWith('http://') &&
-         !href.startsWith('https://') &&
-         !href.startsWith('//') &&
-         !href.startsWith('#') &&
-         !href.startsWith('mailto:') &&
-         !href.startsWith('tel:') &&
-         !href.startsWith('data:');
-}
 
 /**
  * Transform a link href - returns new value or null if no change needed.

@@ -82,16 +82,4 @@ export function registerCliCommands(program: Command): void {
     .action(async () => {
       await runCliScript('test:e2e', [])
     })
-
-  cli
-    .command('test:parallel')
-    .description('Run all tests in parallel')
-    .option('-j, --concurrency <n>', 'Max concurrent test processes (default: CPU count)')
-    .action(async (options: { concurrency?: string }) => {
-      const args: string[] = []
-      if (options.concurrency) {
-        args.push('-j', options.concurrency)
-      }
-      await runCliScript('test:parallel', args)
-    })
 }

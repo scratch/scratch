@@ -1,74 +1,13 @@
 import type { BuildContext } from "../build/context";
 import fs from "fs/promises";
-import path from "path";
 import log from "../logger";
-import { getContentType } from "../util";
-import { findRoute, hasStaticFileExtension } from "./dev";
+import { openBrowser } from "../util";
+import { findRoute } from "./dev";
+import { startServerWithFallback } from "./server";
 
 interface PreviewOptions {
     port?: number;
     open?: boolean;
-}
-
-/**
- * Try to start a server on the given port, with fallback to subsequent ports if in use.
- */
-async function startServerWithFallback(
-    buildDir: string,
-    preferredPort: number,
-    maxAttempts = 10
-): Promise<{ server: ReturnType<typeof Bun.serve>; port: number }> {
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const port = preferredPort + attempt;
-        try {
-            const server = Bun.serve({
-                port,
-                async fetch(req) {
-                    const url = new URL(req.url);
-                    let pathname = url.pathname;
-
-                    // Serve files from build directory
-                    let filePath = path.join(buildDir, pathname);
-
-                    // Handle directory index
-                    // Use allowlist to distinguish routes from static files
-                    if (!hasStaticFileExtension(pathname)) {
-                        const indexPath = path.join(filePath, 'index.html');
-                        if (await Bun.file(indexPath).exists()) {
-                            filePath = indexPath;
-                        } else if (await Bun.file(filePath + '.html').exists()) {
-                            filePath = filePath + '.html';
-                        }
-                    }
-
-                    const file = Bun.file(filePath);
-                    if (await file.exists()) {
-                        return new Response(file, {
-                            headers: {
-                                'Content-Type': getContentType(filePath),
-                            },
-                        });
-                    }
-
-                    return new Response('Not Found', { status: 404 });
-                },
-            });
-            return { server, port };
-        } catch (error) {
-            // If port is in use, try the next one
-            const err = error as NodeJS.ErrnoException;
-            if (err.code === 'EADDRINUSE' || (error instanceof Error && error.message.includes('port'))) {
-                log.debug(`Port ${port} in use, trying ${port + 1}`);
-                continue;
-            }
-            throw error;
-        }
-    }
-    throw new Error(
-        `Could not find an available port (tried ${preferredPort}-${preferredPort + maxAttempts - 1}).\n` +
-        `Check if other processes are using these ports:\n` +
-        `  lsof -i :${preferredPort}`
-    );
 }
 
 /**
@@ -90,15 +29,18 @@ export async function previewCommand(ctx: BuildContext, options: PreviewOptions)
         throw new Error(`Build directory 'dist' is empty. Run 'scratch build' first to generate the site.`);
     }
 
-    const { server, port } = await startServerWithFallback(ctx.buildDir, preferredPort);
+    const { server, port } = await startServerWithFallback({
+        buildDir: ctx.buildDir,
+        port: preferredPort,
+        liveReload: false,
+    });
 
     log.info(`Preview server running at http://localhost:${port}/`);
 
     // Open browser if requested
     if (options.open !== false) {
-        const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
         const route = await findRoute(ctx.buildDir);
-        Bun.spawn([opener, `http://localhost:${port}${route}`]);
+        await openBrowser(`http://localhost:${port}${route}`);
     }
 
     // Graceful shutdown on Ctrl-C

@@ -4,9 +4,6 @@
   "type": "module",
   "private": true,
   "version": "0.5.10",
-  "patchedDependencies": {
-    "estree-util-build-jsx@3.0.1": "cli/patches/estree-util-build-jsx@3.0.1.patch"
-  },
   "bin": {
     "scratch": "src/index.ts"
   },
@@ -16,7 +13,6 @@
     "test": "bun test",
     "test:unit": "bun test test/unit",
     "test:e2e": "bun test test/e2e",
-    "test:parallel": "bun run build && bun scripts/test-parallel.ts",
     "pretest": "bun run build",
     "pretest:unit": "bun run build",
     "pretest:e2e": "bun run build",

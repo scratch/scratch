@@ -25,7 +25,7 @@ export const renderServerStep: BuildStep = {
       // Validate the module has a render function
       if (typeof serverModule.render !== 'function') {
         const exportedKeys = Object.keys(serverModule);
-        const sourcePath = entry.relativePath;
+        const sourcePath = entry.relPath;
         throw new Error(
           `Failed to compile ${sourcePath}: server module is missing render() function.\n` +
             `  Module exports: ${exportedKeys.length > 0 ? exportedKeys.join(', ') : '(empty)'}\n` +
@@ -38,7 +38,7 @@ export const renderServerStep: BuildStep = {
         const html = await serverModule.render();
         renderedContent.set(name, html);
       } catch (err: any) {
-        const sourcePath = entry.relativePath;
+        const sourcePath = entry.relPath;
         // Enhance React error messages with file context
         if (err.message?.includes('Element type is invalid')) {
           throw new Error(

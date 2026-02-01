@@ -14,42 +14,9 @@ import {
   type ProjectConfig,
 } from '../../config'
 import { CloudContext } from './context'
+import { createZip } from './util'
 import fs from 'fs/promises'
 import path from 'path'
-
-// Create zip from directory
-async function createZip(dirPath: string): Promise<{ data: ArrayBuffer; fileCount: number; totalBytes: number }> {
-  const JSZipModule = await import('jszip')
-  const JSZip = JSZipModule.default || JSZipModule
-  const zip = new JSZip()
-
-  let fileCount = 0
-  let totalBytes = 0
-
-  async function addDir(currentPath: string, zipPath: string) {
-    const entries = await fs.readdir(currentPath, { withFileTypes: true })
-
-    for (const entry of entries) {
-      const fullPath = path.join(currentPath, entry.name)
-      const entryZipPath = zipPath ? `${zipPath}/${entry.name}` : entry.name
-
-      if (entry.isDirectory()) {
-        await addDir(fullPath, entryZipPath)
-      } else if (entry.isFile()) {
-        const content = await fs.readFile(fullPath)
-        zip.file(entryZipPath, content)
-        fileCount++
-        totalBytes += content.length
-      }
-      // Skip symlinks and other special files
-    }
-  }
-
-  await addDir(dirPath, '')
-
-  const data = await zip.generateAsync({ type: 'arraybuffer' })
-  return { data, fileCount, totalBytes }
-}
 
 export interface PublishOptions {
   name?: string

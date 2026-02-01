@@ -65,16 +65,6 @@ export function withErrorHandling(
   };
 }
 
-/**
- * Create a CloudContext from optional server URL argument
- */
-function createCloudContext(serverUrl?: string, projectPath?: string): CloudContext {
-  return new CloudContext({
-    serverUrl,
-    projectPath,
-  });
-}
-
 // =============================================================================
 // Local Commands
 // =============================================================================
@@ -210,7 +200,7 @@ program
   .option('--dry-run', 'Show what would be deployed without uploading')
   .action(
     withErrorHandling('Publish', async (projectPath, options) => {
-      const ctx = createCloudContext(options.server, projectPath);
+      const ctx = new CloudContext({ serverUrl: options.server, projectPath });
       await publishCommand(ctx, projectPath, {
         name: options.name,
         visibility: options.visibility,
@@ -228,7 +218,7 @@ program
   .option('--timeout <minutes>', 'Timeout in minutes for login approval (default: 10)')
   .action(
     withErrorHandling('Login', async (options) => {
-      const ctx = createCloudContext(options.server);
+      const ctx = new CloudContext({ serverUrl: options.server });
       await loginCommand(ctx, { timeout: options.timeout ? parseFloat(options.timeout) : undefined });
     })
   );
@@ -239,7 +229,7 @@ program
   .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
     withErrorHandling('Logout', async (options) => {
-      const ctx = createCloudContext(options.server);
+      const ctx = new CloudContext({ serverUrl: options.server });
       await logoutCommand(ctx);
     })
   );
@@ -250,7 +240,7 @@ program
   .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
     withErrorHandling('Whoami', async (options) => {
-      const ctx = createCloudContext(options.server);
+      const ctx = new CloudContext({ serverUrl: options.server });
       await whoamiCommand(ctx);
     })
   );
@@ -267,7 +257,7 @@ projects
   .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
     withErrorHandling('Projects ls', async (options) => {
-      const ctx = createCloudContext(options.server);
+      const ctx = new CloudContext({ serverUrl: options.server });
       await listProjectsCommand(ctx);
     })
   );
@@ -279,7 +269,7 @@ projects
   .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
     withErrorHandling('Projects info', async (name, options) => {
-      const ctx = createCloudContext(options.server);
+      const ctx = new CloudContext({ serverUrl: options.server });
       await projectInfoCommand(ctx, name);
     })
   );
@@ -292,7 +282,7 @@ projects
   .option('-f, --force', 'Skip confirmation prompt')
   .action(
     withErrorHandling('Projects rm', async (name, options) => {
-      const ctx = createCloudContext(options.server);
+      const ctx = new CloudContext({ serverUrl: options.server });
       await projectDeleteCommand(ctx, name, { force: options.force });
     })
   );
@@ -311,7 +301,7 @@ share
   .option('--duration <duration>', 'Token duration (1d, 1w, 1m)')
   .action(
     withErrorHandling('Share create', async (project, options) => {
-      const ctx = createCloudContext(options.server);
+      const ctx = new CloudContext({ serverUrl: options.server });
       await shareCreateCommand(ctx, project, { name: options.name, duration: options.duration });
     })
   );
@@ -323,7 +313,7 @@ share
   .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
     withErrorHandling('Share ls', async (project, options) => {
-      const ctx = createCloudContext(options.server);
+      const ctx = new CloudContext({ serverUrl: options.server });
       await shareListCommand(ctx, project);
     })
   );
@@ -336,7 +326,7 @@ share
   .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
     withErrorHandling('Share revoke', async (tokenId, project, options) => {
-      const ctx = createCloudContext(options.server);
+      const ctx = new CloudContext({ serverUrl: options.server });
       await shareRevokeCommand(ctx, tokenId, project);
     })
   );
@@ -353,7 +343,7 @@ tokens
   .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
     withErrorHandling('Tokens ls', async (options) => {
-      const ctx = createCloudContext(options.server);
+      const ctx = new CloudContext({ serverUrl: options.server });
       await listTokensCommand(ctx);
     })
   );
@@ -366,7 +356,7 @@ tokens
   .option('--expires <days>', 'Days until expiration', parseInt)
   .action(
     withErrorHandling('Tokens create', async (name, options) => {
-      const ctx = createCloudContext(options.server);
+      const ctx = new CloudContext({ serverUrl: options.server });
       await createTokenCommand(ctx, name, { expires: options.expires });
     })
   );
@@ -378,7 +368,7 @@ tokens
   .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
     withErrorHandling('Tokens revoke', async (idOrName, options) => {
-      const ctx = createCloudContext(options.server);
+      const ctx = new CloudContext({ serverUrl: options.server });
       await revokeTokenCommand(ctx, idOrName);
     })
   );
@@ -401,7 +391,7 @@ program
   .option('--server <url>', 'Server URL (defaults to scratch.dev)')
   .action(
     withErrorHandling('CF Access', async (options) => {
-      const ctx = createCloudContext(options.server);
+      const ctx = new CloudContext({ serverUrl: options.server });
       await cfAccessCommand(ctx);
     })
   );

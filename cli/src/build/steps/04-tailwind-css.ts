@@ -22,7 +22,7 @@ export const tailwindCssStep: BuildStep = {
     }
 
     const outputCss = path.join(ctx.clientCompiledDir, 'tailwind.css');
-    const nodeModulesDir = await ctx.nodeModulesDir();
+    const nodeModulesDir = ctx.nodeModulesDir;
 
     // Ensure output directory exists
     await fs.mkdir(path.dirname(outputCss), { recursive: true });

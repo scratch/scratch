@@ -13,12 +13,13 @@ describe("scratch build", () => {
     // Eject _build/ to get local copies of entry files
     runCliSync(["eject", "_build"], sandboxDir);
 
-    // Modify entry-client.tsx with a unique marker
+    // Modify entry-client.tsx with a unique marker that won't be removed during minification
     const entryClientPath = path.join(sandboxDir, "_build/entry-client.tsx");
     const originalContent = await fs.readFile(entryClientPath, "utf-8");
+    // Add a console.log with unique string to verify local build files are used
     const modifiedContent = originalContent.replace(
-      "Hydrating mdx component",
-      "CUSTOM_LOCAL_BUILD_MARKER"
+      "const mdxElement",
+      'console.log("CUSTOM_LOCAL_BUILD_MARKER_789xyz");\nconst mdxElement'
     );
     await fs.writeFile(entryClientPath, modifiedContent);
 
@@ -32,9 +33,8 @@ describe("scratch build", () => {
     expect(jsFile).toBeDefined();
 
     const jsContent = await fs.readFile(path.join(distDir, jsFile!), "utf-8");
-    expect(jsContent).toContain("CUSTOM_LOCAL_BUILD_MARKER");
-    // Should NOT contain the original template text
-    expect(jsContent).not.toContain("Hydrating mdx component");
+    // Should contain the custom marker we added
+    expect(jsContent).toContain("CUSTOM_LOCAL_BUILD_MARKER_789xyz");
 
     await rm(tempDir, { recursive: true, force: true });
   }, 60_000);

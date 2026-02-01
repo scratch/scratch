@@ -62,6 +62,8 @@ export interface RequestOptions {
   body?: BodyInit
   contentType?: string
   token?: string
+  /** API key to use for authentication (uses X-Api-Key header directly, bypasses credential lookup) */
+  apiKey?: string
   serverUrl?: string
   timeout?: number
   /** Skip CF Access prompt on auth failure - throw CfAccessError instead */
@@ -102,6 +104,35 @@ async function handleCfAccessAuth(serverUrl: string, hadCredentials: boolean): P
 }
 
 /**
+ * Check for CF Access auth page and handle retry logic.
+ * Returns true if we should retry the request, false otherwise.
+ * Throws CfAccessError if skipCfAccessPrompt is true.
+ */
+export async function shouldRetryCfAccess(
+  response: Response,
+  responseText: string,
+  serverUrl: string,
+  hasCfAccess: boolean,
+  isRetry: boolean,
+  skipCfAccessPrompt: boolean
+): Promise<boolean> {
+  if (isRetry) {
+    return false
+  }
+
+  if (!isCfAccessAuthPage(response, responseText)) {
+    return false
+  }
+
+  if (skipCfAccessPrompt) {
+    throw new CfAccessError('Cloudflare Access authentication required', hasCfAccess)
+  }
+
+  await handleCfAccessAuth(serverUrl, hasCfAccess)
+  return true
+}
+
+/**
  * Get the API token from environment variable (SCRATCH_TOKEN).
  * Returns null if not set.
  */
@@ -115,14 +146,16 @@ function getEnvToken(): string | null {
  * Build headers for an API request, including auth and CF Access tokens.
  *
  * Authentication priority:
- * 1. SCRATCH_TOKEN env var (always uses X-Api-Key header)
- * 2. Token passed as parameter (uses header based on credential type)
- * 3. Stored credentials from ~/.scratch/credentials.json
+ * 1. apiKey parameter (explicit X-Api-Key, bypasses credential lookup)
+ * 2. SCRATCH_TOKEN env var (always uses X-Api-Key header)
+ * 3. Token passed as parameter (uses header based on credential type)
+ * 4. Stored credentials from ~/.scratch/credentials.json
  */
 async function buildHeaders(
   serverUrl: string,
   token?: string,
-  contentType?: string
+  contentType?: string,
+  apiKey?: string
 ): Promise<{ headers: Record<string, string>; hasCfAccess: boolean }> {
   // Start with CF Access service token headers if configured
   const cfHeaders = await getCfAccessHeaders(serverUrl)
@@ -131,6 +164,12 @@ async function buildHeaders(
   // Set content type
   if (contentType) {
     headers['Content-Type'] = contentType
+  }
+
+  // If explicit apiKey is provided, use it directly (bypasses env var and credentials)
+  if (apiKey) {
+    headers['X-Api-Key'] = apiKey
+    return { headers, hasCfAccess: cfHeaders !== undefined }
   }
 
   // Check environment variable first (always treated as API key)
@@ -180,7 +219,7 @@ export async function request<T>(
   const timeout = options.timeout || DEFAULT_TIMEOUT
   const contentType = options.contentType || 'application/json'
 
-  const { headers, hasCfAccess } = await buildHeaders(serverUrl, options.token, contentType)
+  const { headers, hasCfAccess } = await buildHeaders(serverUrl, options.token, contentType, options.apiKey)
 
   // Log request
   const bodySize = options.body instanceof ArrayBuffer ? options.body.byteLength : undefined
@@ -222,11 +261,7 @@ export async function request<T>(
     log.debug(`Response body (first 500 chars): ${text.slice(0, 500)}`)
 
     // Retry on CF Access auth page
-    if (!_isRetry && isCfAccessAuthPage(response, text)) {
-      if (options.skipCfAccessPrompt) {
-        throw new CfAccessError('Cloudflare Access authentication required', hasCfAccess)
-      }
-      await handleCfAccessAuth(serverUrl, hasCfAccess)
+    if (await shouldRetryCfAccess(response, text, serverUrl, hasCfAccess, _isRetry, options.skipCfAccessPrompt ?? false)) {
       return request<T>(path, options, true)
     }
 
@@ -258,11 +293,7 @@ export async function request<T>(
     log.debug(`Response body (first 500 chars): ${text.slice(0, 500)}`)
 
     // Retry on CF Access auth page (HTML instead of expected JSON)
-    if (!_isRetry && isCfAccessAuthPage(response, text)) {
-      if (options.skipCfAccessPrompt) {
-        throw new CfAccessError('Cloudflare Access authentication required', hasCfAccess)
-      }
-      await handleCfAccessAuth(serverUrl, hasCfAccess)
+    if (await shouldRetryCfAccess(response, text, serverUrl, hasCfAccess, _isRetry, options.skipCfAccessPrompt ?? false)) {
       return request<T>(path, options, true)
     }
 

@@ -20,3 +20,23 @@ export const PATHS = {
 } as const
 
 export const DEFAULT_SERVER_URL = 'https://app.scratch.dev'
+
+/**
+ * Get the server URL from environment variable or return default.
+ */
+export async function getServerUrl(): Promise<string> {
+  // Environment variable takes precedence
+  if (process.env.SCRATCH_SERVER_URL) {
+    return process.env.SCRATCH_SERVER_URL
+  }
+
+  // Fall back to default
+  return DEFAULT_SERVER_URL
+}
+
+/**
+ * Get the default server URL constant
+ */
+export function getDefaultServerUrl(): string {
+  return DEFAULT_SERVER_URL
+}

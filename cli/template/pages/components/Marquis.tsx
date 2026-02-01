@@ -11,15 +11,6 @@ export default function Marquis({ children }: MarquisProps): React.ReactElement 
         <span>{children}</span>
         <span className="mx-4">{children}</span>
       </span>
-      <style>{`
-        @keyframes marquis {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .animate-marquis {
-          animation: marquis 3s linear infinite;
-        }
-      `}</style>
     </span>
   );
 }

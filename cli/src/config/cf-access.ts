@@ -1,7 +1,6 @@
-import { mkdir, writeFile, readFile, chmod } from 'fs/promises'
-import { dirname } from 'path'
 import { PATHS } from './paths'
 import { normalizeServerUrl } from './credentials'
+import { loadSecureJsonFile, saveSecureJsonFile } from './secure-json'
 import type { CfAccessEntry, CfAccessFile } from './types'
 
 export interface CfAccessHeaders {
@@ -14,16 +13,7 @@ export interface CfAccessHeaders {
  * Returns empty object if file doesn't exist or is invalid
  */
 async function loadCfAccessFile(): Promise<CfAccessFile> {
-  try {
-    const content = await readFile(PATHS.cfAccess, 'utf-8')
-    const data = JSON.parse(content)
-    if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-      return {}
-    }
-    return data as CfAccessFile
-  } catch {
-    return {}
-  }
+  return loadSecureJsonFile<CfAccessFile>(PATHS.cfAccess)
 }
 
 /**
@@ -31,9 +21,7 @@ async function loadCfAccessFile(): Promise<CfAccessFile> {
  * Permissions: 0o600 (owner read/write only)
  */
 async function saveCfAccessFile(cfAccess: CfAccessFile): Promise<void> {
-  await mkdir(dirname(PATHS.cfAccess), { recursive: true })
-  await writeFile(PATHS.cfAccess, JSON.stringify(cfAccess, null, 2) + '\n', { mode: 0o600 })
-  await chmod(PATHS.cfAccess, 0o600)
+  await saveSecureJsonFile(PATHS.cfAccess, cfAccess)
 }
 
 /**

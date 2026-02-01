@@ -1,12 +1,4 @@
 /**
- * User config - preferences that are safe to share/check in
- * Stored in ~/.config/scratch/config.toml (0o644)
- */
-export interface UserConfig {
-  server_url?: string
-}
-
-/**
  * Per-server CF Access credentials entry
  */
 export interface CfAccessEntry {
@@ -20,16 +12,6 @@ export interface CfAccessEntry {
  */
 export interface CfAccessFile {
   [serverUrl: string]: CfAccessEntry
-}
-
-/**
- * User secrets - sensitive data that should never be shared
- * Stored in ~/.scratch/secrets.json (0o600)
- * @deprecated Use CfAccessFile for CF Access credentials (keyed by server)
- */
-export interface UserSecrets {
-  cf_access_client_id?: string
-  cf_access_client_secret?: string
 }
 
 /**

@@ -90,7 +90,7 @@ export class BuildContext {
   /**
    * Returns the node_modules directory (always in project root).
    */
-  async nodeModulesDir(): Promise<string> {
+  get nodeModulesDir(): string {
     return path.resolve(this.rootDir, 'node_modules');
   }
 

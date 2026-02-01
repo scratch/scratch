@@ -11,28 +11,9 @@ import type { Plugin } from 'unified';
 import { visit } from 'unist-util-visit';
 import type { Node, Root } from 'mdast';
 import log from '../../logger';
+import type { JsxElementNode } from './types';
 
 const PAGE_WRAPPER = 'PageWrapper';
-
-// MDX JSX attribute types
-type MdxJsxAttribute =
-  | {
-      type: 'mdxJsxAttribute';
-      name: string;
-      value: string | null;
-    }
-  | {
-      type: 'mdxJsxExpressionAttribute';
-      value: string;
-    };
-
-// Node types for JSX elements in MDX
-type JsxElementNode = {
-  type: 'mdxJsxFlowElement' | 'mdxJsxTextElement';
-  name: string | null;
-  children?: Node[];
-  attributes?: MdxJsxAttribute[];
-};
 
 /**
  * Create a remark plugin that wraps self-closing components in a div with `not-prose` class.

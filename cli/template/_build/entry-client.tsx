@@ -18,9 +18,7 @@ const component = React.createElement(
 // render and insert the component
 const mdxElement = document.getElementById('mdx')!;
 if ((window as any).__SCRATCH_SSG__) {
-  console.log('Hydrating mdx component');
   hydrateRoot(mdxElement, component);
 } else {
-  console.log('Rendering mdx component');
   createRoot(mdxElement).render(component);
 }

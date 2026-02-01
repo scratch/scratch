@@ -2,25 +2,18 @@
 //
 // Storage locations:
 // - ~/.scratch/credentials.json - Auth credentials (0o600)
-// - ~/.scratch/secrets.json - Sensitive data like CF Access tokens (0o600)
-// - ~/.config/scratch/config.toml - User preferences (0o644)
+// - ~/.scratch/cf-access.json - CF Access service tokens (0o600)
 // - .scratch/project.toml - Project config (0o644)
 
 // Types
-export type { Credentials, CredentialEntry, CredentialsFile, UserConfig, UserSecrets, ProjectConfig, CfAccessEntry, CfAccessFile } from './types'
+export type { Credentials, CredentialEntry, CredentialsFile, ProjectConfig, CfAccessEntry, CfAccessFile } from './types'
 
-// Paths
-export { PATHS, DEFAULT_SERVER_URL } from './paths'
+// Paths and server URL utilities
+export { PATHS, DEFAULT_SERVER_URL, getServerUrl, getDefaultServerUrl } from './paths'
 
 // TOML utilities
-export { escapeTomlString, parseTOML, generateTOML } from './toml'
+export { escapeTomlString, generateTOML } from './toml'
 export type { TomlField } from './toml'
-
-// User config (preferences, safe to share)
-export { loadUserConfig, saveUserConfig, getServerUrl, getDefaultServerUrl } from './user-config'
-
-// User secrets (deprecated, kept for migration)
-export { loadUserSecrets, saveUserSecrets } from './user-secrets'
 
 // Auth credentials
 export { loadCredentials, saveCredentials, clearCredentials, normalizeServerUrl, getLoggedInServers } from './credentials'
