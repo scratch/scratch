@@ -60,3 +60,12 @@ export interface ProjectConfig {
   server_url?: string
   visibility?: string
 }
+
+/**
+ * Global user config - applies to all projects
+ * Stored in ~/.config/scratch/config.toml (0o644)
+ */
+export interface GlobalConfig {
+  server_url?: string
+  visibility?: string
+}

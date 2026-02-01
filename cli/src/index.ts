@@ -22,6 +22,7 @@ import { configCommand } from './cmd/cloud/config';
 import { listProjectsCommand, projectInfoCommand, projectDeleteCommand } from './cmd/cloud/projects';
 import { shareCreateCommand, shareListCommand, shareRevokeCommand } from './cmd/cloud/share';
 import { listTokensCommand, createTokenCommand, revokeTokenCommand, useTokenCommand } from './cmd/cloud/tokens';
+import { defaultsCommand } from './cmd/cloud/defaults';
 
 // Context created in preAction hook, used by commands
 let ctx: BuildContext;
@@ -398,6 +399,17 @@ program
     })
   );
 
+program
+  .command('set-defaults')
+  .description('Configure global defaults (server URL, visibility)')
+  .option('--server <url>', 'Default server URL')
+  .option('--visibility <visibility>', 'Default visibility (public, private, @domain, or email list)')
+  .action(
+    withErrorHandling('Set defaults', async (options) => {
+      await defaultsCommand({ server: options.server, visibility: options.visibility });
+    })
+  );
+
 // =============================================================================
 // Other Commands
 // =============================================================================
@@ -419,7 +431,7 @@ program
 // Commands appear in help in the order listed here
 const COMMAND_GROUPS_CONFIG = [
   { name: 'Local', commands: ['create', 'dev', 'build', 'preview', 'watch', 'clean', 'eject', 'config'] },
-  { name: 'Server', commands: ['publish', 'login', 'logout', 'whoami', 'projects', 'share', 'tokens', 'cf-access'] },
+  { name: 'Server', commands: ['publish', 'login', 'logout', 'whoami', 'projects', 'share', 'tokens', 'cf-access', 'set-defaults'] },
   { name: 'Other', commands: ['update', 'help'] },
 ] as const;
 

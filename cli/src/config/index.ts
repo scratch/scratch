@@ -6,7 +6,7 @@
 // - .scratch/project.toml - Project config (0o644)
 
 // Types
-export type { Credentials, CredentialEntry, CredentialsFile, ProjectConfig, CfAccessEntry, CfAccessFile } from './types'
+export type { Credentials, CredentialEntry, CredentialsFile, ProjectConfig, GlobalConfig, CfAccessEntry, CfAccessFile } from './types'
 
 // Paths and server URL utilities
 export { PATHS, DEFAULT_SERVER_URL, getServerUrl, getDefaultServerUrl } from './paths'
@@ -20,6 +20,9 @@ export { loadCredentials, saveCredentials, clearCredentials, normalizeServerUrl,
 
 // Project config
 export { loadProjectConfig, saveProjectConfig } from './project-config'
+
+// Global config
+export { loadGlobalConfig, saveGlobalConfig } from './global-config'
 
 // CF Access utilities (all functions now require serverUrl parameter)
 export {
