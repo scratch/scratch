@@ -78,6 +78,7 @@ export function isSingleDomainAllowedUsers(allowedUsers: string): string | null 
 export interface ProjectUrls {
   primary: string  // Short URL (local-part) when single domain, or email URL
   byId: string     // User ID URL (always works)
+  www?: string     // WWW/root domain URL (only when www mode is requested)
 }
 
 export interface BuildProjectUrlsOptions {
@@ -86,10 +87,12 @@ export interface BuildProjectUrlsOptions {
   ownerId: string
   ownerEmail: string
   allowedUsers: string
+  // Optional: include www URL in response (for www mode publishes)
+  wwwDomain?: string
 }
 
 export function buildProjectUrls(options: BuildProjectUrlsOptions): ProjectUrls {
-  const { pagesDomain, projectName, ownerId, ownerEmail, allowedUsers } = options
+  const { pagesDomain, projectName, ownerId, ownerEmail, allowedUsers, wwwDomain } = options
   const protocol = pagesDomain.includes('localhost') ? 'http' : 'https'
 
   const byId = `${protocol}://${pagesDomain}/${ownerId}/${projectName}/`
@@ -103,7 +106,14 @@ export function buildProjectUrls(options: BuildProjectUrlsOptions): ProjectUrls 
     primary = `${protocol}://${pagesDomain}/${ownerEmail.toLowerCase()}/${projectName}/`
   }
 
-  return { primary, byId }
+  const result: ProjectUrls = { primary, byId }
+
+  // Include www URL if wwwDomain is provided
+  if (wwwDomain) {
+    result.www = `${protocol}://${wwwDomain}/`
+  }
+
+  return result
 }
 
 // =============================================================================

@@ -83,6 +83,9 @@ export async function deploy(
   if (params.project_id) {
     queryParams.set('project_id', params.project_id)
   }
+  if (params.www) {
+    queryParams.set('www', 'true')
+  }
   const query = queryParams.toString() ? `?${queryParams.toString()}` : ''
 
   return request<DeployCreateResponse>(

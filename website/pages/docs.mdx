@@ -133,11 +133,6 @@ Static files can also live in `pages/` next to your content. Scratch will automa
 
 Scratch uses Tailwind CSS. Edit `src/tailwind.css` to change the styling of your pages:
 
-```css
-@import 'tailwindcss';
-@plugin "@tailwindcss/typography";
-```
-
 Markdown components are styled with [Tailwind Typography](https://github.com/tailwindlabs/tailwindcss-typography).
 
 ```jsx
@@ -276,9 +271,9 @@ scratch publish
 ```
 
 On first publish, you'll be asked for:
-1. A project name (if not configured)
+1. A project name
 2. Visibility setting
-3. Which server to publish to (if not logged in)
+3. Which server to publish to
 
 Options:
 - `--server <url>` — Server URL
@@ -438,10 +433,10 @@ Token resolution priority: `SCRATCH_TOKEN` env var → `.env` file → `~/.scrat
 When you run `scratch build`, here's what happens:
 
 1. **Dependencies** — Auto-install npm packages from `package.json`
-2. **MDX Compilation** — Process Markdown through remark/rehype plugins
-3. **Tailwind** — Compile CSS with only used utilities
-4. **Server Build** — Build for pre-rendering
-5. **Client Build** — Bundle JavaScript with minification
+2. **MDX Compilation** — Process Markdown with remark/rehype plugins
+3. **Tailwind** — Compile CSS
+4. **Server Build** — Pre-render react components
+5. **Client Build** — Bundle JavaScript
 6. **HTML Generation** — Render static HTML with meta tags
 7. **Static Assets** — Copy files from `public/`
 8. **Output** — Write to `dist/`

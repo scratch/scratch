@@ -47,6 +47,13 @@ export function useHttps(env: Env): boolean {
 }
 
 /**
+ * Get the root domain (e.g., "example.com" or "localhost:8787")
+ */
+export function getRootDomain(env: Env): string {
+  return env.BASE_DOMAIN
+}
+
+/**
  * Check if host matches the www or root domain (for WWW_PROJECT_ID routing)
  */
 export function isWwwOrRootDomain(host: string, env: Env): boolean {

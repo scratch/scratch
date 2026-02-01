@@ -128,6 +128,61 @@ describe('buildProjectUrls', () => {
     expect(urls.primary).toBe('http://localhost:8787/pete/my-app/')
     expect(urls.byId).toBe('http://localhost:8787/user123/my-app/')
   })
+
+  test('does not include www when wwwDomain is not provided', () => {
+    const urls = buildProjectUrls({
+      pagesDomain: 'pages.example.com',
+      projectName: 'my-app',
+      ownerId: 'user123',
+      ownerEmail: 'pete@mydomain.com',
+      allowedUsers: '@mydomain.com',
+    })
+
+    expect(urls.www).toBeUndefined()
+  })
+
+  test('includes www URL when wwwDomain is provided', () => {
+    const urls = buildProjectUrls({
+      pagesDomain: 'pages.example.com',
+      projectName: 'my-app',
+      ownerId: 'user123',
+      ownerEmail: 'pete@mydomain.com',
+      allowedUsers: '@mydomain.com',
+      wwwDomain: 'example.com',
+    })
+
+    expect(urls.primary).toBe('https://pages.example.com/pete/my-app/')
+    expect(urls.byId).toBe('https://pages.example.com/user123/my-app/')
+    expect(urls.www).toBe('https://example.com/')
+  })
+
+  test('www URL uses http for localhost wwwDomain', () => {
+    const urls = buildProjectUrls({
+      pagesDomain: 'localhost:8787',
+      projectName: 'my-app',
+      ownerId: 'user123',
+      ownerEmail: 'pete@mydomain.com',
+      allowedUsers: '@mydomain.com',
+      wwwDomain: 'localhost:8080',
+    })
+
+    expect(urls.primary).toBe('http://localhost:8787/pete/my-app/')
+    expect(urls.byId).toBe('http://localhost:8787/user123/my-app/')
+    expect(urls.www).toBe('http://localhost:8080/')
+  })
+
+  test('www URL uses https for non-localhost wwwDomain', () => {
+    const urls = buildProjectUrls({
+      pagesDomain: 'pages.scratch.dev',
+      projectName: 'my-app',
+      ownerId: 'user123',
+      ownerEmail: 'pete@company.com',
+      allowedUsers: '*',
+      wwwDomain: 'scratch.dev',
+    })
+
+    expect(urls.www).toBe('https://scratch.dev/')
+  })
 })
 
 describe('parsePagePath', () => {

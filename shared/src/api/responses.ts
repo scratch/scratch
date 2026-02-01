@@ -17,6 +17,7 @@ export interface UserResponse {
 export interface ProjectUrls {
   primary: string  // Short URL (local-part) when single domain, or email URL
   byId: string     // User ID URL (always works)
+  www?: string     // WWW/root domain URL (only when www mode is requested and configured)
 }
 
 // Project (output of formatProject)
@@ -71,4 +72,11 @@ export interface DeployCreateResponse {
     created: boolean
   }
   urls: ProjectUrls
+  // WWW mode info (only present when www=true in request)
+  www?: {
+    // Whether server's WWW_PROJECT_ID is configured for this project
+    configured: boolean
+    // The project ID to use when configuring WWW_PROJECT_ID
+    project_id: string
+  }
 }

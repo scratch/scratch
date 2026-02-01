@@ -7,7 +7,7 @@ import { deployCreateQuerySchema } from '@scratch/shared'
 import { normalizePath, isValidFilePath } from '../../../lib/files'
 import { unzip } from 'unzipit'
 import { getAuthenticatedUser, parseAndValidateVisibility, type DeployRow } from '../../../lib/api-helpers'
-import { getContentDomain } from '../../../lib/domains'
+import { getContentDomain, getRootDomain } from '../../../lib/domains'
 import { invalidateProjectCache } from '../../../lib/cache'
 
 export const deployRoutes = new Hono<{ Bindings: Env }>({ strict: true })
@@ -25,11 +25,12 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
   const queryResult = deployCreateQuerySchema.safeParse({
     visibility: c.req.query('visibility'),
     project_id: c.req.query('project_id'),
+    www: c.req.query('www'),
   })
   if (!queryResult.success) {
     return c.json({ error: 'Invalid query parameters', code: 'INVALID_PARAMS' }, 400)
   }
-  const { visibility: rawVisibility, project_id: projectIdParam } = queryResult.data
+  const { visibility: rawVisibility, project_id: projectIdParam, www: wwwMode } = queryResult.data
 
   // Validate project name
   const nameValidation = validateProjectName(name)
@@ -248,6 +249,25 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
 
   const { projectId, version, projectCreated } = dbResult
 
+  // Validate WWW mode if requested
+  // WWW_PROJECT_ID can be: undefined, "_" (disabled), or a project ID
+  // - If not set or "_", any project can use --www (but won't be served at root until configured)
+  // - If set to a project ID, only that project can use --www; others get WWW_PROJECT_MISMATCH
+  let wwwConfigured = false
+  if (wwwMode) {
+    const wwwProjectId = c.env.WWW_PROJECT_ID
+    // "_" is the convention for "disabled/not configured" in .vars files
+    if (wwwProjectId && wwwProjectId !== '_' && wwwProjectId !== projectId) {
+      return c.json({
+        error: 'WWW_PROJECT_ID is already configured for a different project. ' +
+               'Update your server configuration if you want to change which project is served at the root domain.',
+        code: 'WWW_PROJECT_MISMATCH',
+      }, 400)
+    }
+    // Project is configured for www only if WWW_PROJECT_ID explicitly matches
+    wwwConfigured = wwwProjectId === projectId
+  }
+
   // Step 2: Upload files to R2 (outside transaction - can't rollback R2)
   // Batch uploads with concurrency limit for performance
   const BATCH_SIZE = 10
@@ -272,6 +292,8 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
     ownerId: auth.userId,
     ownerEmail: auth.user.email,
     allowedUsers: c.env.ALLOWED_USERS || '',
+    // Include www domain URL if www mode is requested and configured
+    wwwDomain: wwwMode && wwwConfigured ? getRootDomain(c.env) : undefined,
   })
 
   // Step 4: Invalidate cache for this project (best-effort, don't block response)
@@ -293,6 +315,13 @@ deployRoutes.post('/projects/:name/deploy', async (c) => {
         created: projectCreated,
       },
       urls,
+      // Include www mode info when requested
+      ...(wwwMode && {
+        www: {
+          configured: wwwConfigured,
+          project_id: projectId,
+        },
+      }),
     },
     201
   )

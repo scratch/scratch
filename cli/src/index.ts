@@ -208,6 +208,7 @@ program
   .option('--no-build', 'Skip build step')
   .option('--no-open', 'Skip opening browser after deploy')
   .option('--dry-run', 'Show what would be deployed without uploading')
+  .option('--www', 'Publish for serving at the naked domain (no base path)')
   .action(
     withErrorHandling('Publish', async (projectPath, options) => {
       const ctx = createCloudContext(options.server, projectPath);
@@ -217,6 +218,7 @@ program
         noBuild: options.build === false,
         noOpen: options.open === false,
         dryRun: options.dryRun === true,
+        www: options.www === true,
       });
     })
   );
