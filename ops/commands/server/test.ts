@@ -115,11 +115,11 @@ export async function integrationTestAction(instance: string): Promise<void> {
     const serverUrl = `https://${appDomain}`
 
     // Check if already logged in
-    const whoamiResult = await runCommand([CLI_BIN, 'whoami', serverUrl])
+    const whoamiResult = await runCommand([CLI_BIN, 'whoami', '--server', serverUrl])
     if (whoamiResult.stdout.includes('Not logged in')) {
       console.log('Not logged in. Please complete login in browser...')
       // Use 15 second timeout for test - fail fast if login flow is broken
-      exitCode = await runCommandInherit([CLI_BIN, 'login', serverUrl, '--timeout', '0.25'])
+      exitCode = await runCommandInherit([CLI_BIN, 'login', '--server', serverUrl, '--timeout', '0.25'])
       if (exitCode !== 0) {
         throw new Error('Login failed (timed out or denied)')
       }
@@ -526,7 +526,7 @@ export async function integrationTestAction(instance: string): Promise<void> {
       }
 
       // Cleanup private test project
-      await runCommand([CLI_BIN, 'projects', 'delete', privateProjectName, serverUrl, '--force'])
+      await runCommand([CLI_BIN, 'projects', 'delete', privateProjectName, '--server', serverUrl, '--force'])
       try {
         await rm(privateTempDir, { recursive: true, force: true })
       } catch {
@@ -670,7 +670,7 @@ export async function integrationTestAction(instance: string): Promise<void> {
         }
 
         // Cleanup share test project
-        await runCommand([CLI_BIN, 'projects', 'rm', shareTestProjectName, serverUrl, '--force'])
+        await runCommand([CLI_BIN, 'projects', 'rm', shareTestProjectName, '--server', serverUrl, '--force'])
         try {
           await rm(shareTestTempDir, { recursive: true, force: true })
         } catch {
@@ -687,7 +687,7 @@ export async function integrationTestAction(instance: string): Promise<void> {
     // Create an API token
     const tokenName = `test-token-${Date.now()}`
     const createTokenResult = await runCommand([
-      CLI_BIN, 'tokens', 'create', tokenName, serverUrl,
+      CLI_BIN, 'tokens', 'create', tokenName, '--server', serverUrl,
       '--expires', '1',  // 1 day expiry
     ])
 
@@ -706,7 +706,7 @@ export async function integrationTestAction(instance: string): Promise<void> {
         console.log(`${green}✓${reset} Created API token: ${apiToken.slice(0, 12)}...`)
 
         // Test 1: List tokens shows the new token
-        const listResult = await runCommand([CLI_BIN, 'tokens', 'ls', serverUrl])
+        const listResult = await runCommand([CLI_BIN, 'tokens', 'ls', '--server', serverUrl])
         if (!listResult.stdout.includes(tokenName)) {
           console.error(`${red}✗${reset} Token not found in list`)
           testPassed = false
@@ -747,7 +747,7 @@ export async function integrationTestAction(instance: string): Promise<void> {
         } else {
           console.log(`${green}✓${reset} Deploy with SCRATCH_TOKEN env var succeeded`)
           // Cleanup the test project
-          await runCommand([CLI_BIN, 'projects', 'delete', envTestProjectName, serverUrl, '--force'])
+          await runCommand([CLI_BIN, 'projects', 'delete', envTestProjectName, '--server', serverUrl, '--force'])
         }
 
         // Cleanup env test dir
@@ -759,7 +759,7 @@ export async function integrationTestAction(instance: string): Promise<void> {
 
         // Test 4: Revoke the token
         const revokeResult = await runCommand([
-          CLI_BIN, 'tokens', 'revoke', tokenName, serverUrl,
+          CLI_BIN, 'tokens', 'revoke', tokenName, '--server', serverUrl,
         ])
         if (revokeResult.exitCode !== 0) {
           console.error(`${red}✗${reset} Failed to revoke token: ${revokeResult.stderr}`)
@@ -958,7 +958,7 @@ export async function integrationTestAction(instance: string): Promise<void> {
 
     // Get project ID using CLI
     const projectInfoResult = await runCommand([
-      CLI_BIN, 'projects', 'info', currentProjectName, serverUrl,
+      CLI_BIN, 'projects', 'info', currentProjectName, '--server', serverUrl,
     ])
 
     const idMatch = projectInfoResult.stdout.match(/ID:\s+(\S+)/)
@@ -1087,7 +1087,7 @@ export async function integrationTestAction(instance: string): Promise<void> {
     // Cleanup: Delete the test project (use currentProjectName since it may have been renamed)
     console.log('Cleanup: Deleting test project...')
     const deleteResult = await runCommand([
-      CLI_BIN, 'projects', 'delete', currentProjectName, serverUrl,
+      CLI_BIN, 'projects', 'delete', currentProjectName, '--server', serverUrl,
       '--force',
     ])
     if (deleteResult.exitCode === 0) {

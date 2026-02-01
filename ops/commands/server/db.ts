@@ -74,14 +74,14 @@ export async function dbMigrateAction(instance: string): Promise<void> {
   const wranglerConfig = getWranglerConfig(instance)
   const { dbName } = getInstanceResourceNames(instance)
 
-  const schemaPath = 'server/src/db/schema.sql'
+  const schemaPath = 'server/src/db/schema.d1.sql'
   if (!existsSync(schemaPath)) {
     console.error(`Error: ${schemaPath} not found`)
     process.exit(1)
   }
 
   const proc = Bun.spawn(
-    ['bunx', 'wrangler', 'd1', 'execute', dbName, '-c', wranglerConfig, '--remote', '--file', 'src/db/schema.sql'],
+    ['bunx', 'wrangler', 'd1', 'execute', dbName, '-c', wranglerConfig, '--remote', '--file', 'src/db/schema.d1.sql'],
     {
       cwd: 'server',
       stdout: 'pipe',

@@ -8,6 +8,7 @@ import { createContentToken } from '../../lib/content-token'
 import { createDbClient } from '../../db/client'
 import { canAccessProject } from '../../lib/visibility'
 import { getAuthenticatedUser } from '../../lib/api-helpers'
+import { errorRedirectUrl } from '../../lib/url-helpers'
 
 export const authRoutes = new Hono<{ Bindings: Env }>({ strict: false })
 
@@ -19,7 +20,7 @@ authRoutes.get('/login', async (c) => {
     if (cfUser) {
       // Check CF user is still allowed
       if (!isUserAllowed(cfUser.email, c.env)) {
-        return c.redirect('/error?message=' + encodeURIComponent('Your access has been revoked. Please contact the administrator if you believe this is an error.'))
+        return c.redirect(errorRedirectUrl('Your access has been revoked. Please contact the administrator if you believe this is an error.'))
       }
       // Already authenticated via CF Access, redirect to callback or home
       const callbackURL = c.req.query('callbackURL') || '/'
@@ -36,7 +37,7 @@ authRoutes.get('/login', async (c) => {
   if (session?.user) {
     if (session.user.email && !isUserAllowed(session.user.email, c.env)) {
       // User has been removed from ALLOWED_USERS, show error
-      return c.redirect('/error?message=' + encodeURIComponent('Your access has been revoked. Please contact the administrator if you believe this is an error.'))
+      return c.redirect(errorRedirectUrl('Your access has been revoked. Please contact the administrator if you believe this is an error.'))
     }
     const callbackURL = c.req.query('callbackURL') || '/'
     return c.redirect(callbackURL)
@@ -62,7 +63,7 @@ authRoutes.get('/login', async (c) => {
   }
 
   // Fallback: redirect to error page
-  return c.redirect('/error?message=' + encodeURIComponent('Login failed. Please try again.'))
+  return c.redirect(errorRedirectUrl('Login failed. Please try again.'))
 })
 
 // Logout route - redirect to BetterAuth's sign-out endpoint
@@ -75,15 +76,10 @@ authRoutes.get('/logout', (c) => {
 authRoutes.get('/error', (c) => {
   const error = c.req.query('error') || 'Unknown error'
 
-  // Map common error codes to user-friendly messages
-  const errorMessages: Record<string, string> = {
-    'state_mismatch': 'Authentication failed. Please try logging in again.',
-    'unauthorized_user': 'You are not authorized to use this service. Please contact the administrator if you believe this is an error.',
-  }
+  // Convert error codes to user-friendly messages (e.g., state_mismatch -> "state mismatch")
+  const message = error.replace(/_/g, ' ')
 
-  const message = errorMessages[error] || error.replace(/_/g, ' ')
-
-  return c.redirect('/error?message=' + encodeURIComponent(message))
+  return c.redirect(errorRedirectUrl(message))
 })
 
 // Project type for DB query
@@ -103,7 +99,7 @@ authRoutes.get('/content-access', async (c) => {
   const returnUrl = c.req.query('return_url')
 
   if (!projectId || !returnUrl) {
-    return c.redirect('/error?message=' + encodeURIComponent('Missing parameters'))
+    return c.redirect(errorRedirectUrl('Missing parameters'))
   }
 
   // Validate return_url is on our content domain (prevent open redirect)
@@ -111,10 +107,10 @@ authRoutes.get('/content-access', async (c) => {
     const contentDomain = getContentDomain(c.env)
     const returnUrlParsed = new URL(returnUrl)
     if (returnUrlParsed.host !== contentDomain) {
-      return c.redirect('/error?message=' + encodeURIComponent('Invalid return URL'))
+      return c.redirect(errorRedirectUrl('Invalid return URL'))
     }
   } catch {
-    return c.redirect('/error?message=' + encodeURIComponent('Invalid return URL'))
+    return c.redirect(errorRedirectUrl('Invalid return URL'))
   }
 
   // Check user is authenticated (supports Bearer tokens for CLI and session cookies for browser)
@@ -137,7 +133,7 @@ authRoutes.get('/content-access', async (c) => {
 
   // Generic error for both "not found" and "no access" (don't reveal existence)
   if (!project || !canAccessProject(user.email, user.id, project, c.env)) {
-    return c.redirect('/error?message=' + encodeURIComponent('Unable to access this content'))
+    return c.redirect(errorRedirectUrl('Unable to access this content'))
   }
 
   // Generate content token

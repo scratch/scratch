@@ -103,7 +103,7 @@ Routes are split by subdomain:
 
 ## Database
 
-Uses Cloudflare D1 (SQLite). Schema is in `server/schema.sql`.
+Uses Cloudflare D1 (SQLite). Schema is in `server/src/db/schema.d1.sql`.
 
 ```bash
 # Run migrations

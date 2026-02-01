@@ -15,7 +15,7 @@
     },
     "cli": {
       "name": "scratch",
-      "version": "0.5.9",
+      "version": "0.5.10",
       "bin": {
         "scratch": "src/index.ts",
       },

@@ -3,7 +3,7 @@ import type { Env } from '../../../env'
 import { createDbClient } from '../../../db/client'
 import { generateId } from '../../../lib/id'
 import { buildProjectUrls } from '@scratch/shared/project'
-import { getAuthenticatedUser } from '../../../lib/api-helpers'
+import { getAuthenticatedUser, getProjectForUser } from '../../../lib/api-helpers'
 import {
   shareTokenCreateRequestSchema,
   type ShareToken,
@@ -18,12 +18,8 @@ import {
 import { ErrorCodes } from '@scratch/shared/api'
 import { getContentDomain } from '../../../lib/domains'
 
-export const shareTokenRoutes = new Hono<{ Bindings: Env }>({ strict: true })
-
-const MAX_ACTIVE_TOKENS_PER_PROJECT = 10
-
-// Helper to format a share token row for API response
-function formatShareToken(row: {
+// Database row type for share tokens - used for query results
+interface ShareTokenRow {
   id: string
   project_id: string
   name: string
@@ -31,7 +27,25 @@ function formatShareToken(row: {
   expires_at: string
   revoked_at: string | null
   created_at: string
-}): ShareToken {
+}
+
+export const shareTokenRoutes = new Hono<{ Bindings: Env }>({ strict: true })
+
+// Middleware: check feature flag for all share token routes
+shareTokenRoutes.use('*', async (c, next) => {
+  if (!isShareTokensEnabled(c.env)) {
+    return c.json(
+      { error: 'Share tokens are disabled on this server', code: ErrorCodes.SHARE_TOKENS_DISABLED },
+      403
+    )
+  }
+  await next()
+})
+
+const MAX_ACTIVE_TOKENS_PER_PROJECT = 10
+
+// Helper to format a share token row for API response
+function formatShareToken(row: ShareTokenRow): ShareToken {
   const now = new Date()
   const expiresAt = new Date(row.expires_at)
   const isExpired = expiresAt < now
@@ -53,14 +67,6 @@ function formatShareToken(row: {
 
 // POST /api/projects/:name/share-tokens - Create a share token
 shareTokenRoutes.post('/projects/:name/share-tokens', async (c) => {
-  // Check feature flag
-  if (!isShareTokensEnabled(c.env)) {
-    return c.json(
-      { error: 'Share tokens are disabled on this server', code: ErrorCodes.SHARE_TOKENS_DISABLED },
-      403
-    )
-  }
-
   const auth = await getAuthenticatedUser(c)
   if (!auth) {
     return c.json({ error: 'Not authenticated' }, 401)
@@ -107,11 +113,7 @@ shareTokenRoutes.post('/projects/:name/share-tokens', async (c) => {
   const db = createDbClient(c.env.DB)
 
   // Verify project ownership
-  const [project] = (await db`
-    SELECT id FROM projects
-    WHERE name = ${projectName} AND owner_id = ${auth.userId}
-  `) as { id: string }[]
-
+  const project = await getProjectForUser(db, projectName, auth.userId)
   if (!project) {
     return c.json({ error: 'Project not found', code: ErrorCodes.PROJECT_NOT_FOUND }, 404)
   }
@@ -144,15 +146,7 @@ shareTokenRoutes.post('/projects/:name/share-tokens', async (c) => {
     INSERT INTO share_tokens (id, project_id, owner_id, token, name, duration, expires_at, created_at)
     VALUES (${tokenId}, ${project.id}, ${auth.userId}, ${token}, ${sanitizedName}, ${duration}, ${expiresAt.toISOString()}, datetime('now'))
     RETURNING id, project_id, name, duration, expires_at, revoked_at, created_at
-  `) as {
-    id: string
-    project_id: string
-    name: string
-    duration: string
-    expires_at: string
-    revoked_at: string | null
-    created_at: string
-  }[]
+  `) as ShareTokenRow[]
 
   // Build share URL using primary URL
   const urls = buildProjectUrls({
@@ -176,14 +170,6 @@ shareTokenRoutes.post('/projects/:name/share-tokens', async (c) => {
 
 // GET /api/projects/:name/share-tokens - List all share tokens for a project
 shareTokenRoutes.get('/projects/:name/share-tokens', async (c) => {
-  // Check feature flag
-  if (!isShareTokensEnabled(c.env)) {
-    return c.json(
-      { error: 'Share tokens are disabled on this server', code: ErrorCodes.SHARE_TOKENS_DISABLED },
-      403
-    )
-  }
-
   const auth = await getAuthenticatedUser(c)
   if (!auth) {
     return c.json({ error: 'Not authenticated' }, 401)
@@ -194,11 +180,7 @@ shareTokenRoutes.get('/projects/:name/share-tokens', async (c) => {
   const db = createDbClient(c.env.DB)
 
   // Verify project ownership
-  const [project] = (await db`
-    SELECT id FROM projects
-    WHERE name = ${projectName} AND owner_id = ${auth.userId}
-  `) as { id: string }[]
-
+  const project = await getProjectForUser(db, projectName, auth.userId)
   if (!project) {
     return c.json({ error: 'Project not found', code: ErrorCodes.PROJECT_NOT_FOUND }, 404)
   }
@@ -209,15 +191,7 @@ shareTokenRoutes.get('/projects/:name/share-tokens', async (c) => {
     FROM share_tokens
     WHERE project_id = ${project.id}
     ORDER BY created_at DESC
-  `) as {
-    id: string
-    project_id: string
-    name: string
-    duration: string
-    expires_at: string
-    revoked_at: string | null
-    created_at: string
-  }[]
+  `) as ShareTokenRow[]
 
   return c.json({
     share_tokens: tokens.map(formatShareToken),
@@ -226,14 +200,6 @@ shareTokenRoutes.get('/projects/:name/share-tokens', async (c) => {
 
 // DELETE /api/projects/:name/share-tokens/:tokenId - Revoke a share token
 shareTokenRoutes.delete('/projects/:name/share-tokens/:tokenId', async (c) => {
-  // Check feature flag
-  if (!isShareTokensEnabled(c.env)) {
-    return c.json(
-      { error: 'Share tokens are disabled on this server', code: ErrorCodes.SHARE_TOKENS_DISABLED },
-      403
-    )
-  }
-
   const auth = await getAuthenticatedUser(c)
   if (!auth) {
     return c.json({ error: 'Not authenticated' }, 401)
@@ -252,15 +218,7 @@ shareTokenRoutes.delete('/projects/:name/share-tokens/:tokenId', async (c) => {
     WHERE st.id = ${tokenId}
       AND p.name = ${projectName}
       AND p.owner_id = ${auth.userId}
-  `) as {
-    id: string
-    project_id: string
-    name: string
-    duration: string
-    expires_at: string
-    revoked_at: string | null
-    created_at: string
-  }[]
+  `) as ShareTokenRow[]
 
   if (!token) {
     return c.json({ error: 'Share token not found', code: ErrorCodes.SHARE_TOKEN_NOT_FOUND }, 404)
@@ -279,15 +237,7 @@ shareTokenRoutes.delete('/projects/:name/share-tokens/:tokenId', async (c) => {
     SET revoked_at = datetime('now')
     WHERE id = ${tokenId}
     RETURNING id, project_id, name, duration, expires_at, revoked_at, created_at
-  `) as {
-    id: string
-    project_id: string
-    name: string
-    duration: string
-    expires_at: string
-    revoked_at: string | null
-    created_at: string
-  }[]
+  `) as ShareTokenRow[]
 
   return c.json({
     share_token: formatShareToken(updated!),
