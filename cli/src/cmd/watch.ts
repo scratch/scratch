@@ -77,6 +77,9 @@ export async function watchCommand(
       log.info('Dependencies installed');
     }
 
+    // Track the route to open (auto-detect for directories, calculate for files)
+    let route: string | undefined;
+
     if (isDirectory) {
       // Directory: replace empty pages/ with symlink to user's directory
       await fs.rm(tempPagesDir, { recursive: true, force: true });
@@ -86,6 +89,17 @@ export async function watchCommand(
       const filename = path.basename(absolutePath);
       const targetFile = path.join(tempPagesDir, filename);
       const parentDir = path.dirname(absolutePath);
+
+      // Calculate route from filename (strip extension, handle index specially)
+      const basename = path.basename(absolutePath, path.extname(absolutePath));
+      route = basename === 'index' ? '/' : `/${basename}`;
+
+      // Remove the template's index.mdx to avoid conflicts
+      // (e.g., user's index.md would conflict with template's index.mdx)
+      const templateIndex = path.join(tempPagesDir, 'index.mdx');
+      if (filename !== 'index.mdx') {
+        await fs.rm(templateIndex, { force: true });
+      }
 
       await fs.copyFile(absolutePath, targetFile);
 
@@ -122,11 +136,11 @@ export async function watchCommand(
     }
 
     // 3. Create build context for temp dir and run dev server
-    // (dev server auto-detects the route to open)
     const ctx = new BuildContext({ path: tempDir, port: options.port });
     await devCommand(ctx, {
       port: options.port,
       open: options.open,
+      route,
     });
   } catch (error) {
     await cleanup();
