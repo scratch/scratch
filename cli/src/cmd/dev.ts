@@ -7,6 +7,82 @@ import { openBrowser } from '../util';
 import log from '../logger';
 import { startServerWithFallback, hasStaticFileExtension, notifyLiveReloadClients } from './server';
 
+/**
+ * Lock file data structure for preventing multiple dev servers in the same project.
+ */
+interface DevLock {
+  pid: number;
+  port: number;
+}
+
+/**
+ * Check if a process with the given PID is running.
+ */
+export function isProcessRunning(pid: number): boolean {
+  try {
+    // signal 0 doesn't kill the process, just checks if it exists
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get the lock file path for a project.
+ */
+export function getLockFilePath(rootDir: string): string {
+  return path.join(rootDir, '.scratch', 'dev.lock');
+}
+
+/**
+ * Try to read the lock file and check if a dev server is already running.
+ * Returns the lock data if a valid lock exists (process is running), null otherwise.
+ */
+export async function readLock(lockPath: string): Promise<DevLock | null> {
+  try {
+    const content = await fs.readFile(lockPath, 'utf-8');
+    const lock: DevLock = JSON.parse(content);
+
+    // Validate lock structure
+    if (typeof lock.pid !== 'number' || typeof lock.port !== 'number') {
+      return null;
+    }
+
+    // Check if the process is still running
+    if (isProcessRunning(lock.pid)) {
+      return lock;
+    }
+
+    // Stale lock file - process no longer running
+    log.debug(`Stale lock file found (PID ${lock.pid} not running), removing...`);
+    await fs.rm(lockPath, { force: true });
+    return null;
+  } catch {
+    // Lock file doesn't exist or is invalid
+    return null;
+  }
+}
+
+/**
+ * Write a lock file.
+ */
+export async function writeLock(lockPath: string, lock: DevLock): Promise<void> {
+  await fs.mkdir(path.dirname(lockPath), { recursive: true });
+  await fs.writeFile(lockPath, JSON.stringify(lock, null, 2));
+}
+
+/**
+ * Remove the lock file.
+ */
+export async function removeLock(lockPath: string): Promise<void> {
+  try {
+    await fs.rm(lockPath, { force: true });
+  } catch {
+    // Ignore errors when removing lock
+  }
+}
+
 // Re-export for backward compatibility with tests
 export { hasStaticFileExtension };
 
@@ -77,6 +153,24 @@ export async function devCommand(ctx: BuildContext, options: DevOptions = {}) {
     );
   }
 
+  // Check if another dev server is already running in this project
+  const lockPath = getLockFilePath(ctx.rootDir);
+  const existingLock = await readLock(lockPath);
+
+  if (existingLock) {
+    log.info(`Dev server already running on port ${existingLock.port} (PID ${existingLock.pid})`);
+    log.info('Opening browser to existing server...');
+
+    // Open browser to existing server
+    if (options.open !== false) {
+      const route = options.route ?? '/';
+      await openBrowser(`http://localhost:${existingLock.port}${route}`);
+    }
+
+    // Exit gracefully - don't start a new server
+    return;
+  }
+
   log.debug('Starting Bun dev server...');
 
   // Initial build
@@ -88,6 +182,9 @@ export async function devCommand(ctx: BuildContext, options: DevOptions = {}) {
     port: preferredPort,
     liveReload: true,
   });
+
+  // Write lock file with our PID and port
+  await writeLock(lockPath, { pid: process.pid, port });
 
   log.info(`Dev server running at http://localhost:${port}/`);
 
@@ -145,8 +242,12 @@ export async function devCommand(ctx: BuildContext, options: DevOptions = {}) {
   }
 
   // Graceful shutdown
-  const shutdown = () => {
+  const shutdown = async () => {
     log.info('Shutting down...');
+
+    // Remove lock file
+    await removeLock(lockPath);
+
     for (const watcher of watchers) {
       watcher.close();
     }

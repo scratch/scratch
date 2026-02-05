@@ -1,5 +1,5 @@
-import { describe, expect, test, beforeAll, afterAll } from "bun:test";
-import { findRoute } from "../../src/cmd/dev";
+import { describe, expect, test, beforeAll, afterAll, beforeEach, afterEach } from "bun:test";
+import { findRoute, isProcessRunning, readLock, writeLock, removeLock, getLockFilePath } from "../../src/cmd/dev";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
@@ -98,5 +98,94 @@ describe("findRoute", () => {
 
     // aaa/nested is found via DFS before bbb because aaa < bbb alphabetically
     expect(await findRoute(dir)).toBe("/aaa/nested");
+  });
+});
+
+describe("dev server lock file", () => {
+  let lockDir: string;
+  let lockPath: string;
+
+  beforeEach(async () => {
+    lockDir = await fs.mkdtemp(path.join(os.tmpdir(), "test-lock-"));
+    lockPath = path.join(lockDir, ".scratch", "dev.lock");
+  });
+
+  afterEach(async () => {
+    await fs.rm(lockDir, { recursive: true, force: true });
+  });
+
+  describe("getLockFilePath", () => {
+    test("returns correct path", () => {
+      expect(getLockFilePath("/project")).toBe("/project/.scratch/dev.lock");
+    });
+  });
+
+  describe("isProcessRunning", () => {
+    test("returns true for current process", () => {
+      expect(isProcessRunning(process.pid)).toBe(true);
+    });
+
+    test("returns false for non-existent PID", () => {
+      // Use a very high PID that's unlikely to exist
+      expect(isProcessRunning(999999999)).toBe(false);
+    });
+  });
+
+  describe("writeLock/readLock", () => {
+    test("writes and reads lock file", async () => {
+      const lock = { pid: process.pid, port: 5173 };
+      await writeLock(lockPath, lock);
+
+      const result = await readLock(lockPath);
+      expect(result).toEqual(lock);
+    });
+
+    test("readLock returns null for non-existent file", async () => {
+      const result = await readLock(lockPath);
+      expect(result).toBeNull();
+    });
+
+    test("readLock returns null for stale lock (process not running)", async () => {
+      const lock = { pid: 999999999, port: 5173 };
+      await writeLock(lockPath, lock);
+
+      const result = await readLock(lockPath);
+      expect(result).toBeNull();
+
+      // Lock file should be cleaned up
+      const exists = await fs.exists(lockPath);
+      expect(exists).toBe(false);
+    });
+
+    test("readLock returns null for invalid JSON", async () => {
+      await fs.mkdir(path.dirname(lockPath), { recursive: true });
+      await fs.writeFile(lockPath, "not json");
+
+      const result = await readLock(lockPath);
+      expect(result).toBeNull();
+    });
+
+    test("readLock returns null for invalid lock structure", async () => {
+      await fs.mkdir(path.dirname(lockPath), { recursive: true });
+      await fs.writeFile(lockPath, JSON.stringify({ foo: "bar" }));
+
+      const result = await readLock(lockPath);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("removeLock", () => {
+    test("removes existing lock file", async () => {
+      await writeLock(lockPath, { pid: process.pid, port: 5173 });
+      expect(await fs.exists(lockPath)).toBe(true);
+
+      await removeLock(lockPath);
+      expect(await fs.exists(lockPath)).toBe(false);
+    });
+
+    test("does not throw when lock file does not exist", async () => {
+      await removeLock(lockPath);
+      // Should not throw
+    });
   });
 });
