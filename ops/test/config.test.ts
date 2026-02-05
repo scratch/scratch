@@ -131,6 +131,50 @@ describe('writeVarsFile', () => {
   })
 })
 
+describe('parseVarsFile', () => {
+  const testDir = join(tmpdir(), `ops-parseVarsFile-test-${Date.now()}`)
+
+  beforeEach(() => {
+    mkdirSync(testDir, { recursive: true })
+  })
+
+  afterEach(() => {
+    if (existsSync(testDir)) {
+      rmSync(testDir, { recursive: true })
+    }
+  })
+
+  test('trims trailing whitespace from unquoted values', () => {
+    const testPath = join(testDir, 'whitespace.vars')
+    // Simulate a file with trailing spaces (common user error)
+    writeFileSync(testPath, 'MAX_VISIBILITY=public \nALLOWED_USERS=@example.com  \n')
+
+    const parsed = parseVarsFile(testPath)
+
+    expect(parsed.get('MAX_VISIBILITY')).toBe('public')
+    expect(parsed.get('ALLOWED_USERS')).toBe('@example.com')
+  })
+
+  test('preserves whitespace in quoted values', () => {
+    const testPath = join(testDir, 'quoted.vars')
+    writeFileSync(testPath, 'VALUE_WITH_SPACE="hello world"\nVALUE_PLAIN=hello\n')
+
+    const parsed = parseVarsFile(testPath)
+
+    expect(parsed.get('VALUE_WITH_SPACE')).toBe('hello world')
+    expect(parsed.get('VALUE_PLAIN')).toBe('hello')
+  })
+
+  test('handles values with equals signs', () => {
+    const testPath = join(testDir, 'equals.vars')
+    writeFileSync(testPath, 'URL=https://example.com?foo=bar&baz=qux\n')
+
+    const parsed = parseVarsFile(testPath)
+
+    expect(parsed.get('URL')).toBe('https://example.com?foo=bar&baz=qux')
+  })
+})
+
 describe('auth constants', () => {
   test('COMMON_AUTH_VARS contains expected values', () => {
     expect(COMMON_AUTH_VARS).toEqual(['BETTER_AUTH_SECRET'])

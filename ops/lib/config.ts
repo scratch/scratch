@@ -58,6 +58,8 @@ export function parseVarsFile(path: string): Map<string, string> {
           (value.startsWith("'") && value.endsWith("'"))) {
         value = value.slice(1, -1)
       }
+      // Trim whitespace from unquoted values
+      value = value.trim()
       vars.set(match[1], value)
     }
   }
@@ -111,6 +113,8 @@ export function getRequiredVarsWithComments(): { name: string; defaultValue: str
           (value.startsWith("'") && value.endsWith("'"))) {
         value = value.slice(1, -1)
       }
+      // Trim whitespace from unquoted values
+      value = value.trim()
 
       result.push({
         name: match[1],

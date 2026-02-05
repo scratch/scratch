@@ -90,6 +90,7 @@ export async function publishCommand(ctx: CloudContext, projectPath: string = '.
     const result = await runInteractiveSetup(resolvedPath, credentials, config, effectiveServerUrl, globalConfig.visibility)
     projectName = result.name!  // runInteractiveSetup guarantees name is set
     config = result
+    visibility = result.visibility  // Use visibility from interactive setup
   } else {
     // Valid name exists - save server_url to config if it was prompted
     if (serverUrlWasPrompted) {
