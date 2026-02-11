@@ -33,6 +33,10 @@ Now you're ready to start writing in `pages/index.mdx`. Use the `publish` comman
 # Publish your project to a Scratch server.
 # Grant access to specific people, @youdomain.com, or the world
 scratch publish
+
+# Or deploy your built dist/ to a hosting provider
+scratch deploy vercel
+scratch deploy cloudflare
 ```
 
 ## What can you do with Scratch?
@@ -107,6 +111,12 @@ scratch build
 scratch build --no-ssg        # disable static site generation
 scratch build --development   # unminified, with source maps
 
+# Deploy dist/ to external hosting
+scratch deploy vercel          # deploy to Vercel
+scratch deploy cloudflare      # deploy to Cloudflare Pages
+scratch deploy vercel --prod   # production deploy
+scratch deploy cloudflare --project my-site --no-build
+
 # Preview production build locally
 scratch preview
 
@@ -114,9 +124,9 @@ scratch preview
 scratch clean
 
 # Revert a file to its template version
-scratch checkout [file]            # revert a file to its template version
-scratch checkout --force [file]    # overwrite without confirmation
-scratch checkout --list            # list available template files
+scratch eject [file]               # revert a file to its template version
+scratch eject --force [file]       # overwrite without confirmation
+scratch eject --list               # list available template files
 
 # Watch markdown file(s) with live reload
 scratch watch <path>              # file or directory

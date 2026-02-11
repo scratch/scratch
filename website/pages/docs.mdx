@@ -286,13 +286,46 @@ Project names must be 3-63 characters, lowercase letters/numbers/hyphens, starti
 
 For more on servers and URLs, see [Scratch Server](#scratch-server).
 
+#### scratch deploy
+
+Deploy your built `dist/` directory to an external hosting provider:
+
+```bash
+# Deploy to Vercel
+scratch deploy vercel
+
+# Deploy to Cloudflare Pages
+scratch deploy cloudflare
+```
+
+By default, deploys target preview environments. Use `--prod` for production:
+
+```bash
+scratch deploy vercel --prod
+scratch deploy cloudflare --prod
+```
+
+Options:
+- `--prod` — Deploy to production target
+- `--preview` — Force preview target (default)
+- `--project <name>` — Provider project name
+- `--org <name>` — Provider org/team/account
+- `--yes` — Skip confirmation prompt
+- `--no-build` — Deploy existing `dist/` without building
+- `--no-open` — Don't open browser after deploy
+- `--json` — Emit machine-readable output
+
+Requirements:
+- Vercel deploys require the `vercel` CLI (`npm i -g vercel`) and `vercel login`
+- Cloudflare deploys require `wrangler` (`npm i -g wrangler`) and `wrangler login`
+
 #### scratch login
 
 Log in to a Scratch server:
 
 ```bash
 scratch login                     # Default: app.scratch.dev
-scratch login https://my-server.com
+scratch login --server https://my-server.com
 ```
 
 The CLI shows a verification code and opens your browser. Sign in and approve the device. Credentials are saved to `~/.scratch/credentials.json`.
@@ -308,7 +341,7 @@ Log out from a server:
 
 ```bash
 scratch logout
-scratch logout https://my-server.com
+scratch logout --server https://my-server.com
 ```
 
 #### scratch config
@@ -375,7 +408,7 @@ scratch share revoke tok_abc123 my-blog
 Configure Cloudflare Access credentials for servers that use it:
 
 ```bash
-scratch cf-access https://my-server.com
+scratch cf-access --server https://my-server.com
 ```
 
 Prompts for Client ID and Client Secret from your Cloudflare Access service token. Only needed for self-hosted servers using Cloudflare Access.

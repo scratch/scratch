@@ -9,6 +9,7 @@ import { previewCommand } from './cmd/preview';
 import { checkoutCommand } from './cmd/checkout';
 import { updateCommand } from './cmd/update';
 import { watchCommand } from './cmd/watch';
+import { deployCommand } from './cmd/deploy';
 import { BuildContext } from './build/context';
 import log, { setLogLevel, setShowBunErrors, shouldShowBunErrors } from './logger';
 import { VERSION } from './version';
@@ -102,6 +103,34 @@ program
       } else {
         log.info(`Build completed in ${elapsed}ms`);
       }
+    })
+  );
+
+program
+  .command('deploy')
+  .description('Deploy dist/ to an external provider')
+  .argument('<provider>', 'Provider name (vercel, cloudflare)')
+  .argument('[path]', 'Path to project directory', '.')
+  .option('--prod', 'Deploy to production target')
+  .option('--preview', 'Force preview deployment (default)')
+  .option('--project <name>', 'Provider project name')
+  .option('--org <name>', 'Provider org/team/account identifier')
+  .option('--yes', 'Skip confirmation prompts')
+  .option('--no-build', 'Skip build step')
+  .option('--no-open', "Don't open browser after deploy")
+  .option('--json', 'Output machine-readable JSON')
+  .action(
+    withErrorHandling('Deploy', async (provider, projectPath, options) => {
+      await deployCommand(provider, projectPath, {
+        prod: options.prod === true,
+        preview: options.preview === true,
+        project: options.project,
+        org: options.org,
+        yes: options.yes === true,
+        noBuild: options.build === false,
+        open: options.open !== false,
+        json: options.json === true,
+      });
     })
   );
 
@@ -430,7 +459,7 @@ program
 // Command groups with ordering - single source of truth
 // Commands appear in help in the order listed here
 const COMMAND_GROUPS_CONFIG = [
-  { name: 'Local', commands: ['create', 'dev', 'build', 'preview', 'watch', 'clean', 'eject', 'config'] },
+  { name: 'Local', commands: ['create', 'dev', 'build', 'deploy', 'preview', 'watch', 'clean', 'eject', 'config'] },
   { name: 'Server', commands: ['publish', 'login', 'logout', 'whoami', 'projects', 'share', 'tokens', 'cf-access', 'set-defaults'] },
   { name: 'Other', commands: ['update', 'help'] },
 ] as const;
