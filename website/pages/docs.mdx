@@ -286,6 +286,39 @@ Project names must be 3-63 characters, lowercase letters/numbers/hyphens, starti
 
 For more on servers and URLs, see [Scratch Server](#scratch-server).
 
+#### External hosting with --to
+
+Publish to Vercel or Cloudflare Pages instead of scratch.dev:
+
+```bash
+# Publish to Vercel
+scratch publish --to vercel
+
+# Publish to Cloudflare Pages
+scratch publish --to cloudflare
+```
+
+By default, publishes target preview environments. Use `--prod` for production:
+
+```bash
+scratch publish --to vercel --prod
+scratch publish --to cloudflare --prod
+```
+
+Additional options (when using `--to`):
+- `--prod` — Production publish
+- `--preview` — Preview publish (default)
+- `--project <name>` — Provider project name
+- `--org <name>` — Provider org/team/account
+- `--yes` — Skip confirmation prompt
+- `--no-build` — Publish existing `dist/` without building
+- `--no-open` — Don't open browser after publish
+- `--json` — Emit machine-readable output
+
+Requirements:
+- Vercel requires the `vercel` CLI (`npm i -g vercel`) and `vercel login`
+- Cloudflare requires `wrangler` (`npm i -g wrangler`) and `wrangler login`
+
 #### scratch login
 
 Log in to a Scratch server:
