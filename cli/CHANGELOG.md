@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.17] - 2026-03-22
+
+This release makes `scratch` a fully standalone binary with no external Node.js or Bun dependency required on the host system.
+
+### Bug Fixes
+
+- Fixed Tailwind CSS build failing on systems with old or missing Node.js. The Tailwind CLI's `#!/usr/bin/env node` shebang would invoke the system Node, which may lack APIs required by Tailwind v4 (e.g. `structuredClone`). The build step now resolves the Tailwind entry point directly and runs it via the embedded Bun runtime, removing any dependency on a system-installed Node.js or Bun.
+
 ## [0.5.16] - 2026-02-05
 
 This release prevents conflicts when running multiple dev servers and fixes a bug with project visibility on first publish.
