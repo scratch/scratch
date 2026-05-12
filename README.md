@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./template/public/scratch-logo.svg" alt="Scratch" height="120" />
+  <img src="./cli/template/public/scratch-logo.svg" alt="Scratch" height="120" />
 </p>
 
 Scratch is a tool for writing with [Markdown](https://daringfireball.net/projects/markdown/) and [React](https://react.dev/).
