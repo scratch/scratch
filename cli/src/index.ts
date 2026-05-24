@@ -9,6 +9,8 @@ import { previewCommand } from './cmd/preview';
 import { checkoutCommand } from './cmd/checkout';
 import { updateCommand } from './cmd/update';
 import { watchCommand } from './cmd/watch';
+import { deployCommand } from './cmd/deploy';
+import { listProviders } from './cmd/deploy/provider-registry';
 import { BuildContext } from './build/context';
 import log, { setLogLevel, setShowBunErrors, shouldShowBunErrors } from './logger';
 import { VERSION } from './version';
@@ -191,8 +193,9 @@ program
 
 program
   .command('publish')
-  .description('Build and publish project to a Scratch server')
+  .description('Build and publish project (default: scratch.dev, or --to for external hosting)')
   .argument('[path]', 'Path to project directory', '.')
+  .option('--to <provider>', `External hosting provider (${listProviders().join(', ')})`)
   .option('--server <url>', 'Server URL (uses project config or prompts if not specified)')
   .option('--name <name>', 'Override project name')
   .option('--visibility <visibility>', 'Override visibility (public, private, @domain, or email list)')
@@ -200,17 +203,38 @@ program
   .option('--no-open', 'Skip opening browser after deploy')
   .option('--dry-run', 'Show what would be deployed without uploading')
   .option('--www', 'Publish for serving at the naked domain (no base path)')
+  .option('--prod', 'Production publish (with --to)')
+  .option('--preview', 'Preview publish (with --to, default)')
+  .option('--project <name>', 'Provider project name (with --to)')
+  .option('--org <name>', 'Provider org/team/account (with --to)')
+  .option('--yes', 'Skip confirmation prompts (with --to)')
+  .option('--json', 'Output machine-readable JSON (with --to)')
   .action(
     withErrorHandling('Publish', async (projectPath, options) => {
-      const ctx = new CloudContext({ serverUrl: options.server, projectPath });
-      await publishCommand(ctx, projectPath, {
-        name: options.name,
-        visibility: options.visibility,
-        noBuild: options.build === false,
-        noOpen: options.open === false,
-        dryRun: options.dryRun === true,
-        www: options.www === true,
-      });
+      if (options.to) {
+        // External hosting: delegate to deploy module
+        await deployCommand(options.to, projectPath, {
+          prod: options.prod === true,
+          preview: options.preview === true,
+          project: options.project,
+          org: options.org,
+          yes: options.yes === true,
+          noBuild: options.build === false,
+          open: options.open !== false,
+          json: options.json === true,
+        });
+      } else {
+        // Default: publish to scratch.dev
+        const ctx = new CloudContext({ serverUrl: options.server, projectPath });
+        await publishCommand(ctx, projectPath, {
+          name: options.name,
+          visibility: options.visibility,
+          noBuild: options.build === false,
+          noOpen: options.open === false,
+          dryRun: options.dryRun === true,
+          www: options.www === true,
+        });
+      }
     })
   );
 
