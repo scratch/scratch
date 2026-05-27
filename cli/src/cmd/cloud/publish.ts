@@ -17,6 +17,7 @@ import {
 } from '../../config'
 import { CloudContext } from './context'
 import { createZip } from './util'
+import { generateExplainerData, pruneUnpublishedExplainers } from '../../build/explainers'
 import fs from 'fs/promises'
 import path from 'path'
 
@@ -136,6 +137,12 @@ export async function publishCommand(ctx: CloudContext, projectPath: string = '.
     throw err
   }
 
+  const publishedExplainers = await generateExplainerData(resolvedPath)
+  const pruned = await pruneUnpublishedExplainers(resolvedPath, distDir)
+  if (pruned.length > 0) {
+    log.info(`Pruned ${pruned.length} unpublished explainer route${pruned.length === 1 ? '' : 's'}`)
+  }
+
   // Create zip
   log.info('Packaging for upload...')
   const { data: zipData, fileCount, totalBytes } = await createZip(distDir)
@@ -190,6 +197,21 @@ export async function publishCommand(ctx: CloudContext, projectPath: string = '.
         log.info('URLs:')
         log.info(`  ${stripTrailingSlash(result.urls.primary)}`)
         log.info(`  ${stripTrailingSlash(result.urls.byId)}`)
+      }
+
+      const published = publishedExplainers.filter((explainer) => explainer.published === true)
+      if (published.length > 0) {
+        const baseUrl = stripTrailingSlash(
+          (options.www && result.www?.configured && result.urls.www)
+            ? result.urls.www
+            : result.urls.primary
+        )
+        log.info('')
+        log.info('Published explainer pages:')
+        for (const explainer of published) {
+          const href = explainer.href.replace(/^\.\//, '')
+          log.info(`  ${explainer.title}: ${baseUrl}/explainers/${href}`)
+        }
       }
 
       // Save project ID if it changed (new project or wasn't saved before)

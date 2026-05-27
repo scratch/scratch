@@ -795,6 +795,20 @@ These are generated and should be in \`.gitignore\`:
 
 - \`dist/\` - Build output
 - \`.scratch/\` - Build cache and project config
+
+## Explainers
+
+Scratch projects include an explainer workflow for persistent visual notes.
+
+- Put explainer pages in \`pages/explainers/<slug>.mdx\`
+- Use \`published: false\` for drafts and \`published: true\` when a page should appear in the explainer directory
+- Use \`prompt: >\` frontmatter when the page should be refreshable by \`scratch regenerate\`
+- \`scratch dev\` and \`scratch build\` automatically generate \`.scratch/generated/explainerData.ts\`
+- \`scratch publish\` prunes unpublished explainer pages before uploading
+
+Reusable explainer components live in \`src/explainers/\` and can be imported from \`../../src/explainers\`.
+
+Run \`scratch skills\` from another repository to install a repo-local \`scratch-explain\` skill that writes explainers back into this Scratch project. If the installed skill contains \`{{PROJECT_PATH}}\`, edit it to this project's absolute path before using it.
 `, binary: false },
 
   'pages/index.mdx': { content: `---
@@ -1171,6 +1185,88 @@ export default function HoverTooltip({ children }: HoverTooltipProps): React.Rea
 }
 `, binary: false },
 
+  'pages/explainers/index.mdx': { content: `---
+title: Published Scratch Explainers
+description: A directory of published Scratch explainers.
+---
+
+{/* @scratch-explain */}
+
+import ExplainerDirectory from './ExplainerDirectory';
+
+# Published Scratch Explainers
+
+These are the Scratch explainers that have been explicitly marked published.
+
+<ExplainerDirectory />
+`, binary: false },
+
+  'pages/explainers/ExplainerDirectory.tsx': { content: `import { explainers, type Explainer } from "../../.scratch/generated/explainerData";
+import { StatusBadge } from "../../src/explainers";
+
+function PublishedBadge({ published }: { published: Explainer["published"] }) {
+  if (published === null) return null;
+
+  return <StatusBadge tone={published ? "good" : "neutral"}>{published ? "Published" : "Draft"}</StatusBadge>;
+}
+
+export default function ExplainerDirectory() {
+  const publishedExplainers = explainers.filter((explainer) => explainer.published === true);
+
+  if (publishedExplainers.length === 0) {
+    return (
+      <p className="not-prose rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+        No published explainers found.
+      </p>
+    );
+  }
+
+  return (
+    <div className="not-prose my-8 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+      <table className="w-full border-collapse text-left text-sm">
+        <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+          <tr>
+            <th className="px-4 py-3 font-semibold">Explainer</th>
+            <th className="hidden px-4 py-3 font-semibold sm:table-cell">Date</th>
+            <th className="px-4 py-3 font-semibold">Status</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-950">
+          {publishedExplainers.map((explainer) => (
+            <tr key={explainer.href} className="align-top transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/60">
+              <td className="px-4 py-4">
+                <a
+                  href={explainer.href}
+                  className="font-medium text-slate-950 underline decoration-slate-300 underline-offset-4 hover:text-blue-700 dark:text-white dark:decoration-slate-600 dark:hover:text-cyan-300"
+                >
+                  {explainer.title}
+                </a>
+                {explainer.description ? (
+                  <p className="mt-1 max-w-2xl text-slate-600 dark:text-slate-300">
+                    {explainer.description}
+                  </p>
+                ) : null}
+                {explainer.date ? (
+                  <p className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400 sm:hidden">
+                    {explainer.date}
+                  </p>
+                ) : null}
+              </td>
+              <td className="hidden whitespace-nowrap px-4 py-4 text-slate-600 dark:text-slate-300 sm:table-cell">
+                {explainer.date || "Undated"}
+              </td>
+              <td className="whitespace-nowrap px-4 py-4">
+                <PublishedBadge published={explainer.published} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+`, binary: false },
+
   'CLAUDE.md': { content: `# CLAUDE.md
 
 Read AGENTS.md for project context and conventions.
@@ -1417,6 +1513,7 @@ export default function Footer() {
 
   'src/tailwind.css': { content: `@import 'tailwindcss';
 @plugin "@tailwindcss/typography";
+@custom-variant dark (&:where(html[data-theme='dark'], html[data-theme='dark'] *));
 
 /*
  * Prose styling for markdown content is provided by @tailwindcss/typography.
@@ -1433,9 +1530,39 @@ export default function Footer() {
   @apply no-underline hover:underline;
 }
 
+.theme-actions {
+  @apply mb-6 flex justify-end gap-2;
+}
+
+.theme-toggle {
+  @apply flex justify-end gap-1;
+}
+
+.theme-toggle button,
+.copy-llm-button {
+  @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition-colors hover:border-sky-400 hover:text-slate-950;
+}
+
+.copy-llm-button {
+  @apply w-auto gap-2 px-3 text-sm font-medium;
+}
+
+.theme-toggle button[aria-pressed='true'] {
+  @apply border-slate-950 bg-slate-950 text-white;
+}
+
+.theme-toggle svg,
+.copy-llm-button svg {
+  @apply h-4 w-4;
+}
+
+.copy-toast {
+  @apply fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-lg;
+}
+
 /* H1 - center and add extra top margin */
 .prose :where(h1):not(:where([class~='not-prose'] *)) {
-  @apply text-center mt-16;
+  @apply mt-16 text-center text-5xl font-extrabold leading-tight text-slate-950 dark:text-white;
 }
 
 /* Inline code - add background and padding, remove backticks */
@@ -1473,27 +1600,273 @@ export default function Footer() {
 
 /* Tables - center by default, prevent overflow */
 .prose :where(table):not(:where([class~='not-prose'] *)) {
-  @apply mx-auto w-auto max-w-full;
+  @apply my-8 block w-full max-w-full overflow-x-auto rounded-lg border border-slate-200 bg-white text-left text-sm shadow-sm;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
-/*
- * Style code blocks to match Shiki github-light theme.
- * This ensures consistent styling whether or not Shiki processes the block.
- */
-pre:has(> code) {
-  @apply bg-white rounded-lg overflow-x-auto;
+.prose :where(th, td):not(:where([class~='not-prose'] *)) {
+  @apply min-w-40 border-b border-slate-100 px-4 py-3 align-top leading-6;
 }
 
-pre > code {
-  @apply block p-4 text-sm leading-relaxed;
-  color: #24292e;
+.prose :where(th):not(:where([class~='not-prose'] *)) {
+  @apply whitespace-nowrap bg-slate-50 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500;
+}
+
+.prose :where(tbody tr:nth-child(even)):not(:where([class~='not-prose'] *)) {
+  @apply bg-slate-50/70;
+}
+
+.prose :where(tbody tr:last-child td):not(:where([class~='not-prose'] *)) {
+  @apply border-b-0;
+}
+
+.explainer-main > table,
+.explainer-main :where(:not(.not-prose)) > table:not(:where([class~='not-prose'] *)) {
+  @apply my-8 block w-full max-w-full overflow-x-auto rounded-lg border border-slate-200 bg-white text-left text-sm shadow-sm dark:border-slate-800 dark:bg-slate-950;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.explainer-main > table th,
+.explainer-main :where(:not(.not-prose)) > table:not(:where([class~='not-prose'] *)) th {
+  @apply whitespace-nowrap border-b border-slate-200 bg-slate-50 px-4 py-3 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400;
+}
+
+.explainer-main > table td,
+.explainer-main :where(:not(.not-prose)) > table:not(:where([class~='not-prose'] *)) td {
+  @apply min-w-40 border-b border-slate-100 px-4 py-3 align-top leading-6 text-slate-700 dark:border-slate-900 dark:text-slate-200;
+}
+
+.explainer-main > table tbody tr:nth-child(even),
+.explainer-main :where(:not(.not-prose)) > table:not(:where([class~='not-prose'] *)) tbody tr:nth-child(even) {
+  @apply bg-slate-50/70 dark:bg-slate-900/50;
+}
+
+.explainer-main > table tbody tr:last-child td,
+.explainer-main :where(:not(.not-prose)) > table:not(:where([class~='not-prose'] *)) tbody tr:last-child td {
+  @apply border-b-0;
+}
+
+/* Code blocks */
+.code-card {
+  @apply my-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm;
+}
+
+.code-toolbar {
+  @apply flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2;
+}
+
+.code-language {
+  @apply font-mono text-xs font-semibold uppercase tracking-wider text-slate-500;
+}
+
+.copy-button {
+  @apply rounded border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600 transition-colors hover:border-sky-400 hover:text-slate-950;
+}
+
+.code-card pre {
+  @apply m-0 overflow-x-auto bg-white p-4 text-sm leading-relaxed;
+}
+
+.code-card code {
+  @apply font-mono;
+}
+
+.code-highlight pre {
+  @apply m-0 overflow-x-auto rounded-none bg-white p-4 text-sm leading-relaxed;
+}
+
+.code-card,
+.code-card pre,
+.code-card code,
+.code-card .line {
+  color: #24292f;
+}
+
+.explainer-main .code-card--explainer .code-language {
+  @apply text-cyan-700;
+}
+
+/* Mermaid diagrams */
+.explainer-shell {
+  @apply relative mx-auto grid w-full gap-8 px-4 py-8 sm:px-6;
+  width: min(calc(100vw - 1rem), 92rem);
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
+
+.explainer-main {
+  @apply flex min-w-0 flex-col;
+  max-width: none;
+}
+
+.explainer-index-link {
+  @apply order-first inline-flex w-fit items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 no-underline transition-colors hover:border-sky-400 hover:text-slate-950 dark:border-slate-700 dark:text-slate-300 dark:hover:border-cyan-400 dark:hover:text-white;
+}
+
+.explainer-index-link svg {
+  @apply h-4 w-4;
+}
+
+.explainer-main > h1:first-child {
+  @apply sr-only;
+}
+
+.explainer-main :where(h2):not(:where([class~='not-prose'] *)) {
+  @apply mt-16 border-t border-slate-300 pt-9 text-4xl font-extrabold leading-tight text-slate-950 dark:border-slate-700 dark:text-slate-50;
+}
+
+.explainer-main :where(h2):not(:where([class~='not-prose'] *))::after {
+  @apply mt-3 block h-1 w-12 rounded-full bg-cyan-500 content-[''] dark:bg-cyan-300;
+}
+
+.explainer-main :where(h3):not(:where([class~='not-prose'] *)) {
+  @apply mt-10 text-2xl font-bold leading-tight text-slate-900 dark:text-slate-100;
+}
+
+.explainer-main :where(p, ul, ol, blockquote):not(:where([class~='not-prose'] *)) {
+  max-width: 78ch;
+}
+
+.explainer-sidebar {
+  @apply order-first border-b border-slate-200 pb-4 text-sm dark:border-slate-700;
+}
+
+.explainer-sidebar-label {
+  @apply mb-2 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-cyan-300;
+}
+
+.explainer-sidebar-links {
+  @apply flex gap-2 overflow-x-auto pb-1;
+}
+
+.explainer-sidebar-link {
+  @apply shrink-0 rounded border border-slate-200 px-3 py-1.5 font-medium text-slate-600 no-underline transition-colors hover:border-sky-400 hover:text-slate-950 dark:border-slate-700 dark:text-slate-300 dark:hover:border-cyan-400 dark:hover:text-white;
+}
+
+.explainer-sidebar-link.depth-3 {
+  @apply text-slate-500 dark:text-slate-400;
+}
+
+.explainer-sidebar-link.is-active {
+  @apply border-sky-400 bg-sky-50 text-slate-950 dark:border-cyan-400 dark:bg-slate-900 dark:text-white;
+}
+
+@media (min-width: 1024px) {
+  .explainer-shell {
+    grid-template-columns: 220px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .explainer-main {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .explainer-index-link {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .explainer-sidebar {
+    @apply sticky top-8 order-none max-h-[calc(100vh-4rem)] overflow-y-auto border-b-0 border-r border-slate-200 pb-0 pr-5 dark:border-slate-700;
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .explainer-sidebar-links {
+    @apply grid gap-1 overflow-visible pb-0;
+  }
+
+  .explainer-sidebar-link {
+    @apply rounded-none border-0 border-l-2 border-transparent px-3 py-2;
+  }
+
+  .explainer-sidebar-link.depth-3 {
+    @apply ml-3 text-xs;
+  }
+
+  .explainer-sidebar-link.is-active {
+    @apply border-sky-400 bg-sky-50 dark:border-cyan-400 dark:bg-slate-900;
+  }
+}
+
+
+.diagram-card {
+  @apply relative z-0 my-8 overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm;
+}
+
+.diagram-toolbar {
+  @apply flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2;
+}
+
+.diagram-label {
+  @apply font-mono text-xs font-semibold uppercase tracking-wider text-slate-600;
+}
+
+.diagram-actions {
+  @apply flex items-center gap-2;
+}
+
+.diagram-zoom-label {
+  @apply min-w-11 text-right font-mono text-xs font-semibold text-slate-500;
+}
+
+.diagram-actions button {
+  @apply min-h-8 rounded border border-slate-300 bg-white px-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-sky-400 hover:text-slate-950;
+}
+
+.diagram-stage {
+  @apply relative min-h-72 overflow-hidden bg-white;
+  cursor: grab;
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+.diagram-stage.is-dragging {
+  cursor: grabbing;
+}
+
+.diagram-viewport {
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.diagram-viewport svg {
+  display: block;
+  max-width: none;
+  height: auto;
+}
+
+.diagram-status,
+.diagram-error {
+  @apply p-6 text-sm text-slate-600;
+}
+
+.diagram-error {
+  @apply text-red-700;
+}
+
+.diagram-card:fullscreen,
+.diagram-card.is-pseudo-fullscreen {
+  @apply m-0 h-screen w-screen max-w-none rounded-none;
+}
+
+.diagram-card.is-pseudo-fullscreen {
+  @apply fixed inset-0 z-50;
+}
+
+body.diagram-modal-open {
+  overflow: hidden;
+}
+
+.diagram-card:fullscreen .diagram-stage,
+.diagram-card.is-pseudo-fullscreen .diagram-stage {
+  min-height: calc(100vh - 49px);
 }
 
 /* Custom interactive elements */
-.copy-button {
-  @apply absolute top-2 right-2 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity;
-  @apply text-gray-500 hover:text-gray-700 bg-gray-200;
-}
 
 .heading-anchor {
   @apply absolute -left-6 top-0 opacity-0 group-hover:opacity-100 transition-opacity no-underline select-none;
@@ -1509,6 +1882,2753 @@ pre > code {
 .animate-marquis {
   animation: marquis 3s linear infinite;
 }
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+html[data-theme='dark'] {
+  body,
+  .min-h-screen.bg-white {
+    @apply bg-slate-950 text-slate-100;
+  }
+
+  .theme-toggle button,
+  .copy-llm-button {
+    @apply border-slate-700 bg-slate-900 text-slate-300 hover:border-cyan-400 hover:text-white;
+  }
+
+  .theme-toggle button[aria-pressed='true'] {
+    @apply border-cyan-300 bg-cyan-300 text-slate-950;
+  }
+
+  .copy-toast {
+    @apply border-slate-700 bg-slate-900 text-slate-100;
+  }
+
+  .prose {
+    @apply prose-invert;
+  }
+
+  .prose :where(code):not(:where([class~='not-prose'], pre *)) {
+    @apply bg-slate-900 text-slate-100;
+  }
+
+  .prose :where(kbd):not(:where([class~='not-prose'] *)) {
+    @apply border-slate-600 bg-slate-800 text-slate-100;
+  }
+
+  .prose :where(table):not(:where([class~='not-prose'] *)),
+  .prose :where(th, td):not(:where([class~='not-prose'] *)) {
+    @apply border-slate-800;
+  }
+
+  .prose :where(table):not(:where([class~='not-prose'] *)) {
+    @apply bg-slate-950;
+  }
+
+  .prose :where(th):not(:where([class~='not-prose'] *)) {
+    @apply bg-slate-900 text-slate-400;
+  }
+
+  .prose :where(tbody tr:nth-child(even)):not(:where([class~='not-prose'] *)) {
+    @apply bg-slate-900/50;
+  }
+
+  .diagram-card {
+    @apply border-slate-700 bg-slate-950;
+  }
+
+  .diagram-toolbar {
+    @apply border-slate-800 bg-slate-900;
+  }
+
+  .diagram-label {
+    @apply text-cyan-300;
+  }
+
+  .diagram-zoom-label {
+    @apply text-slate-400;
+  }
+
+  .diagram-actions button {
+    @apply border-slate-700 bg-slate-800 text-slate-200 hover:border-cyan-400 hover:text-white;
+  }
+
+  .diagram-stage {
+    @apply bg-slate-950;
+  }
+
+  .diagram-status {
+    @apply text-slate-300;
+  }
+
+  .diagram-error {
+    @apply text-red-200;
+  }
+
+  .code-card {
+    @apply border-slate-700 bg-slate-950;
+  }
+
+  .code-toolbar {
+    @apply border-slate-800 bg-slate-900;
+  }
+
+  .code-language {
+    @apply text-cyan-300;
+  }
+
+  .copy-button {
+    @apply border-slate-700 bg-slate-800 text-slate-200 hover:border-cyan-400 hover:text-white;
+  }
+
+  .code-card pre,
+  .code-highlight pre {
+    @apply bg-slate-950;
+  }
+
+  .code-card,
+  .code-card pre,
+  .code-card code,
+  .code-card .line {
+    color: #e5e7eb;
+  }
+}
+
+/* BEGIN Scratch EXPLAINER LAYOUT STYLES */
+
+.scratch-layout-hero {
+  @apply my-8 rounded-xl border bg-white p-6 shadow-sm dark:bg-slate-950;
+}
+
+.scratch-layout-hero--review-change {
+  @apply border-emerald-200 bg-gradient-to-br from-rose-50 to-emerald-50 dark:border-emerald-900 dark:from-rose-950/30 dark:to-emerald-950/30;
+}
+
+.scratch-layout-hero--system-model {
+  @apply border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30;
+}
+
+.scratch-layout-hero--feature-spec {
+  @apply border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30;
+}
+
+.scratch-layout-hero--general-concept {
+  @apply border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900;
+}
+
+.scratch-layout-hero--data-model {
+  @apply border-cyan-200 bg-cyan-50 dark:border-cyan-900 dark:bg-cyan-950/30;
+}
+
+.scratch-layout-hero--bug-incident {
+  @apply border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30;
+}
+
+.scratch-layout-eyebrow {
+  @apply m-0 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+}
+
+.scratch-layout-hero h1 {
+  @apply mt-3 mb-4 text-4xl font-extrabold leading-tight text-slate-950 dark:text-white sm:text-5xl;
+}
+
+.scratch-layout-summary {
+  @apply max-w-3xl text-base leading-7 text-slate-700 dark:text-slate-200;
+}
+
+.scratch-layout-hero-extra {
+  @apply mt-5;
+}
+
+.scratch-layout-meta {
+  @apply my-6 flex flex-wrap gap-3 border-y border-slate-200 py-3 text-sm dark:border-slate-700;
+}
+
+.scratch-layout-meta span {
+  @apply font-medium text-slate-600 dark:text-slate-300;
+}
+
+.scratch-layout-card {
+  @apply my-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-layout-card h3 {
+  @apply mt-0 mb-4 text-lg font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-layout-list {
+  @apply grid gap-3;
+}
+
+.scratch-layout-list div {
+  @apply rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900;
+}
+
+.scratch-layout-list dt {
+  @apply font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+}
+
+.scratch-layout-list dd {
+  @apply mt-1 text-sm text-slate-700 dark:text-slate-200;
+}
+
+.scratch-before-after {
+  @apply my-6 grid gap-4 lg:grid-cols-2;
+}
+
+.scratch-before-after-panel {
+  @apply min-w-0 rounded-lg border bg-white p-5 shadow-sm dark:bg-slate-950;
+}
+
+.scratch-before-after-panel h3 {
+  @apply mt-0 mb-3 text-base font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-before-after-panel--before {
+  @apply border-rose-200 dark:border-rose-900;
+}
+
+.scratch-before-after-panel--after {
+  @apply border-emerald-200 dark:border-emerald-900;
+}
+
+.tone-good {
+  @apply border-emerald-200 text-emerald-800 dark:border-emerald-900 dark:text-emerald-200;
+}
+
+.tone-warn {
+  @apply border-amber-200 text-amber-800 dark:border-amber-900 dark:text-amber-200;
+}
+
+.tone-bad {
+  @apply border-red-200 text-red-800 dark:border-red-900 dark:text-red-200;
+}
+
+.tone-partial {
+  @apply border-sky-200 text-sky-800 dark:border-sky-900 dark:text-sky-200;
+}
+
+.tone-info {
+  @apply border-cyan-200 text-cyan-800 dark:border-cyan-900 dark:text-cyan-200;
+}
+
+.scratch-evidence-panel,
+.scratch-file-map,
+.scratch-section {
+  @apply my-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.explainer-main > .not-prose:has(> .scratch-evidence-panel),
+.explainer-main > .scratch-evidence-panel {
+  order: 100;
+}
+
+.scratch-evidence-panel summary {
+  @apply flex cursor-pointer list-none items-center gap-2 text-lg font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-evidence-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.scratch-evidence-toggle-icon {
+  @apply ml-auto h-4 w-4 text-slate-400 transition-transform;
+}
+
+.scratch-evidence-panel[open] .scratch-evidence-toggle-icon {
+  @apply rotate-180;
+}
+
+.scratch-file-map h3,
+.scratch-section h3 {
+  @apply mt-0 mb-4 text-lg font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-evidence-panel dl,
+.scratch-file-map dl {
+  @apply grid gap-3;
+}
+
+.scratch-evidence-panel dl {
+  @apply mt-4;
+}
+
+.scratch-evidence-panel dl > div,
+.scratch-file-map dl > div {
+  @apply rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900;
+}
+
+.scratch-evidence-panel dt,
+.scratch-file-map dt {
+  @apply font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+}
+
+.scratch-evidence-panel dd,
+.scratch-file-map dd {
+  @apply mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200;
+}
+
+.scratch-file-map dd {
+  @apply grid gap-1;
+}
+
+.scratch-file-map code {
+  @apply rounded bg-slate-100 px-1.5 py-0.5 text-slate-800 dark:bg-slate-800 dark:text-slate-100;
+}
+
+.scratch-data-table {
+  @apply my-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-data-table-caption {
+  @apply border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200;
+}
+
+.scratch-data-table-scroll {
+  @apply overflow-x-auto;
+}
+
+.scratch-data-table table {
+  @apply m-0 w-full border-collapse rounded-none border-0 bg-transparent text-left text-sm shadow-none;
+  display: table;
+}
+
+.scratch-data-table th {
+  @apply whitespace-nowrap border-b border-slate-200 bg-slate-50 px-4 py-3 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400;
+}
+
+.scratch-data-table td {
+  @apply min-w-40 border-b border-slate-100 px-4 py-3 align-top leading-6 text-slate-700 dark:border-slate-900 dark:text-slate-200;
+}
+
+.scratch-data-table tbody tr:nth-child(even) {
+  @apply bg-slate-50/70 dark:bg-slate-900/50;
+}
+
+.scratch-data-table tbody tr:last-child td {
+  @apply border-b-0;
+}
+
+.scratch-data-table--compact th,
+.scratch-data-table--compact td {
+  @apply px-3 py-2 text-sm leading-6;
+}
+
+.scratch-data-table--wide table {
+  min-width: 860px;
+}
+
+.scratch-status-badge {
+  @apply inline-flex items-center rounded-full px-2.5 py-1 font-mono text-[0.7rem] font-semibold uppercase tracking-wide;
+}
+
+.scratch-status-badge--neutral {
+  @apply bg-slate-100 text-slate-700 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700;
+}
+
+.scratch-status-badge--good {
+  @apply bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-200 dark:ring-emerald-900;
+}
+
+.scratch-status-badge--warn,
+.scratch-status-badge--partial {
+  @apply bg-amber-50 text-amber-800 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-900;
+}
+
+.scratch-status-badge--bad {
+  @apply bg-red-50 text-red-700 ring-1 ring-red-200 dark:bg-red-950/40 dark:text-red-200 dark:ring-red-900;
+}
+
+.scratch-status-badge--info {
+  @apply bg-cyan-50 text-cyan-800 ring-1 ring-cyan-200 dark:bg-cyan-950/40 dark:text-cyan-200 dark:ring-cyan-900;
+}
+
+.scratch-metric-grid {
+  @apply my-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4;
+}
+
+.scratch-metric-grid section {
+  @apply rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-metric-grid p {
+  @apply m-0 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+}
+
+.scratch-metric-grid strong {
+  @apply mt-2 block text-2xl font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-metric-grid span {
+  @apply mt-1 block text-sm text-slate-600 dark:text-slate-300;
+}
+
+.scratch-section--hero {
+  @apply border-sky-200 bg-sky-50 shadow-md dark:border-sky-900 dark:bg-sky-950/30;
+}
+
+.scratch-section--recessed {
+  @apply bg-slate-50 shadow-inner dark:bg-slate-900;
+}
+
+.scratch-section--accent {
+  @apply border-l-4 border-l-cyan-500;
+}
+
+.scratch-section-label {
+  @apply m-0 mb-3 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-cyan-300;
+}
+
+.scratch-icon-heading {
+  @apply flex items-center gap-2;
+}
+
+.scratch-icon-heading svg {
+  @apply h-4 w-4 shrink-0 text-cyan-600 dark:text-cyan-300;
+}
+
+.scratch-icon-label {
+  @apply inline-flex items-center gap-2;
+}
+
+.scratch-icon-label svg {
+  @apply h-3.5 w-3.5 shrink-0;
+}
+
+.scratch-pipeline {
+  @apply my-6 grid gap-3;
+}
+
+.scratch-pipeline--horizontal {
+  @apply lg:grid-flow-col lg:auto-cols-fr;
+}
+
+.scratch-pipeline li {
+  @apply relative flex min-w-0 gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-pipeline li > span {
+  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 font-mono text-xs font-semibold text-white dark:bg-cyan-300 dark:text-slate-950;
+}
+
+.scratch-pipeline strong {
+  @apply block text-sm font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-pipeline p {
+  @apply m-0 mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300;
+}
+
+.scratch-callout {
+  @apply my-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200;
+}
+
+.scratch-callout strong {
+  @apply mb-1 block text-slate-950 dark:text-white;
+}
+
+.scratch-callout--warning,
+.scratch-callout--warn {
+  @apply border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100;
+}
+
+.scratch-callout--bad {
+  @apply border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-100;
+}
+
+.scratch-callout--good {
+  @apply border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100;
+}
+
+.scratch-callout--info,
+.scratch-callout--neutral,
+.scratch-callout--partial {
+  @apply border-cyan-200 bg-cyan-50 text-cyan-950 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-100;
+}
+
+.scratch-timeline {
+  @apply my-6 grid gap-0;
+}
+
+.scratch-timeline li {
+  @apply relative grid grid-cols-[1rem_minmax(0,1fr)] gap-4 pb-6 text-sm;
+}
+
+.scratch-timeline li::before {
+  @apply absolute bottom-0 left-2 top-4 w-px bg-slate-200 content-[''] dark:bg-slate-800;
+}
+
+.scratch-timeline li:last-child {
+  @apply pb-0;
+}
+
+.scratch-timeline li:last-child::before {
+  @apply hidden;
+}
+
+.scratch-timeline-marker {
+  @apply mt-1 h-4 w-4 rounded-full border-2 border-slate-300 bg-white dark:border-cyan-700 dark:bg-slate-950;
+}
+
+.scratch-timeline-time {
+  @apply m-0 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+}
+
+.scratch-timeline strong,
+.scratch-step-list strong,
+.scratch-flow-card strong,
+.scratch-artifact-links strong {
+  @apply block text-sm font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-artifact-links strong {
+  @apply flex items-center gap-2;
+}
+
+.scratch-artifact-links strong svg {
+  @apply h-4 w-4 shrink-0 text-cyan-600 dark:text-cyan-300;
+}
+
+.scratch-timeline p:not(.scratch-timeline-time),
+.scratch-step-list p,
+.scratch-flow-card span,
+.scratch-artifact-links span {
+  @apply m-0 mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300;
+}
+
+.scratch-decision-record,
+.scratch-concept-map,
+.scratch-source-callout {
+  @apply my-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-decision-record h3,
+.scratch-concept-map h3 {
+  @apply mt-0 mb-3 text-lg font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-decision-body {
+  @apply rounded-md border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900;
+}
+
+.scratch-decision-body strong {
+  @apply block text-base font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-decision-body p {
+  @apply m-0 mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200;
+}
+
+.scratch-decision-record ul {
+  @apply mt-4 grid gap-2 pl-5 text-sm leading-6 text-slate-700 dark:text-slate-200;
+}
+
+.scratch-concept-map dl,
+.scratch-comparison-grid dl,
+.scratch-glossary {
+  @apply grid gap-3;
+}
+
+.scratch-concept-map dl > div,
+.scratch-comparison-grid dl > div,
+.scratch-glossary > div {
+  @apply rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900;
+}
+
+.scratch-concept-map dt,
+.scratch-comparison-grid dt,
+.scratch-glossary dt {
+  @apply font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+}
+
+.scratch-concept-map dd,
+.scratch-comparison-grid dd,
+.scratch-glossary dd {
+  @apply mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200;
+}
+
+.scratch-flow-card {
+  @apply my-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-flow-card p {
+  @apply m-0 mb-2 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+}
+
+.scratch-comparison-grid {
+  @apply my-6 grid gap-4 lg:grid-cols-2;
+}
+
+.scratch-comparison-grid section {
+  @apply rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-comparison-grid h3 {
+  @apply mt-0 mb-4 text-base font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-source-callout {
+  @apply border-l-4 border-l-cyan-500;
+}
+
+.scratch-source-callout > p {
+  @apply m-0 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-cyan-300;
+}
+
+.scratch-source-callout > strong {
+  @apply mt-1 block text-sm font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-source-callout > div {
+  @apply mt-3 text-sm leading-6 text-slate-700 dark:text-slate-200;
+}
+
+.scratch-step-list {
+  @apply my-6 grid gap-3;
+}
+
+.scratch-step-list li {
+  @apply flex min-w-0 gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-step-list li > span {
+  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-900 font-mono text-xs font-semibold text-white dark:bg-cyan-300 dark:text-slate-950;
+}
+
+.scratch-artifact-links {
+  @apply my-6 grid gap-3 sm:grid-cols-2;
+}
+
+.scratch-artifact-links a,
+.scratch-artifact-links div {
+  @apply rounded-lg border border-slate-200 bg-white p-4 no-underline shadow-sm transition-colors hover:border-sky-400 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-cyan-400;
+}
+
+.scratch-lottie-demo {
+  @apply my-8 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-lottie-demo-grid {
+  @apply grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:items-stretch;
+}
+
+.scratch-lottie {
+  @apply m-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-800 dark:bg-slate-900;
+}
+
+.scratch-lottie-toolbar {
+  @apply flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-lottie-toolbar figcaption {
+  @apply min-w-0 truncate font-mono text-xs font-semibold uppercase text-slate-600 dark:text-cyan-300;
+  letter-spacing: 0;
+}
+
+.scratch-lottie-actions {
+  @apply flex shrink-0 items-center gap-1;
+}
+
+.scratch-lottie-actions button {
+  @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition-colors hover:border-sky-400 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400 dark:hover:text-white;
+}
+
+.scratch-lottie-actions svg {
+  @apply h-4 w-4;
+}
+
+.scratch-lottie-stage {
+  @apply grid aspect-[2/1] min-h-64 place-items-center overflow-hidden bg-white dark:bg-slate-950;
+}
+
+.scratch-lottie-stage > div {
+  @apply h-full w-full;
+}
+
+.scratch-lottie-caption {
+  @apply m-0 border-t border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300;
+}
+
+.scratch-lottie-error {
+  @apply p-6 text-sm text-red-700 dark:text-red-200;
+}
+
+.scratch-lottie-notes {
+  @apply rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900;
+}
+
+.scratch-lottie-notes h3 {
+  @apply m-0 text-lg font-semibold leading-7 text-slate-950 dark:text-white;
+}
+
+.scratch-lottie-notes dl {
+  @apply mt-4 grid gap-3;
+}
+
+.scratch-lottie-notes dl > div {
+  @apply rounded-md border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-lottie-notes dt {
+  @apply font-mono text-xs font-semibold uppercase text-slate-500 dark:text-slate-400;
+  letter-spacing: 0;
+}
+
+.scratch-lottie-notes dd {
+  @apply m-0 mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200;
+}
+
+/* END Scratch EXPLAINER LAYOUT STYLES */
+`, binary: false },
+
+  'src/Mermaid.tsx': { content: `import React, { useEffect, useId, useRef, useState } from 'react';
+
+type MermaidProps = {
+  chart?: string;
+  children?: React.ReactNode;
+  title?: string;
+  config?: Record<string, unknown>;
+};
+
+type ViewState = {
+  scale: number;
+  x: number;
+  y: number;
+};
+
+const DEFAULT_VIEW: ViewState = { scale: 1, x: 0, y: 0 };
+const MIN_SCALE = 0.5;
+const MAX_SCALE = 4;
+const LIGHT_THEME = {
+  background: '#ffffff',
+  primaryColor: '#f8fafc',
+  primaryTextColor: '#0f172a',
+  primaryBorderColor: '#94a3b8',
+  lineColor: '#475569',
+  secondaryColor: '#eef6ff',
+  tertiaryColor: '#f8fafc',
+  clusterBkg: '#f8fafc',
+  clusterBorder: '#cbd5e1',
+  edgeLabelBackground: '#ffffff',
+  fontFamily:
+    'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+};
+
+type PinchState = {
+  distance: number;
+  centerX: number;
+  centerY: number;
+  view: ViewState;
+};
+const DARK_THEME = {
+  background: '#020617',
+  primaryColor: '#0f172a',
+  primaryTextColor: '#e2e8f0',
+  primaryBorderColor: '#38bdf8',
+  lineColor: '#94a3b8',
+  secondaryColor: '#111827',
+  tertiaryColor: '#1e293b',
+  clusterBkg: '#0f172a',
+  clusterBorder: '#475569',
+  edgeLabelBackground: '#0f172a',
+  mainBkg: '#0f172a',
+  secondBkg: '#111827',
+  tertiaryBkg: '#1e293b',
+  nodeBorder: '#38bdf8',
+  noteBkgColor: '#111827',
+  noteTextColor: '#e2e8f0',
+  noteBorderColor: '#475569',
+  actorBkg: '#0f172a',
+  actorBorder: '#38bdf8',
+  actorTextColor: '#e2e8f0',
+  labelBoxBkgColor: '#0f172a',
+  labelBoxBorderColor: '#475569',
+  labelTextColor: '#e2e8f0',
+  loopTextColor: '#e2e8f0',
+  activationBkgColor: '#1e293b',
+  activationBorderColor: '#38bdf8',
+  fontFamily:
+    'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+};
+
+function getEffectiveTheme() {
+  if (typeof window === 'undefined') return 'light';
+  const selectedTheme = document.documentElement.dataset.theme;
+  if (selectedTheme === 'dark' || selectedTheme === 'light') return selectedTheme;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function readChart(chart: string | undefined, children: React.ReactNode): string {
+  if (chart) return chart.trim();
+  if (typeof children === 'string') return children.trim();
+  if (Array.isArray(children)) {
+    return children
+      .map((child) => (typeof child === 'string' ? child : ''))
+      .join('')
+      .trim();
+  }
+  return '';
+}
+
+function clampScale(value: number): number {
+  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
+}
+
+function pointerDistance(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function pointerCenter(a: { x: number; y: number }, b: { x: number; y: number }) {
+  return {
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+  };
+}
+
+export default function Mermaid({ chart, children, title = 'Diagram', config }: MermaidProps) {
+  const reactId = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const source = readChart(chart, children);
+  const cardRef = useRef<HTMLElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+  const lastPointRef = useRef({ x: 0, y: 0 });
+  const activePointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchRef = useRef<PinchState | null>(null);
+  const viewRef = useRef<ViewState>(DEFAULT_VIEW);
+  const [svg, setSvg] = useState('');
+  const [error, setError] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [theme, setTheme] = useState(getEffectiveTheme);
+  const [zoomPercent, setZoomPercent] = useState(100);
+
+  const applyView = (next: ViewState) => {
+    viewRef.current = next;
+    setZoomPercent(Math.round(next.scale * 100));
+    if (viewportRef.current) {
+      viewportRef.current.style.transform = \`translate(\${next.x}px, \${next.y}px) scale(\${next.scale})\`;
+    }
+  };
+
+  const fitToStage = () => {
+    const stage = stageRef.current;
+    const viewport = viewportRef.current;
+    const svgElement = viewport?.querySelector('svg');
+    if (!stage || !svgElement) return;
+
+    const stageRect = stage.getBoundingClientRect();
+    const box = svgElement.viewBox?.baseVal;
+    const svgWidth = box?.width || svgElement.getBoundingClientRect().width || 1;
+    const svgHeight = box?.height || svgElement.getBoundingClientRect().height || 1;
+    const scale = Math.min(
+      1,
+      Math.max(0.75, Math.min((stageRect.width - 48) / svgWidth, (stageRect.height - 48) / svgHeight)),
+    );
+
+    applyView({
+      scale,
+      x: Math.max(24, (stageRect.width - svgWidth * scale) / 2),
+      y: Math.max(24, (stageRect.height - svgHeight * scale) / 2),
+    });
+  };
+
+  const setActualSize = () => {
+    const stage = stageRef.current;
+    const viewport = viewportRef.current;
+    const svgElement = viewport?.querySelector('svg');
+    if (!stage || !svgElement) return;
+
+    const stageRect = stage.getBoundingClientRect();
+    const box = svgElement.viewBox?.baseVal;
+    const svgWidth = box?.width || svgElement.getBoundingClientRect().width || 1;
+    const svgHeight = box?.height || svgElement.getBoundingClientRect().height || 1;
+
+    applyView({
+      scale: 1,
+      x: Math.max(24, (stageRect.width - svgWidth) / 2),
+      y: Math.max(24, (stageRect.height - svgHeight) / 2),
+    });
+  };
+
+  const zoomBy = (factor: number, clientX?: number, clientY?: number) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const rect = stage.getBoundingClientRect();
+    const pointX = (clientX ?? rect.left + rect.width / 2) - rect.left;
+    const pointY = (clientY ?? rect.top + rect.height / 2) - rect.top;
+    const current = viewRef.current;
+    const nextScale = clampScale(current.scale * factor);
+    const contentX = (pointX - current.x) / current.scale;
+    const contentY = (pointY - current.y) / current.scale;
+
+    applyView({
+      scale: nextScale,
+      x: pointX - contentX * nextScale,
+      y: pointY - contentY * nextScale,
+    });
+  };
+
+  const startPinchIfReady = (stage: HTMLDivElement) => {
+    const points = Array.from(activePointersRef.current.values());
+    if (points.length < 2) return;
+
+    const rect = stage.getBoundingClientRect();
+    const center = pointerCenter(points[0], points[1]);
+    pinchRef.current = {
+      distance: pointerDistance(points[0], points[1]),
+      centerX: center.x - rect.left,
+      centerY: center.y - rect.top,
+      view: viewRef.current,
+    };
+    draggingRef.current = false;
+    stage.classList.remove('is-dragging');
+  };
+
+  const updatePinch = (stage: HTMLDivElement) => {
+    const pinch = pinchRef.current;
+    const points = Array.from(activePointersRef.current.values());
+    if (!pinch || points.length < 2 || pinch.distance === 0) return;
+
+    const nextDistance = pointerDistance(points[0], points[1]);
+    const nextScale = clampScale(pinch.view.scale * (nextDistance / pinch.distance));
+    const contentX = (pinch.centerX - pinch.view.x) / pinch.view.scale;
+    const contentY = (pinch.centerY - pinch.view.y) / pinch.view.scale;
+
+    applyView({
+      scale: nextScale,
+      x: pinch.centerX - contentX * nextScale,
+      y: pinch.centerY - contentY * nextScale,
+    });
+  };
+
+  useEffect(() => {
+    const updateTheme = () => setTheme(getEffectiveTheme());
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const observer = new MutationObserver(updateTheme);
+
+    updateTheme();
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+    window.addEventListener('scratch-theme-change', updateTheme);
+    media.addEventListener('change', updateTheme);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('scratch-theme-change', updateTheme);
+      media.removeEventListener('change', updateTheme);
+    };
+  }, []);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      zoomBy(event.deltaY < 0 ? 1.1 : 1 / 1.1, event.clientX, event.clientY);
+    };
+
+    stage.addEventListener('wheel', onWheel, { passive: false });
+
+    return () => {
+      stage.removeEventListener('wheel', onWheel);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function renderDiagram() {
+      if (!source) return;
+
+      try {
+        const mermaid = (await import('mermaid')).default;
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: 'strict',
+          theme: 'base',
+          themeVariables: theme === 'dark' ? DARK_THEME : LIGHT_THEME,
+          ...config,
+        });
+
+        const result = await mermaid.render(\`mermaid-\${reactId}\`, source);
+        if (cancelled) return;
+
+        setError('');
+        setSvg(result.svg);
+
+        window.requestAnimationFrame(() => {
+          if (viewportRef.current) {
+            result.bindFunctions?.(viewportRef.current);
+          }
+          fitToStage();
+        });
+      } catch (renderError) {
+        if (cancelled) return;
+        setSvg('');
+        setError(renderError instanceof Error ? renderError.message : 'Unable to render Mermaid diagram.');
+      }
+    }
+
+    renderDiagram();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [source, config, reactId, theme]);
+
+  useEffect(() => {
+    const onResize = () => fitToStage();
+    const onFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === cardRef.current);
+      window.requestAnimationFrame(fitToStage);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && cardRef.current?.classList.contains('is-pseudo-fullscreen')) {
+        cardRef.current.classList.remove('is-pseudo-fullscreen');
+        document.body.classList.remove('diagram-modal-open');
+        setIsFullscreen(false);
+        window.requestAnimationFrame(fitToStage);
+      }
+    };
+
+    window.addEventListener('resize', onResize);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      window.removeEventListener('resize', onResize);
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.classList.remove('diagram-modal-open');
+    };
+  }, []);
+
+  const toggleFullscreen = async () => {
+    const card = cardRef.current;
+    if (!card) return;
+
+    if (document.fullscreenElement === card) {
+      await document.exitFullscreen();
+      setIsFullscreen(false);
+      return;
+    }
+
+    if (card.classList.contains('is-pseudo-fullscreen')) {
+      card.classList.remove('is-pseudo-fullscreen');
+      document.body.classList.remove('diagram-modal-open');
+      setIsFullscreen(false);
+      window.requestAnimationFrame(fitToStage);
+      return;
+    }
+
+    try {
+      await card.requestFullscreen();
+      setIsFullscreen(true);
+      window.requestAnimationFrame(fitToStage);
+    } catch {
+      card.classList.add('is-pseudo-fullscreen');
+      document.body.classList.add('diagram-modal-open');
+      setIsFullscreen(true);
+      window.requestAnimationFrame(fitToStage);
+    }
+  };
+
+  return (
+    <section ref={cardRef} className="not-prose diagram-card" aria-label={title}>
+      <div className="diagram-toolbar">
+        <div className="diagram-label">{title}</div>
+        <div className="diagram-actions">
+          <span className="diagram-zoom-label" aria-live="polite">
+            {zoomPercent}%
+          </span>
+          <button type="button" onClick={() => zoomBy(1 / 1.2)} aria-label="Zoom out">
+            -
+          </button>
+          <button type="button" onClick={() => zoomBy(1.2)} aria-label="Zoom in">
+            +
+          </button>
+          <button type="button" onClick={setActualSize}>
+            1:1
+          </button>
+          <button type="button" onClick={fitToStage}>
+            Fit
+          </button>
+          <button type="button" onClick={() => void toggleFullscreen()}>
+            {isFullscreen ? 'Exit' : 'Full'}
+          </button>
+        </div>
+      </div>
+      <div
+        ref={stageRef}
+        className="diagram-stage"
+        onPointerDown={(event) => {
+          activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+          if (activePointersRef.current.size >= 2) {
+            startPinchIfReady(event.currentTarget);
+            event.currentTarget.setPointerCapture(event.pointerId);
+            return;
+          }
+
+          if (event.button !== 0) return;
+          draggingRef.current = true;
+          lastPointRef.current = { x: event.clientX, y: event.clientY };
+          event.currentTarget.classList.add('is-dragging');
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerMove={(event) => {
+          if (activePointersRef.current.has(event.pointerId)) {
+            activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+          }
+
+          if (pinchRef.current) {
+            updatePinch(event.currentTarget);
+            return;
+          }
+
+          if (!draggingRef.current) return;
+          const current = viewRef.current;
+          const last = lastPointRef.current;
+          lastPointRef.current = { x: event.clientX, y: event.clientY };
+          applyView({
+            ...current,
+            x: current.x + event.clientX - last.x,
+            y: current.y + event.clientY - last.y,
+          });
+        }}
+        onPointerUp={(event) => {
+          activePointersRef.current.delete(event.pointerId);
+          if (pinchRef.current && activePointersRef.current.size < 2) {
+            pinchRef.current = null;
+            const remaining = Array.from(activePointersRef.current.values())[0];
+            if (remaining) {
+              lastPointRef.current = remaining;
+            }
+          }
+          draggingRef.current = false;
+          event.currentTarget.classList.remove('is-dragging');
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }
+        }}
+        onPointerCancel={(event) => {
+          activePointersRef.current.delete(event.pointerId);
+          pinchRef.current = null;
+          draggingRef.current = false;
+          event.currentTarget.classList.remove('is-dragging');
+        }}
+      >
+        {svg ? (
+          <div
+            ref={viewportRef}
+            className="diagram-viewport"
+            dangerouslySetInnerHTML={{ __html: svg }}
+          />
+        ) : (
+          <div ref={viewportRef} className="diagram-viewport">
+            {!error ? <div className="diagram-status">Rendering diagram...</div> : null}
+          </div>
+        )}
+        {error ? <div className="diagram-error">{error}</div> : null}
+      </div>
+    </section>
+  );
+}
+`, binary: false },
+
+  'src/SyntaxHighlighter.tsx': { content: `import React, { useEffect, useMemo, useState } from 'react';
+
+type SyntaxHighlighterProps = {
+  code?: string;
+  children?: React.ReactNode;
+  language?: string;
+  title?: string;
+  variant?: 'default' | 'explainer';
+};
+
+type ThemeMode = 'light' | 'dark';
+
+function readCode(code: string | undefined, children: React.ReactNode): string {
+  if (code) return code.replace(/\\n+$/, '');
+  if (typeof children === 'string') return children.replace(/\\n+$/, '');
+  if (Array.isArray(children)) {
+    return children
+      .map((child) => (typeof child === 'string' ? child : ''))
+      .join('')
+      .replace(/\\n+$/, '');
+  }
+  return '';
+}
+
+function normalizeLanguage(language: string | undefined): string {
+  const value = (language || 'text').toLowerCase();
+  if (['js', 'mjs', 'cjs'].includes(value)) return 'javascript';
+  if (value === 'ts') return 'typescript';
+  if (['sh', 'zsh', 'shell'].includes(value)) return 'bash';
+  if (value === 'yml') return 'yaml';
+  if (value === 'rb') return 'ruby';
+  if (value === 'py') return 'python';
+  return value;
+}
+
+function activeTheme(): ThemeMode {
+  if (typeof document !== 'undefined') {
+    const value = document.documentElement.dataset.theme;
+    if (value === 'dark' || value === 'light') return value;
+  }
+
+  if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark';
+  }
+
+  return 'light';
+}
+
+export default function SyntaxHighlighter({
+  code,
+  children,
+  language,
+  title,
+  variant = 'default',
+}: SyntaxHighlighterProps) {
+  const source = useMemo(() => readCode(code, children), [code, children]);
+  const normalizedLanguage = useMemo(() => normalizeLanguage(language), [language]);
+  const [theme, setTheme] = useState<ThemeMode>('light');
+  const [highlightedHtml, setHighlightedHtml] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setTheme(activeTheme());
+
+    const updateTheme = (event: Event) => {
+      const customEvent = event as CustomEvent<{ theme?: ThemeMode }>;
+      setTheme(customEvent.detail?.theme || activeTheme());
+    };
+
+    window.addEventListener('scratch-theme-change', updateTheme);
+
+    return () => {
+      window.removeEventListener('scratch-theme-change', updateTheme);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function highlight() {
+      try {
+        const { codeToHtml } = await import('shiki');
+        const html = await codeToHtml(source, {
+          lang: normalizedLanguage,
+          theme: theme === 'dark' ? 'github-dark' : 'github-light',
+        });
+
+        if (!cancelled) setHighlightedHtml(html);
+      } catch {
+        if (!cancelled) setHighlightedHtml('');
+      }
+    }
+
+    highlight();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [source, normalizedLanguage, theme]);
+
+  const copyCode = async () => {
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+
+    try {
+      await navigator.clipboard?.writeText(source);
+    } catch {
+      // Browser automation and strict permissions can reject clipboard writes.
+    }
+  };
+
+  return (
+    <div className={\`not-prose code-card code-card--\${variant}\`}>
+      <div className="code-toolbar">
+        <span className="code-language">{title || normalizedLanguage}</span>
+        <button
+          type="button"
+          onClick={() => void copyCode()}
+          className="copy-button"
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+      {highlightedHtml ? (
+        <div className="code-highlight" dangerouslySetInnerHTML={{ __html: highlightedHtml }} />
+      ) : (
+        <pre>
+          <code className={\`language-\${normalizedLanguage}\`}>{source}</code>
+        </pre>
+      )}
+    </div>
+  );
+}
+`, binary: false },
+
+  'src/explainers/ComparisonGrid.tsx': { content: `import React from 'react';
+import { toneClass } from './utils';
+import type { ComparisonGridItem, ComparisonGridProps } from './types';
+
+export function ComparisonGrid({ leftTitle, rightTitle, left, right }: ComparisonGridProps) {
+  const renderSide = (title: React.ReactNode, items: ComparisonGridItem[]) => (
+    <section>
+      <h3>{title}</h3>
+      <dl>
+        {items.map((item, index) => (
+          <div key={index} className={toneClass(item.tone)}>
+            <dt>{item.label}</dt>
+            <dd>{item.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+
+  return (
+    <div className="not-prose scratch-comparison-grid">
+      {renderSide(leftTitle, left)}
+      {renderSide(rightTitle, right)}
+    </div>
+  );
+}
+
+export default ComparisonGrid;
+`, binary: false },
+
+  'src/explainers/ExplainerPage.tsx': { content: `import React from 'react';
+import { ArrowLeft } from 'lucide-react';
+import ExplainerSidebar from './ExplainerSidebar';
+import type { ExplainerPageProps } from './types';
+
+export function ExplainerPage({ children, sidebar = true }: ExplainerPageProps) {
+  return (
+    <div className="not-prose explainer-shell">
+      <a className="explainer-index-link" href="../">
+        <ArrowLeft aria-hidden="true" />
+        Explainers
+      </a>
+      <main className="prose explainer-main">{children}</main>
+      {sidebar ? <ExplainerSidebar /> : null}
+    </div>
+  );
+}
+
+export default ExplainerPage;
+`, binary: false },
+
+  'src/explainers/StepList.tsx': { content: `import React from 'react';
+import { toneClass } from './utils';
+import type { StepItem } from './types';
+
+export function StepList({ steps }: { steps: StepItem[] }) {
+  return (
+    <ol className="not-prose scratch-step-list">
+      {steps.map((step, index) => (
+        <li key={index} className={toneClass(step.tone)}>
+          <span>{index + 1}</span>
+          <div>
+            <strong>{step.title}</strong>
+            {step.detail ? <p>{step.detail}</p> : null}
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export default StepList;
+`, binary: false },
+
+  'src/explainers/index.tsx': { content: `export { default as ArtifactLinks } from './ArtifactLinks';
+export { default as BeforeAfter } from './BeforeAfter';
+export { default as Callout } from './Callout';
+export { default as ComparisonGrid } from './ComparisonGrid';
+export { default as ConceptMap } from './ConceptMap';
+export { default as DataTable } from './DataTable';
+export { default as DecisionRecord } from './DecisionRecord';
+export { default as EvidencePanel } from './EvidencePanel';
+export { default as ExplainerChecklist } from './ExplainerChecklist';
+export { default as ExplainerHero } from './ExplainerHero';
+export { default as ExplainerMeta } from './ExplainerMeta';
+export { default as ExplainerPage } from './ExplainerPage';
+export { default as ExplainerSection } from './ExplainerSection';
+export { default as ExplainerSidebar } from './ExplainerSidebar';
+export { default as FileMap } from './FileMap';
+export { default as FlowCard } from './FlowCard';
+export { default as Glossary } from './Glossary';
+export { default as LottiePlayer } from './LottiePlayer';
+export { default as Mermaid } from '../Mermaid';
+export { default as MetricGrid } from './MetricGrid';
+export { default as Pipeline } from './Pipeline';
+export { default as RequirementMatrix } from './RequirementMatrix';
+export { default as RiskRegister } from './RiskRegister';
+export { default as SourceCallout } from './SourceCallout';
+export { default as StatusBadge } from './StatusBadge';
+export { default as StepList } from './StepList';
+export { default as SlidingAnimationExplainer } from './SlidingAnimationExplainer';
+export { default as SyntaxHighlighter } from './ExplainerSyntax';
+export { default as Timeline } from './Timeline';
+
+export * from './types';
+`, binary: false },
+
+  'src/explainers/ExplainerChecklist.tsx': { content: `import React from 'react';
+import { ListChecks } from 'lucide-react';
+import { toneClass } from './utils';
+import type { ExplainerChecklistProps } from './types';
+
+export function ExplainerChecklist({ title, items }: ExplainerChecklistProps) {
+  return (
+    <section className="not-prose scratch-layout-card">
+      <h3 className="scratch-icon-heading">
+        <ListChecks aria-hidden="true" />
+        {title}
+      </h3>
+      <dl className="scratch-layout-list">
+        {items.map((item) => (
+          <div key={item.label} className={toneClass(item.tone)}>
+            <dt>{item.label}</dt>
+            <dd>{item.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+export default ExplainerChecklist;
+`, binary: false },
+
+  'src/explainers/FlowCard.tsx': { content: `import React from 'react';
+import { toneClass } from './utils';
+import type { FlowCardProps } from './types';
+
+export function FlowCard({ label, title, detail, tone }: FlowCardProps) {
+  return (
+    <section className={\`not-prose scratch-flow-card \${toneClass(tone) || ''}\`.trim()}>
+      {label ? <p>{label}</p> : null}
+      <strong>{title}</strong>
+      {detail ? <span>{detail}</span> : null}
+    </section>
+  );
+}
+
+export default FlowCard;
+`, binary: false },
+
+  'src/explainers/DecisionRecord.tsx': { content: `import React from 'react';
+import { BadgeCheck } from 'lucide-react';
+import { toneClass } from './utils';
+import type { DecisionRecordProps } from './types';
+
+export function DecisionRecord({
+  title,
+  decision,
+  context,
+  consequences = [],
+  tone = 'info',
+}: DecisionRecordProps) {
+  return (
+    <section className={\`not-prose scratch-decision-record \${toneClass(tone) || ''}\`}>
+      <p className="scratch-section-label scratch-icon-label">
+        <BadgeCheck aria-hidden="true" />
+        Decision
+      </p>
+      <h3>{title}</h3>
+      <div className="scratch-decision-body">
+        <strong>{decision}</strong>
+        {context ? <p>{context}</p> : null}
+      </div>
+      {consequences.length ? (
+        <ul>
+          {consequences.map((consequence, index) => (
+            <li key={index}>{consequence}</li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
+export default DecisionRecord;
+`, binary: false },
+
+  'src/explainers/FileMap.tsx': { content: `import React from 'react';
+import { Files } from 'lucide-react';
+import { toneClass } from './utils';
+import type { FileMapProps } from './types';
+
+export function FileMap({ title = 'File map', files }: FileMapProps) {
+  return (
+    <section className="not-prose scratch-file-map">
+      <h3 className="scratch-icon-heading">
+        <Files aria-hidden="true" />
+        {title}
+      </h3>
+      <dl>
+        {files.map((file) => (
+          <div key={file.path} className={toneClass(file.tone)}>
+            <dt>
+              <code>{file.path}</code>
+            </dt>
+            <dd>
+              <strong>{file.role}</strong>
+              {file.details ? <span>{file.details}</span> : null}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+export default FileMap;
+`, binary: false },
+
+  'src/explainers/ExplainerSyntax.tsx': { content: `import React from 'react';
+import BaseSyntaxHighlighter from '../SyntaxHighlighter';
+
+type SyntaxHighlighterProps = React.ComponentProps<typeof BaseSyntaxHighlighter>;
+
+export default function ExplainerSyntax(props: SyntaxHighlighterProps) {
+  return <BaseSyntaxHighlighter {...props} variant="explainer" />;
+}
+`, binary: false },
+
+  'src/explainers/SlidingAnimationExplainer.tsx': { content: `import React from 'react';
+import LottiePlayer from './LottiePlayer';
+
+const easeOut = { x: [0.22, 0.22], y: [1, 1] };
+const easeIn = { x: [0.42, 0.42], y: [0, 0] };
+
+const baseTransform = {
+  a: { a: 0, k: [0, 0] },
+  p: { a: 0, k: [0, 0] },
+  s: { a: 0, k: [100, 100] },
+  r: { a: 0, k: 0 },
+  o: { a: 0, k: 100 },
+  sk: { a: 0, k: 0 },
+  sa: { a: 0, k: 0 },
+};
+
+function shapeLayer(ind: number, name: string, shapes: unknown[]) {
+  return {
+    ddd: 0,
+    ind,
+    ty: 4,
+    nm: name,
+    sr: 1,
+    ks: {
+      o: { a: 0, k: 100 },
+      r: { a: 0, k: 0 },
+      p: { a: 0, k: [0, 0, 0] },
+      a: { a: 0, k: [0, 0, 0] },
+      s: { a: 0, k: [100, 100, 100] },
+    },
+    ao: 0,
+    shapes,
+    ip: 0,
+    op: 180,
+    st: 0,
+    bm: 0,
+  };
+}
+
+const slidingPanelAnimation = {
+  v: '5.12.2',
+  fr: 60,
+  ip: 0,
+  op: 180,
+  w: 720,
+  h: 360,
+  nm: 'Sliding panel explainer',
+  ddd: 0,
+  assets: [],
+  layers: [
+    shapeLayer(1, 'Track', [
+      {
+        ty: 'gr',
+        nm: 'Track group',
+        it: [
+          {
+            ty: 'rc',
+            d: 1,
+            s: { a: 0, k: [520, 92] },
+            p: { a: 0, k: [360, 185] },
+            r: { a: 0, k: 46 },
+            nm: 'Track box',
+          },
+          {
+            ty: 'fl',
+            c: { a: 0, k: [0.94, 0.97, 0.99, 1] },
+            o: { a: 0, k: 100 },
+            r: 1,
+            nm: 'Track fill',
+          },
+          {
+            ty: 'st',
+            c: { a: 0, k: [0.71, 0.79, 0.87, 1] },
+            o: { a: 0, k: 100 },
+            w: { a: 0, k: 3 },
+            lc: 2,
+            lj: 2,
+            nm: 'Track stroke',
+          },
+          { ty: 'tr', ...baseTransform },
+        ],
+      },
+    ]),
+    shapeLayer(2, 'Destination halo', [
+      {
+        ty: 'gr',
+        nm: 'Halo group',
+        it: [
+          {
+            ty: 'el',
+            p: { a: 0, k: [0, 0] },
+            s: { a: 0, k: [184, 184] },
+            nm: 'Halo ellipse',
+          },
+          {
+            ty: 'fl',
+            c: { a: 0, k: [0.78, 0.94, 1, 1] },
+            o: { a: 0, k: 58 },
+            r: 1,
+            nm: 'Halo fill',
+          },
+          {
+            ty: 'tr',
+            ...baseTransform,
+            p: { a: 0, k: [532, 185] },
+            s: {
+              a: 1,
+              k: [
+                { t: 0, s: [82, 82], e: [82, 82], i: easeOut, o: easeIn },
+                { t: 42, s: [82, 82], e: [116, 116], i: easeOut, o: easeIn },
+                { t: 92, s: [116, 116], e: [96, 96], i: easeOut, o: easeIn },
+                { t: 142, s: [96, 96] },
+              ],
+            },
+            o: {
+              a: 1,
+              k: [
+                { t: 0, s: [0], e: [0], i: { x: [0.4], y: [1] }, o: { x: [0.6], y: [0] } },
+                { t: 38, s: [0], e: [100], i: { x: [0.4], y: [1] }, o: { x: [0.6], y: [0] } },
+                { t: 78, s: [100], e: [100], i: { x: [0.4], y: [1] }, o: { x: [0.6], y: [0] } },
+                { t: 130, s: [100], e: [0], i: { x: [0.4], y: [1] }, o: { x: [0.6], y: [0] } },
+                { t: 168, s: [0] },
+              ],
+            },
+          },
+        ],
+      },
+    ]),
+    shapeLayer(3, 'Motion trail', [
+      {
+        ty: 'gr',
+        nm: 'Trail group',
+        it: [
+          {
+            ty: 'sh',
+            ks: {
+              a: 0,
+              k: {
+                i: [
+                  [0, 0],
+                  [0, 0],
+                ],
+                o: [
+                  [0, 0],
+                  [0, 0],
+                ],
+                v: [
+                  [250, 185],
+                  [470, 185],
+                ],
+                c: false,
+              },
+            },
+            nm: 'Trail path',
+          },
+          {
+            ty: 'st',
+            c: { a: 0, k: [0.06, 0.65, 0.82, 1] },
+            o: { a: 0, k: 100 },
+            w: { a: 0, k: 8 },
+            lc: 2,
+            lj: 2,
+            nm: 'Trail stroke',
+          },
+          {
+            ty: 'tr',
+            ...baseTransform,
+            o: {
+              a: 1,
+              k: [
+                { t: 0, s: [0], e: [0], i: { x: [0.4], y: [1] }, o: { x: [0.6], y: [0] } },
+                { t: 35, s: [0], e: [76], i: { x: [0.4], y: [1] }, o: { x: [0.6], y: [0] } },
+                { t: 88, s: [76], e: [0], i: { x: [0.4], y: [1] }, o: { x: [0.6], y: [0] } },
+                { t: 120, s: [0] },
+              ],
+            },
+          },
+        ],
+      },
+    ]),
+    shapeLayer(4, 'Moving panel', [
+      {
+        ty: 'gr',
+        nm: 'Panel group',
+        it: [
+          {
+            ty: 'rc',
+            d: 1,
+            s: { a: 0, k: [170, 112] },
+            p: { a: 0, k: [0, 0] },
+            r: { a: 0, k: 18 },
+            nm: 'Panel body',
+          },
+          {
+            ty: 'fl',
+            c: { a: 0, k: [0.02, 0.53, 0.74, 1] },
+            o: { a: 0, k: 100 },
+            r: 1,
+            nm: 'Panel fill',
+          },
+          {
+            ty: 'st',
+            c: { a: 0, k: [0.73, 0.95, 1, 1] },
+            o: { a: 0, k: 100 },
+            w: { a: 0, k: 4 },
+            lc: 2,
+            lj: 2,
+            nm: 'Panel stroke',
+          },
+          {
+            ty: 'rc',
+            d: 1,
+            s: { a: 0, k: [106, 14] },
+            p: { a: 0, k: [0, -23] },
+            r: { a: 0, k: 7 },
+            nm: 'Top line',
+          },
+          {
+            ty: 'fl',
+            c: { a: 0, k: [0.89, 0.99, 1, 1] },
+            o: { a: 0, k: 92 },
+            r: 1,
+            nm: 'Line fill 1',
+          },
+          {
+            ty: 'rc',
+            d: 1,
+            s: { a: 0, k: [72, 12] },
+            p: { a: 0, k: [-17, 14] },
+            r: { a: 0, k: 6 },
+            nm: 'Bottom line',
+          },
+          {
+            ty: 'fl',
+            c: { a: 0, k: [0.89, 0.99, 1, 1] },
+            o: { a: 0, k: 72 },
+            r: 1,
+            nm: 'Line fill 2',
+          },
+          {
+            ty: 'tr',
+            ...baseTransform,
+            p: {
+              a: 1,
+              k: [
+                { t: 0, s: [185, 185], e: [185, 185], i: easeOut, o: easeIn },
+                { t: 28, s: [185, 185], e: [532, 185], i: easeOut, o: easeIn },
+                { t: 96, s: [532, 185], e: [532, 185], i: easeOut, o: easeIn },
+                { t: 142, s: [532, 185], e: [185, 185], i: easeOut, o: easeIn },
+                { t: 180, s: [185, 185] },
+              ],
+            },
+            s: {
+              a: 1,
+              k: [
+                { t: 0, s: [100, 100], e: [100, 100], i: easeOut, o: easeIn },
+                { t: 32, s: [96, 104], e: [104, 98], i: easeOut, o: easeIn },
+                { t: 76, s: [104, 98], e: [100, 100], i: easeOut, o: easeIn },
+                { t: 104, s: [100, 100] },
+              ],
+            },
+          },
+        ],
+      },
+    ]),
+  ],
+  markers: [
+    { tm: 0, cm: 'before', dr: 30 },
+    { tm: 35, cm: 'transition', dr: 70 },
+    { tm: 105, cm: 'settled', dr: 40 },
+  ],
+};
+
+const beats = [
+  {
+    label: '1. Stable start',
+    detail: 'The panel rests long enough for the viewer to identify the object before motion begins.',
+  },
+  {
+    label: '2. Eased travel',
+    detail: 'Position keyframes use easing, so the slide feels intentional instead of mechanical.',
+  },
+  {
+    label: '3. Arrival cue',
+    detail: 'A destination halo and subtle scale change show where attention should land.',
+  },
+];
+
+export function SlidingAnimationExplainer() {
+  return (
+    <section className="not-prose scratch-lottie-demo">
+      <div className="scratch-lottie-demo-grid">
+        <LottiePlayer
+          title="Sliding panel: before, transition, settled"
+          animationData={slidingPanelAnimation}
+          caption="A tiny Lottie JSON file can carry position, easing, opacity, and shape changes as one reusable explainer asset."
+        />
+        <div className="scratch-lottie-notes">
+          <p className="scratch-section-label">Why this works</p>
+          <h3>Motion explains the state change, not just the final state.</h3>
+          <dl>
+            {beats.map((beat) => (
+              <div key={beat.label}>
+                <dt>{beat.label}</dt>
+                <dd>{beat.detail}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default SlidingAnimationExplainer;
+`, binary: false },
+
+  'src/explainers/ExplainerSection.tsx': { content: `import React from 'react';
+import { toneClass } from './utils';
+import type { ExplainerSectionProps } from './types';
+
+export function ExplainerSection({
+  title,
+  label,
+  tone,
+  variant = 'default',
+  children,
+}: ExplainerSectionProps) {
+  return (
+    <section className={\`not-prose scratch-section scratch-section--\${variant} \${toneClass(tone) || ''}\`.trim()}>
+      {label ? <p className="scratch-section-label">{label}</p> : null}
+      {title ? <h3>{title}</h3> : null}
+      <div>{children}</div>
+    </section>
+  );
+}
+
+export default ExplainerSection;
+`, binary: false },
+
+  'src/explainers/utils.ts': { content: `import type { Tone } from './types';
+
+export function toneClass(tone: Tone | undefined) {
+  return tone ? \`tone-\${tone}\` : undefined;
+}
+`, binary: false },
+
+  'src/explainers/LottiePlayer.tsx': { content: `import React, { useEffect, useRef, useState } from 'react';
+import { Pause, Play, RotateCcw } from 'lucide-react';
+import type { AnimationItem } from 'lottie-web';
+
+type LottiePlayerProps = {
+  animationData: unknown;
+  title?: string;
+  caption?: React.ReactNode;
+  loop?: boolean;
+  autoplay?: boolean;
+  className?: string;
+};
+
+function prefersReducedMotion() {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
+export function LottiePlayer({
+  animationData,
+  title = 'Lottie animation',
+  caption,
+  loop = true,
+  autoplay = true,
+  className,
+}: LottiePlayerProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const animationRef = useRef<AnimationItem | null>(null);
+  const [isPlaying, setIsPlaying] = useState(autoplay);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let disposed = false;
+
+    async function mountAnimation() {
+      if (!containerRef.current) return;
+
+      try {
+        const { default: lottie } = await import('lottie-web');
+        if (disposed || !containerRef.current) return;
+
+        const reduceMotion = prefersReducedMotion();
+        const animation = lottie.loadAnimation({
+          container: containerRef.current,
+          renderer: 'svg',
+          loop,
+          autoplay: autoplay && !reduceMotion,
+          animationData,
+          rendererSettings: {
+            progressiveLoad: true,
+            preserveAspectRatio: 'xMidYMid meet',
+          },
+        });
+
+        animationRef.current = animation;
+        setIsPlaying(autoplay && !reduceMotion);
+
+        if (reduceMotion) {
+          animation.goToAndStop(42, true);
+        }
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'Unable to load Lottie animation.');
+      }
+    }
+
+    mountAnimation();
+
+    return () => {
+      disposed = true;
+      animationRef.current?.destroy();
+      animationRef.current = null;
+    };
+  }, [animationData, autoplay, loop]);
+
+  function play() {
+    animationRef.current?.play();
+    setIsPlaying(true);
+  }
+
+  function pause() {
+    animationRef.current?.pause();
+    setIsPlaying(false);
+  }
+
+  function replay() {
+    animationRef.current?.goToAndPlay(0, true);
+    setIsPlaying(true);
+  }
+
+  return (
+    <figure className={\`not-prose scratch-lottie \${className || ''}\`.trim()}>
+      <div className="scratch-lottie-toolbar">
+        <figcaption>{title}</figcaption>
+        <div className="scratch-lottie-actions" aria-label="Animation controls">
+          <button type="button" onClick={replay} aria-label="Replay animation">
+            <RotateCcw aria-hidden="true" />
+          </button>
+          {isPlaying ? (
+            <button type="button" onClick={pause} aria-label="Pause animation">
+              <Pause aria-hidden="true" />
+            </button>
+          ) : (
+            <button type="button" onClick={play} aria-label="Play animation">
+              <Play aria-hidden="true" />
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="scratch-lottie-stage">
+        {error ? <p className="scratch-lottie-error">{error}</p> : <div ref={containerRef} />}
+      </div>
+      {caption ? <p className="scratch-lottie-caption">{caption}</p> : null}
+    </figure>
+  );
+}
+
+export default LottiePlayer;
+`, binary: false },
+
+  'src/explainers/ArtifactLinks.tsx': { content: `import React from 'react';
+import { Link2 } from 'lucide-react';
+import { toneClass } from './utils';
+import type { ArtifactLink } from './types';
+
+export function ArtifactLinks({ links }: { links: ArtifactLink[] }) {
+  return (
+    <div className="not-prose scratch-artifact-links">
+      {links.map((link, index) => {
+        const content = (
+          <>
+            <strong>
+              <Link2 aria-hidden="true" />
+              {link.label}
+            </strong>
+            {link.detail ? <span>{link.detail}</span> : null}
+          </>
+        );
+
+        return link.href ? (
+          <a key={index} href={link.href} className={toneClass(link.tone)}>
+            {content}
+          </a>
+        ) : (
+          <div key={index} className={toneClass(link.tone)}>
+            {content}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default ArtifactLinks;
+`, binary: false },
+
+  'src/explainers/Timeline.tsx': { content: `import React from 'react';
+import { toneClass } from './utils';
+import type { TimelineItem } from './types';
+
+export function Timeline({ items }: { items: TimelineItem[] }) {
+  return (
+    <ol className="not-prose scratch-timeline">
+      {items.map((item, index) => (
+        <li key={index} className={toneClass(item.tone)}>
+          <span className="scratch-timeline-marker" />
+          <div>
+            {item.time ? <p className="scratch-timeline-time">{item.time}</p> : null}
+            <strong>{item.title}</strong>
+            {item.detail ? <p>{item.detail}</p> : null}
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export default Timeline;
+`, binary: false },
+
+  'src/explainers/types.ts': { content: `import type React from 'react';
+
+export type ExplainerIntent =
+  | 'review-change'
+  | 'system-model'
+  | 'feature-spec'
+  | 'general-concept'
+  | 'data-model'
+  | 'bug-incident';
+
+export type Tone = 'neutral' | 'good' | 'warn' | 'bad' | 'partial' | 'info';
+
+export type Item = {
+  label: string;
+  value: React.ReactNode;
+  tone?: Tone;
+};
+
+export type ExplainerPageProps = {
+  children: React.ReactNode;
+  sidebar?: boolean;
+};
+
+export type ExplainerHeroProps = {
+  intent: ExplainerIntent;
+  title: string;
+  summary: React.ReactNode;
+  eyebrow?: string;
+  children?: React.ReactNode;
+};
+
+export type ExplainerMetaProps = {
+  date: string;
+  published: boolean;
+  items?: Item[];
+};
+
+export type BeforeAfterProps = {
+  beforeTitle?: string;
+  afterTitle?: string;
+  before: React.ReactNode;
+  after: React.ReactNode;
+};
+
+export type ExplainerChecklistProps = {
+  title: string;
+  items: Item[];
+};
+
+export type EvidenceItem = {
+  label: string;
+  value: React.ReactNode;
+  tone?: Tone;
+};
+
+export type EvidencePanelProps = {
+  title?: string;
+  items: EvidenceItem[];
+};
+
+export type DataTableProps = {
+  children: React.ReactNode;
+  caption?: React.ReactNode;
+  density?: 'normal' | 'compact';
+  wide?: boolean;
+};
+
+export type Metric = {
+  label: string;
+  value: React.ReactNode;
+  detail?: React.ReactNode;
+  tone?: Tone;
+};
+
+export type MetricGridProps = {
+  metrics: Metric[];
+};
+
+export type ExplainerSectionProps = {
+  title?: string;
+  label?: string;
+  tone?: Tone;
+  variant?: 'default' | 'hero' | 'recessed' | 'accent';
+  children: React.ReactNode;
+};
+
+export type FileMapItem = {
+  path: string;
+  role: React.ReactNode;
+  details?: React.ReactNode;
+  tone?: Tone;
+};
+
+export type FileMapProps = {
+  title?: string;
+  files: FileMapItem[];
+};
+
+export type PipelineStep = {
+  title: string;
+  detail?: React.ReactNode;
+  tone?: Tone;
+};
+
+export type PipelineProps = {
+  steps: PipelineStep[];
+  direction?: 'horizontal' | 'vertical';
+};
+
+export type CalloutProps = {
+  tone?: Tone;
+  title?: React.ReactNode;
+  children: React.ReactNode;
+};
+
+export type RequirementRow = {
+  requirement: React.ReactNode;
+  support: React.ReactNode;
+  gap?: React.ReactNode;
+  evidence?: React.ReactNode;
+  next?: React.ReactNode;
+  status?: Tone;
+};
+
+export type RequirementMatrixProps = {
+  rows: RequirementRow[];
+};
+
+export type TimelineItem = {
+  title: React.ReactNode;
+  time?: React.ReactNode;
+  detail?: React.ReactNode;
+  tone?: Tone;
+};
+
+export type DecisionRecordProps = {
+  title: React.ReactNode;
+  decision: React.ReactNode;
+  context?: React.ReactNode;
+  consequences?: React.ReactNode[];
+  tone?: Tone;
+};
+
+export type ConceptMapItem = {
+  concept: React.ReactNode;
+  detail: React.ReactNode;
+  tone?: Tone;
+};
+
+export type ConceptMapProps = {
+  title?: React.ReactNode;
+  items: ConceptMapItem[];
+};
+
+export type FlowCardProps = {
+  label?: React.ReactNode;
+  title: React.ReactNode;
+  detail?: React.ReactNode;
+  tone?: Tone;
+};
+
+export type ComparisonGridItem = {
+  label: React.ReactNode;
+  value: React.ReactNode;
+  tone?: Tone;
+};
+
+export type ComparisonGridProps = {
+  leftTitle: React.ReactNode;
+  rightTitle: React.ReactNode;
+  left: ComparisonGridItem[];
+  right: ComparisonGridItem[];
+};
+
+export type SourceCalloutProps = {
+  source: React.ReactNode;
+  children: React.ReactNode;
+  tone?: Tone;
+};
+
+export type RiskItem = {
+  risk: React.ReactNode;
+  impact?: React.ReactNode;
+  mitigation?: React.ReactNode;
+  tone?: Tone;
+};
+
+export type StepItem = {
+  title: React.ReactNode;
+  detail?: React.ReactNode;
+  tone?: Tone;
+};
+
+export type GlossaryItem = {
+  term: React.ReactNode;
+  definition: React.ReactNode;
+};
+
+export type ArtifactLink = {
+  label: React.ReactNode;
+  href?: string;
+  detail?: React.ReactNode;
+  tone?: Tone;
+};
+`, binary: false },
+
+  'src/explainers/StatusBadge.tsx': { content: `import React from 'react';
+import { toneLabels } from './constants';
+import type { Tone } from './types';
+
+export function StatusBadge({
+  tone = 'neutral',
+  children,
+}: {
+  tone?: Tone;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className={\`scratch-status-badge scratch-status-badge--\${tone}\`}>
+      {children || toneLabels[tone]}
+    </span>
+  );
+}
+
+export default StatusBadge;
+`, binary: false },
+
+  'src/explainers/RiskRegister.tsx': { content: `import React from 'react';
+import DataTable from './DataTable';
+import { toneClass } from './utils';
+import type { RiskItem } from './types';
+
+type RiskRegisterProps = {
+  risks?: RiskItem[];
+  items?: RiskItem[];
+};
+
+export function RiskRegister({ risks, items }: RiskRegisterProps) {
+  const rows = risks ?? items ?? [];
+
+  return (
+    <DataTable wide>
+      <table>
+        <thead>
+          <tr>
+            <th>Risk</th>
+            <th>Impact</th>
+            <th>Mitigation</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((risk, index) => (
+            <tr key={index} className={toneClass(risk.tone)}>
+              <td>{risk.risk}</td>
+              <td>{risk.impact || 'Not recorded'}</td>
+              <td>{risk.mitigation || 'Not recorded'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </DataTable>
+  );
+}
+
+export default RiskRegister;
+`, binary: false },
+
+  'src/explainers/Pipeline.tsx': { content: `import React from 'react';
+import { toneClass } from './utils';
+import type { PipelineProps } from './types';
+
+export function Pipeline({ steps, direction = 'horizontal' }: PipelineProps) {
+  return (
+    <ol className={\`not-prose scratch-pipeline scratch-pipeline--\${direction}\`}>
+      {steps.map((step, index) => (
+        <li key={\`\${step.title}-\${index}\`} className={toneClass(step.tone)}>
+          <span>{index + 1}</span>
+          <div>
+            <strong>{step.title}</strong>
+            {step.detail ? <p>{step.detail}</p> : null}
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export default Pipeline;
+`, binary: false },
+
+  'src/explainers/constants.ts': { content: `import type { ExplainerIntent, Tone } from './types';
+
+export const intentLabels: Record<ExplainerIntent, string> = {
+  'review-change': 'Review Change',
+  'system-model': 'System Model',
+  'feature-spec': 'Feature Spec',
+  'general-concept': 'Concept',
+  'data-model': 'Data Model',
+  'bug-incident': 'Bug / Incident',
+};
+
+export const toneLabels: Record<Tone, string> = {
+  neutral: 'Neutral',
+  good: 'Good',
+  warn: 'Watch',
+  bad: 'Risk',
+  partial: 'Partial',
+  info: 'Info',
+};
+`, binary: false },
+
+  'src/explainers/ExplainerMeta.tsx': { content: `import React from 'react';
+import { toneClass } from './utils';
+import type { ExplainerMetaProps } from './types';
+
+export function ExplainerMeta({ date, published, items = [] }: ExplainerMetaProps) {
+  return (
+    <div className="not-prose scratch-layout-meta">
+      <span>Date: {date}</span>
+      <span>Published: {published ? 'true' : 'false'}</span>
+      {items.map((item) => (
+        <span key={item.label} className={toneClass(item.tone)}>
+          {item.label}: {item.value}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+export default ExplainerMeta;
+`, binary: false },
+
+  'src/explainers/DataTable.tsx': { content: `import React from 'react';
+import type { DataTableProps } from './types';
+
+export function DataTable({
+  children,
+  caption,
+  density = 'normal',
+  wide = false,
+}: DataTableProps) {
+  return (
+    <div
+      className={[
+        'not-prose scratch-data-table',
+        density === 'compact' ? 'scratch-data-table--compact' : '',
+        wide ? 'scratch-data-table--wide' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      {caption ? <div className="scratch-data-table-caption">{caption}</div> : null}
+      <div className="scratch-data-table-scroll">{children}</div>
+    </div>
+  );
+}
+
+export default DataTable;
+`, binary: false },
+
+  'src/explainers/ConceptMap.tsx': { content: `import React from 'react';
+import { toneClass } from './utils';
+import type { ConceptMapProps } from './types';
+
+export function ConceptMap({ title = 'Concept map', items }: ConceptMapProps) {
+  return (
+    <section className="not-prose scratch-concept-map">
+      <h3>{title}</h3>
+      <dl>
+        {items.map((item, index) => (
+          <div key={index} className={toneClass(item.tone)}>
+            <dt>{item.concept}</dt>
+            <dd>{item.detail}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+export default ConceptMap;
+`, binary: false },
+
+  'src/explainers/ExplainerSidebar.tsx': { content: `import React, { useEffect, useState } from 'react';
+
+type HeadingLink = {
+  id: string;
+  text: string;
+  level: number;
+};
+
+function readHeadings(): HeadingLink[] {
+  return Array.from(document.querySelectorAll('main h2[id], main h3[id]'))
+    .map((heading) => ({
+      id: heading.id,
+      text: heading.textContent?.replace(/^#/, '').trim() || heading.id,
+      level: Number(heading.tagName.replace('H', '')),
+    }))
+    .filter((heading) => heading.id && heading.text);
+}
+
+function easeInOutCubic(progress: number) {
+  return progress < 0.5
+    ? 4 * progress * progress * progress
+    : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+}
+
+function scrollToHeading(id: string) {
+  const target = document.getElementById(id);
+  if (!target) return;
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    target.scrollIntoView();
+    return;
+  }
+
+  const startY = window.scrollY;
+  const targetY = target.getBoundingClientRect().top + window.scrollY - 32;
+  const distance = targetY - startY;
+  const duration = 900;
+  const startTime = performance.now();
+
+  function step(now: number) {
+    const progress = Math.min((now - startTime) / duration, 1);
+    window.scrollTo(0, startY + distance * easeInOutCubic(progress));
+
+    if (progress < 1) {
+      window.requestAnimationFrame(step);
+    }
+  }
+
+  window.requestAnimationFrame(step);
+}
+
+export default function ExplainerSidebar() {
+  const [headings, setHeadings] = useState<HeadingLink[]>([]);
+  const [activeId, setActiveId] = useState('');
+
+  useEffect(() => {
+    const nextHeadings = readHeadings();
+    setHeadings(nextHeadings);
+    if (!nextHeadings.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+
+        if (visible?.target.id) {
+          setActiveId(visible.target.id);
+        }
+      },
+      {
+        rootMargin: '-96px 0px -65% 0px',
+        threshold: [0, 1],
+      },
+    );
+
+    nextHeadings.forEach((heading) => {
+      const element = document.getElementById(heading.id);
+      if (element) observer.observe(element);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  if (!headings.length) return null;
+
+  return (
+    <aside className="not-prose explainer-sidebar" aria-label="Explainer sections">
+      <div className="explainer-sidebar-label">Sections</div>
+      <nav className="explainer-sidebar-links">
+        {headings.map((heading) => (
+          <a
+            key={heading.id}
+            href={\`#\${heading.id}\`}
+            onClick={(event) => {
+              event.preventDefault();
+              setActiveId(heading.id);
+              window.history.pushState(null, '', \`#\${heading.id}\`);
+              scrollToHeading(heading.id);
+            }}
+            className={[
+              'explainer-sidebar-link',
+              \`depth-\${heading.level}\`,
+              activeId === heading.id ? 'is-active' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            {heading.text}
+          </a>
+        ))}
+      </nav>
+    </aside>
+  );
+}
+`, binary: false },
+
+  'src/explainers/SourceCallout.tsx': { content: `import React from 'react';
+import { Quote } from 'lucide-react';
+import { toneClass } from './utils';
+import type { SourceCalloutProps } from './types';
+
+export function SourceCallout({ source, children, tone = 'info' }: SourceCalloutProps) {
+  return (
+    <aside className={\`not-prose scratch-source-callout \${toneClass(tone) || ''}\`}>
+      <p className="scratch-icon-label">
+        <Quote aria-hidden="true" />
+        Source
+      </p>
+      <strong>{source}</strong>
+      <div>{children}</div>
+    </aside>
+  );
+}
+
+export default SourceCallout;
+`, binary: false },
+
+  'src/explainers/EvidencePanel.tsx': { content: `import React from 'react';
+import { ChevronDown, SearchCheck } from 'lucide-react';
+import { toneClass } from './utils';
+import type { EvidencePanelProps } from './types';
+
+export function EvidencePanel({ title = 'Evidence inspected', items }: EvidencePanelProps) {
+  return (
+    <details className="not-prose scratch-evidence-panel">
+      <summary className="scratch-icon-heading">
+        <SearchCheck aria-hidden="true" />
+        <span>{title}</span>
+        <ChevronDown className="scratch-evidence-toggle-icon" aria-hidden="true" />
+      </summary>
+      <dl>
+        {items.map((item) => (
+          <div key={item.label} className={toneClass(item.tone)}>
+            <dt>{item.label}</dt>
+            <dd>{item.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
+  );
+}
+
+export default EvidencePanel;
+`, binary: false },
+
+  'src/explainers/BeforeAfter.tsx': { content: `import React from 'react';
+import type { BeforeAfterProps } from './types';
+
+export function BeforeAfter({
+  beforeTitle = 'Before',
+  afterTitle = 'After',
+  before,
+  after,
+}: BeforeAfterProps) {
+  return (
+    <div className="not-prose scratch-before-after">
+      <section className="scratch-before-after-panel scratch-before-after-panel--before">
+        <h3>{beforeTitle}</h3>
+        <div>{before}</div>
+      </section>
+      <section className="scratch-before-after-panel scratch-before-after-panel--after">
+        <h3>{afterTitle}</h3>
+        <div>{after}</div>
+      </section>
+    </div>
+  );
+}
+
+export default BeforeAfter;
+`, binary: false },
+
+  'src/explainers/Callout.tsx': { content: `import React from 'react';
+import type { CalloutProps } from './types';
+
+export function Callout({ tone = 'info', title, children }: CalloutProps) {
+  return (
+    <aside className={\`not-prose scratch-callout scratch-callout--\${tone}\`}>
+      {title ? <strong>{title}</strong> : null}
+      <div>{children}</div>
+    </aside>
+  );
+}
+
+export default Callout;
+`, binary: false },
+
+  'src/explainers/MetricGrid.tsx': { content: `import React from 'react';
+import { toneClass } from './utils';
+import type { MetricGridProps } from './types';
+
+export function MetricGrid({ metrics }: MetricGridProps) {
+  return (
+    <div className="not-prose scratch-metric-grid">
+      {metrics.map((metric) => (
+        <section key={metric.label} className={toneClass(metric.tone)}>
+          <p>{metric.label}</p>
+          <strong>{metric.value}</strong>
+          {metric.detail ? <span>{metric.detail}</span> : null}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+export default MetricGrid;
+`, binary: false },
+
+  'src/explainers/ExplainerHero.tsx': { content: `import React from 'react';
+import { intentLabels } from './constants';
+import type { ExplainerHeroProps } from './types';
+
+export function ExplainerHero({
+  intent,
+  title,
+  summary,
+  eyebrow,
+  children,
+}: ExplainerHeroProps) {
+  return (
+    <section className={\`not-prose scratch-layout-hero scratch-layout-hero--\${intent}\`}>
+      <p className="scratch-layout-eyebrow">{eyebrow || intentLabels[intent]}</p>
+      <h1>{title}</h1>
+      <div className="scratch-layout-summary">{summary}</div>
+      {children ? <div className="scratch-layout-hero-extra">{children}</div> : null}
+    </section>
+  );
+}
+
+export default ExplainerHero;
+`, binary: false },
+
+  'src/explainers/Glossary.tsx': { content: `import React from 'react';
+import type { GlossaryItem } from './types';
+
+export function Glossary({ items }: { items: GlossaryItem[] }) {
+  return (
+    <dl className="not-prose scratch-glossary">
+      {items.map((item, index) => (
+        <div key={index}>
+          <dt>{item.term}</dt>
+          <dd>{item.definition}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+export default Glossary;
+`, binary: false },
+
+  'src/explainers/RequirementMatrix.tsx': { content: `import React from 'react';
+import DataTable from './DataTable';
+import StatusBadge from './StatusBadge';
+import { toneLabels } from './constants';
+import type { RequirementMatrixProps } from './types';
+
+export function RequirementMatrix({ rows }: RequirementMatrixProps) {
+  return (
+    <DataTable wide>
+      <table>
+        <thead>
+          <tr>
+            <th>Requirement</th>
+            <th>Status</th>
+            <th>Current Support</th>
+            <th>Gap</th>
+            <th>Evidence</th>
+            <th>Next Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={index}>
+              <td>{row.requirement}</td>
+              <td>
+                <StatusBadge tone={row.status || 'neutral'}>{toneLabels[row.status || 'neutral']}</StatusBadge>
+              </td>
+              <td>{row.support}</td>
+              <td>{row.gap || 'None'}</td>
+              <td>{row.evidence || 'Not recorded'}</td>
+              <td>{row.next || 'None'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </DataTable>
+  );
+}
+
+export default RequirementMatrix;
 `, binary: false },
 
 } as const;

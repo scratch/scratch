@@ -275,3 +275,17 @@ These are generated and should be in `.gitignore`:
 
 - `dist/` - Build output
 - `.scratch/` - Build cache and project config
+
+## Explainers
+
+Scratch projects include an explainer workflow for persistent visual notes.
+
+- Put explainer pages in `pages/explainers/<slug>.mdx`
+- Use `published: false` for drafts and `published: true` when a page should appear in the explainer directory
+- Use `prompt: >` frontmatter when the page should be refreshable by `scratch regenerate`
+- `scratch dev` and `scratch build` automatically generate `.scratch/generated/explainerData.ts`
+- `scratch publish` prunes unpublished explainer pages before uploading
+
+Reusable explainer components live in `src/explainers/` and can be imported from `../../src/explainers`.
+
+Run `scratch skills` from another repository to install a repo-local `scratch-explain` skill that writes explainers back into this Scratch project. If the installed skill contains `{{PROJECT_PATH}}`, edit it to this project's absolute path before using it.

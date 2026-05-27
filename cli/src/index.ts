@@ -9,6 +9,8 @@ import { previewCommand } from './cmd/preview';
 import { checkoutCommand } from './cmd/checkout';
 import { updateCommand } from './cmd/update';
 import { watchCommand } from './cmd/watch';
+import { skillsCommand } from './cmd/skills';
+import { regenerateCommand } from './cmd/regenerate';
 import { BuildContext } from './build/context';
 import log, { setLogLevel, setShowBunErrors, shouldShowBunErrors } from './logger';
 import { VERSION } from './version';
@@ -160,6 +162,32 @@ program
       await fs.rm(ctx.tempDir, { recursive: true, force: true });
       await fs.rm(`${ctx.rootDir}/.scratch/dev`, { recursive: true, force: true });
       log.info('Cleaned dist/, .scratch/cache/, and .scratch/dev/');
+    })
+  );
+
+program
+  .command('skills')
+  .description('Install the scratch-explain skill into the current repository')
+  .option('--project <path-or-name>', 'Scratch project path or indexed project name')
+  .action(
+    withErrorHandling('Skills', async (options) => {
+      await skillsCommand(options);
+    })
+  );
+
+program
+  .command('regenerate')
+  .description('Regenerate explainer pages from prompt frontmatter')
+  .argument('[path]', 'Path to Scratch project directory', '.')
+  .option('--file <path-or-slug>', 'Only regenerate one explainer')
+  .option('--dry-run', 'List refreshable explainers without invoking an agent')
+  .option('--concurrency <count>', 'Number of explainers to regenerate at once', '1')
+  .option('--agent <command>', 'Agent command to run (default: codex)')
+  .option('--context-root <path>', 'Additional context root for Codex')
+  .option('--yolo', 'Allow Codex to bypass approvals and sandbox')
+  .action(
+    withErrorHandling('Regenerate', async (projectPath, options) => {
+      await regenerateCommand(projectPath, options);
     })
   );
 

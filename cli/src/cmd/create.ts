@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { materializeProjectTemplates } from '../template';
 import { BUILD_DEPENDENCIES } from '../build/steps/01-ensure-dependencies';
+import { upsertProjectIndexEntry } from '../config';
 import { formatFileTree } from '../util';
 import log from '../logger';
 
@@ -22,6 +23,8 @@ export async function generatePackageJson(
     scripts: {
       dev: 'scratch dev',
       build: 'scratch build',
+      regenerate: 'scratch regenerate',
+      publish: 'scratch publish',
     },
     dependencies: Object.fromEntries(
       BUILD_DEPENDENCIES.map((pkg) => [pkg, 'latest'])
@@ -43,14 +46,17 @@ export async function createCommand(
   options: CreateOptions = {}
 ) {
   const created = await materializeProjectTemplates(targetPath);
+  const resolvedTargetPath = path.resolve(targetPath);
 
   // Generate package.json if it doesn't exist
   const packageJsonPath = path.join(targetPath, 'package.json');
   if (!(await fs.exists(packageJsonPath))) {
-    const projectName = path.basename(path.resolve(targetPath));
+    const projectName = path.basename(resolvedTargetPath);
     await generatePackageJson(targetPath, projectName);
     created.push('package.json');
   }
+
+  await upsertProjectIndexEntry(resolvedTargetPath);
 
   if (!options.quiet) {
     if (created.length > 0) {

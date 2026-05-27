@@ -13,6 +13,10 @@ export const BUILD_DEPENDENCIES = [
   'tailwindcss',
   '@tailwindcss/cli',
   '@tailwindcss/typography',
+  'lucide-react',
+  'lottie-web',
+  'mermaid',
+  'shiki',
 ];
 
 export const ensureDependenciesStep: BuildStep = {
@@ -32,6 +36,8 @@ export const ensureDependenciesStep: BuildStep = {
         scripts: {
           dev: 'scratch dev',
           build: 'scratch build',
+          regenerate: 'scratch regenerate',
+          publish: 'scratch publish',
         },
         dependencies: Object.fromEntries(
           BUILD_DEPENDENCIES.map((pkg) => [pkg, 'latest'])

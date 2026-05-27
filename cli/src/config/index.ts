@@ -24,6 +24,16 @@ export { loadProjectConfig, saveProjectConfig } from './project-config'
 // Global config
 export { loadGlobalConfig, saveGlobalConfig } from './global-config'
 
+// Project index
+export {
+  loadProjectsIndex,
+  saveProjectsIndex,
+  upsertProjectIndexEntry,
+  resolveIndexedProject,
+  type ProjectIndexEntry,
+  type ProjectIndexFile,
+} from './projects-index'
+
 // CF Access utilities (all functions now require serverUrl parameter)
 export {
   getCfAccessCredentials,

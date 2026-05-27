@@ -9,6 +9,7 @@ export const PATHS = {
   secretsDir: join(homedir(), '.scratch'),
   credentials: join(homedir(), '.scratch', 'credentials.json'),
   cfAccess: join(homedir(), '.scratch', 'cf-access.json'),
+  projects: join(homedir(), '.scratch', 'projects.json'),
   secrets: join(homedir(), '.scratch', 'secrets.json'), // deprecated, see cf-access.json
 
   // Config directory - XDG-compliant, world-readable (0o644)

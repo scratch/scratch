@@ -45,6 +45,7 @@ describe("PATHS", () => {
   test("defines all expected paths", () => {
     expect(PATHS.secretsDir).toBeDefined();
     expect(PATHS.credentials).toBeDefined();
+    expect(PATHS.projects).toBeDefined();
     expect(PATHS.secrets).toBeDefined();
     expect(PATHS.configDir).toBeDefined();
     expect(PATHS.userConfig).toBeDefined();
@@ -54,6 +55,7 @@ describe("PATHS", () => {
   test("secrets paths are in ~/.scratch/", () => {
     expect(PATHS.secretsDir).toContain(".scratch");
     expect(PATHS.credentials).toContain(".scratch");
+    expect(PATHS.projects).toContain(".scratch");
     expect(PATHS.secrets).toContain(".scratch");
   });
 

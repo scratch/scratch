@@ -1,3 +1,4 @@
+export { generateExplainerDataStep } from './00-generate-explainer-data';
 export { ensureDependenciesStep } from './01-ensure-dependencies';
 export { resetDirectoriesStep } from './02-reset-directories';
 export { checkConflictsStep } from './02b-check-conflicts';

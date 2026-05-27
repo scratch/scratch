@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @plugin "@tailwindcss/typography";
+@custom-variant dark (&:where(html[data-theme='dark'], html[data-theme='dark'] *));
 
 /*
  * Prose styling for markdown content is provided by @tailwindcss/typography.
@@ -16,9 +17,39 @@
   @apply no-underline hover:underline;
 }
 
+.theme-actions {
+  @apply mb-6 flex justify-end gap-2;
+}
+
+.theme-toggle {
+  @apply flex justify-end gap-1;
+}
+
+.theme-toggle button,
+.copy-llm-button {
+  @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition-colors hover:border-sky-400 hover:text-slate-950;
+}
+
+.copy-llm-button {
+  @apply w-auto gap-2 px-3 text-sm font-medium;
+}
+
+.theme-toggle button[aria-pressed='true'] {
+  @apply border-slate-950 bg-slate-950 text-white;
+}
+
+.theme-toggle svg,
+.copy-llm-button svg {
+  @apply h-4 w-4;
+}
+
+.copy-toast {
+  @apply fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-lg;
+}
+
 /* H1 - center and add extra top margin */
 .prose :where(h1):not(:where([class~='not-prose'] *)) {
-  @apply text-center mt-16;
+  @apply mt-16 text-center text-5xl font-extrabold leading-tight text-slate-950 dark:text-white;
 }
 
 /* Inline code - add background and padding, remove backticks */
@@ -56,27 +87,273 @@
 
 /* Tables - center by default, prevent overflow */
 .prose :where(table):not(:where([class~='not-prose'] *)) {
-  @apply mx-auto w-auto max-w-full;
+  @apply my-8 block w-full max-w-full overflow-x-auto rounded-lg border border-slate-200 bg-white text-left text-sm shadow-sm;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
-/*
- * Style code blocks to match Shiki github-light theme.
- * This ensures consistent styling whether or not Shiki processes the block.
- */
-pre:has(> code) {
-  @apply bg-white rounded-lg overflow-x-auto;
+.prose :where(th, td):not(:where([class~='not-prose'] *)) {
+  @apply min-w-40 border-b border-slate-100 px-4 py-3 align-top leading-6;
 }
 
-pre > code {
-  @apply block p-4 text-sm leading-relaxed;
-  color: #24292e;
+.prose :where(th):not(:where([class~='not-prose'] *)) {
+  @apply whitespace-nowrap bg-slate-50 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500;
+}
+
+.prose :where(tbody tr:nth-child(even)):not(:where([class~='not-prose'] *)) {
+  @apply bg-slate-50/70;
+}
+
+.prose :where(tbody tr:last-child td):not(:where([class~='not-prose'] *)) {
+  @apply border-b-0;
+}
+
+.explainer-main > table,
+.explainer-main :where(:not(.not-prose)) > table:not(:where([class~='not-prose'] *)) {
+  @apply my-8 block w-full max-w-full overflow-x-auto rounded-lg border border-slate-200 bg-white text-left text-sm shadow-sm dark:border-slate-800 dark:bg-slate-950;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.explainer-main > table th,
+.explainer-main :where(:not(.not-prose)) > table:not(:where([class~='not-prose'] *)) th {
+  @apply whitespace-nowrap border-b border-slate-200 bg-slate-50 px-4 py-3 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400;
+}
+
+.explainer-main > table td,
+.explainer-main :where(:not(.not-prose)) > table:not(:where([class~='not-prose'] *)) td {
+  @apply min-w-40 border-b border-slate-100 px-4 py-3 align-top leading-6 text-slate-700 dark:border-slate-900 dark:text-slate-200;
+}
+
+.explainer-main > table tbody tr:nth-child(even),
+.explainer-main :where(:not(.not-prose)) > table:not(:where([class~='not-prose'] *)) tbody tr:nth-child(even) {
+  @apply bg-slate-50/70 dark:bg-slate-900/50;
+}
+
+.explainer-main > table tbody tr:last-child td,
+.explainer-main :where(:not(.not-prose)) > table:not(:where([class~='not-prose'] *)) tbody tr:last-child td {
+  @apply border-b-0;
+}
+
+/* Code blocks */
+.code-card {
+  @apply my-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm;
+}
+
+.code-toolbar {
+  @apply flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2;
+}
+
+.code-language {
+  @apply font-mono text-xs font-semibold uppercase tracking-wider text-slate-500;
+}
+
+.copy-button {
+  @apply rounded border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600 transition-colors hover:border-sky-400 hover:text-slate-950;
+}
+
+.code-card pre {
+  @apply m-0 overflow-x-auto bg-white p-4 text-sm leading-relaxed;
+}
+
+.code-card code {
+  @apply font-mono;
+}
+
+.code-highlight pre {
+  @apply m-0 overflow-x-auto rounded-none bg-white p-4 text-sm leading-relaxed;
+}
+
+.code-card,
+.code-card pre,
+.code-card code,
+.code-card .line {
+  color: #24292f;
+}
+
+.explainer-main .code-card--explainer .code-language {
+  @apply text-cyan-700;
+}
+
+/* Mermaid diagrams */
+.explainer-shell {
+  @apply relative mx-auto grid w-full gap-8 px-4 py-8 sm:px-6;
+  width: min(calc(100vw - 1rem), 92rem);
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
+
+.explainer-main {
+  @apply flex min-w-0 flex-col;
+  max-width: none;
+}
+
+.explainer-index-link {
+  @apply order-first inline-flex w-fit items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 no-underline transition-colors hover:border-sky-400 hover:text-slate-950 dark:border-slate-700 dark:text-slate-300 dark:hover:border-cyan-400 dark:hover:text-white;
+}
+
+.explainer-index-link svg {
+  @apply h-4 w-4;
+}
+
+.explainer-main > h1:first-child {
+  @apply sr-only;
+}
+
+.explainer-main :where(h2):not(:where([class~='not-prose'] *)) {
+  @apply mt-16 border-t border-slate-300 pt-9 text-4xl font-extrabold leading-tight text-slate-950 dark:border-slate-700 dark:text-slate-50;
+}
+
+.explainer-main :where(h2):not(:where([class~='not-prose'] *))::after {
+  @apply mt-3 block h-1 w-12 rounded-full bg-cyan-500 content-[''] dark:bg-cyan-300;
+}
+
+.explainer-main :where(h3):not(:where([class~='not-prose'] *)) {
+  @apply mt-10 text-2xl font-bold leading-tight text-slate-900 dark:text-slate-100;
+}
+
+.explainer-main :where(p, ul, ol, blockquote):not(:where([class~='not-prose'] *)) {
+  max-width: 78ch;
+}
+
+.explainer-sidebar {
+  @apply order-first border-b border-slate-200 pb-4 text-sm dark:border-slate-700;
+}
+
+.explainer-sidebar-label {
+  @apply mb-2 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-cyan-300;
+}
+
+.explainer-sidebar-links {
+  @apply flex gap-2 overflow-x-auto pb-1;
+}
+
+.explainer-sidebar-link {
+  @apply shrink-0 rounded border border-slate-200 px-3 py-1.5 font-medium text-slate-600 no-underline transition-colors hover:border-sky-400 hover:text-slate-950 dark:border-slate-700 dark:text-slate-300 dark:hover:border-cyan-400 dark:hover:text-white;
+}
+
+.explainer-sidebar-link.depth-3 {
+  @apply text-slate-500 dark:text-slate-400;
+}
+
+.explainer-sidebar-link.is-active {
+  @apply border-sky-400 bg-sky-50 text-slate-950 dark:border-cyan-400 dark:bg-slate-900 dark:text-white;
+}
+
+@media (min-width: 1024px) {
+  .explainer-shell {
+    grid-template-columns: 220px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .explainer-main {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .explainer-index-link {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .explainer-sidebar {
+    @apply sticky top-8 order-none max-h-[calc(100vh-4rem)] overflow-y-auto border-b-0 border-r border-slate-200 pb-0 pr-5 dark:border-slate-700;
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .explainer-sidebar-links {
+    @apply grid gap-1 overflow-visible pb-0;
+  }
+
+  .explainer-sidebar-link {
+    @apply rounded-none border-0 border-l-2 border-transparent px-3 py-2;
+  }
+
+  .explainer-sidebar-link.depth-3 {
+    @apply ml-3 text-xs;
+  }
+
+  .explainer-sidebar-link.is-active {
+    @apply border-sky-400 bg-sky-50 dark:border-cyan-400 dark:bg-slate-900;
+  }
+}
+
+
+.diagram-card {
+  @apply relative z-0 my-8 overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm;
+}
+
+.diagram-toolbar {
+  @apply flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2;
+}
+
+.diagram-label {
+  @apply font-mono text-xs font-semibold uppercase tracking-wider text-slate-600;
+}
+
+.diagram-actions {
+  @apply flex items-center gap-2;
+}
+
+.diagram-zoom-label {
+  @apply min-w-11 text-right font-mono text-xs font-semibold text-slate-500;
+}
+
+.diagram-actions button {
+  @apply min-h-8 rounded border border-slate-300 bg-white px-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-sky-400 hover:text-slate-950;
+}
+
+.diagram-stage {
+  @apply relative min-h-72 overflow-hidden bg-white;
+  cursor: grab;
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+.diagram-stage.is-dragging {
+  cursor: grabbing;
+}
+
+.diagram-viewport {
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.diagram-viewport svg {
+  display: block;
+  max-width: none;
+  height: auto;
+}
+
+.diagram-status,
+.diagram-error {
+  @apply p-6 text-sm text-slate-600;
+}
+
+.diagram-error {
+  @apply text-red-700;
+}
+
+.diagram-card:fullscreen,
+.diagram-card.is-pseudo-fullscreen {
+  @apply m-0 h-screen w-screen max-w-none rounded-none;
+}
+
+.diagram-card.is-pseudo-fullscreen {
+  @apply fixed inset-0 z-50;
+}
+
+body.diagram-modal-open {
+  overflow: hidden;
+}
+
+.diagram-card:fullscreen .diagram-stage,
+.diagram-card.is-pseudo-fullscreen .diagram-stage {
+  min-height: calc(100vh - 49px);
 }
 
 /* Custom interactive elements */
-.copy-button {
-  @apply absolute top-2 right-2 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity;
-  @apply text-gray-500 hover:text-gray-700 bg-gray-200;
-}
 
 .heading-anchor {
   @apply absolute -left-6 top-0 opacity-0 group-hover:opacity-100 transition-opacity no-underline select-none;
@@ -92,3 +369,702 @@ pre > code {
 .animate-marquis {
   animation: marquis 3s linear infinite;
 }
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+html[data-theme='dark'] {
+  body,
+  .min-h-screen.bg-white {
+    @apply bg-slate-950 text-slate-100;
+  }
+
+  .theme-toggle button,
+  .copy-llm-button {
+    @apply border-slate-700 bg-slate-900 text-slate-300 hover:border-cyan-400 hover:text-white;
+  }
+
+  .theme-toggle button[aria-pressed='true'] {
+    @apply border-cyan-300 bg-cyan-300 text-slate-950;
+  }
+
+  .copy-toast {
+    @apply border-slate-700 bg-slate-900 text-slate-100;
+  }
+
+  .prose {
+    @apply prose-invert;
+  }
+
+  .prose :where(code):not(:where([class~='not-prose'], pre *)) {
+    @apply bg-slate-900 text-slate-100;
+  }
+
+  .prose :where(kbd):not(:where([class~='not-prose'] *)) {
+    @apply border-slate-600 bg-slate-800 text-slate-100;
+  }
+
+  .prose :where(table):not(:where([class~='not-prose'] *)),
+  .prose :where(th, td):not(:where([class~='not-prose'] *)) {
+    @apply border-slate-800;
+  }
+
+  .prose :where(table):not(:where([class~='not-prose'] *)) {
+    @apply bg-slate-950;
+  }
+
+  .prose :where(th):not(:where([class~='not-prose'] *)) {
+    @apply bg-slate-900 text-slate-400;
+  }
+
+  .prose :where(tbody tr:nth-child(even)):not(:where([class~='not-prose'] *)) {
+    @apply bg-slate-900/50;
+  }
+
+  .diagram-card {
+    @apply border-slate-700 bg-slate-950;
+  }
+
+  .diagram-toolbar {
+    @apply border-slate-800 bg-slate-900;
+  }
+
+  .diagram-label {
+    @apply text-cyan-300;
+  }
+
+  .diagram-zoom-label {
+    @apply text-slate-400;
+  }
+
+  .diagram-actions button {
+    @apply border-slate-700 bg-slate-800 text-slate-200 hover:border-cyan-400 hover:text-white;
+  }
+
+  .diagram-stage {
+    @apply bg-slate-950;
+  }
+
+  .diagram-status {
+    @apply text-slate-300;
+  }
+
+  .diagram-error {
+    @apply text-red-200;
+  }
+
+  .code-card {
+    @apply border-slate-700 bg-slate-950;
+  }
+
+  .code-toolbar {
+    @apply border-slate-800 bg-slate-900;
+  }
+
+  .code-language {
+    @apply text-cyan-300;
+  }
+
+  .copy-button {
+    @apply border-slate-700 bg-slate-800 text-slate-200 hover:border-cyan-400 hover:text-white;
+  }
+
+  .code-card pre,
+  .code-highlight pre {
+    @apply bg-slate-950;
+  }
+
+  .code-card,
+  .code-card pre,
+  .code-card code,
+  .code-card .line {
+    color: #e5e7eb;
+  }
+}
+
+/* BEGIN Scratch EXPLAINER LAYOUT STYLES */
+
+.scratch-layout-hero {
+  @apply my-8 rounded-xl border bg-white p-6 shadow-sm dark:bg-slate-950;
+}
+
+.scratch-layout-hero--review-change {
+  @apply border-emerald-200 bg-gradient-to-br from-rose-50 to-emerald-50 dark:border-emerald-900 dark:from-rose-950/30 dark:to-emerald-950/30;
+}
+
+.scratch-layout-hero--system-model {
+  @apply border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30;
+}
+
+.scratch-layout-hero--feature-spec {
+  @apply border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30;
+}
+
+.scratch-layout-hero--general-concept {
+  @apply border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900;
+}
+
+.scratch-layout-hero--data-model {
+  @apply border-cyan-200 bg-cyan-50 dark:border-cyan-900 dark:bg-cyan-950/30;
+}
+
+.scratch-layout-hero--bug-incident {
+  @apply border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30;
+}
+
+.scratch-layout-eyebrow {
+  @apply m-0 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+}
+
+.scratch-layout-hero h1 {
+  @apply mt-3 mb-4 text-4xl font-extrabold leading-tight text-slate-950 dark:text-white sm:text-5xl;
+}
+
+.scratch-layout-summary {
+  @apply max-w-3xl text-base leading-7 text-slate-700 dark:text-slate-200;
+}
+
+.scratch-layout-hero-extra {
+  @apply mt-5;
+}
+
+.scratch-layout-meta {
+  @apply my-6 flex flex-wrap gap-3 border-y border-slate-200 py-3 text-sm dark:border-slate-700;
+}
+
+.scratch-layout-meta span {
+  @apply font-medium text-slate-600 dark:text-slate-300;
+}
+
+.scratch-layout-card {
+  @apply my-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-layout-card h3 {
+  @apply mt-0 mb-4 text-lg font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-layout-list {
+  @apply grid gap-3;
+}
+
+.scratch-layout-list div {
+  @apply rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900;
+}
+
+.scratch-layout-list dt {
+  @apply font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+}
+
+.scratch-layout-list dd {
+  @apply mt-1 text-sm text-slate-700 dark:text-slate-200;
+}
+
+.scratch-before-after {
+  @apply my-6 grid gap-4 lg:grid-cols-2;
+}
+
+.scratch-before-after-panel {
+  @apply min-w-0 rounded-lg border bg-white p-5 shadow-sm dark:bg-slate-950;
+}
+
+.scratch-before-after-panel h3 {
+  @apply mt-0 mb-3 text-base font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-before-after-panel--before {
+  @apply border-rose-200 dark:border-rose-900;
+}
+
+.scratch-before-after-panel--after {
+  @apply border-emerald-200 dark:border-emerald-900;
+}
+
+.tone-good {
+  @apply border-emerald-200 text-emerald-800 dark:border-emerald-900 dark:text-emerald-200;
+}
+
+.tone-warn {
+  @apply border-amber-200 text-amber-800 dark:border-amber-900 dark:text-amber-200;
+}
+
+.tone-bad {
+  @apply border-red-200 text-red-800 dark:border-red-900 dark:text-red-200;
+}
+
+.tone-partial {
+  @apply border-sky-200 text-sky-800 dark:border-sky-900 dark:text-sky-200;
+}
+
+.tone-info {
+  @apply border-cyan-200 text-cyan-800 dark:border-cyan-900 dark:text-cyan-200;
+}
+
+.scratch-evidence-panel,
+.scratch-file-map,
+.scratch-section {
+  @apply my-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.explainer-main > .not-prose:has(> .scratch-evidence-panel),
+.explainer-main > .scratch-evidence-panel {
+  order: 100;
+}
+
+.scratch-evidence-panel summary {
+  @apply flex cursor-pointer list-none items-center gap-2 text-lg font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-evidence-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.scratch-evidence-toggle-icon {
+  @apply ml-auto h-4 w-4 text-slate-400 transition-transform;
+}
+
+.scratch-evidence-panel[open] .scratch-evidence-toggle-icon {
+  @apply rotate-180;
+}
+
+.scratch-file-map h3,
+.scratch-section h3 {
+  @apply mt-0 mb-4 text-lg font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-evidence-panel dl,
+.scratch-file-map dl {
+  @apply grid gap-3;
+}
+
+.scratch-evidence-panel dl {
+  @apply mt-4;
+}
+
+.scratch-evidence-panel dl > div,
+.scratch-file-map dl > div {
+  @apply rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900;
+}
+
+.scratch-evidence-panel dt,
+.scratch-file-map dt {
+  @apply font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+}
+
+.scratch-evidence-panel dd,
+.scratch-file-map dd {
+  @apply mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200;
+}
+
+.scratch-file-map dd {
+  @apply grid gap-1;
+}
+
+.scratch-file-map code {
+  @apply rounded bg-slate-100 px-1.5 py-0.5 text-slate-800 dark:bg-slate-800 dark:text-slate-100;
+}
+
+.scratch-data-table {
+  @apply my-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-data-table-caption {
+  @apply border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200;
+}
+
+.scratch-data-table-scroll {
+  @apply overflow-x-auto;
+}
+
+.scratch-data-table table {
+  @apply m-0 w-full border-collapse rounded-none border-0 bg-transparent text-left text-sm shadow-none;
+  display: table;
+}
+
+.scratch-data-table th {
+  @apply whitespace-nowrap border-b border-slate-200 bg-slate-50 px-4 py-3 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400;
+}
+
+.scratch-data-table td {
+  @apply min-w-40 border-b border-slate-100 px-4 py-3 align-top leading-6 text-slate-700 dark:border-slate-900 dark:text-slate-200;
+}
+
+.scratch-data-table tbody tr:nth-child(even) {
+  @apply bg-slate-50/70 dark:bg-slate-900/50;
+}
+
+.scratch-data-table tbody tr:last-child td {
+  @apply border-b-0;
+}
+
+.scratch-data-table--compact th,
+.scratch-data-table--compact td {
+  @apply px-3 py-2 text-sm leading-6;
+}
+
+.scratch-data-table--wide table {
+  min-width: 860px;
+}
+
+.scratch-status-badge {
+  @apply inline-flex items-center rounded-full px-2.5 py-1 font-mono text-[0.7rem] font-semibold uppercase tracking-wide;
+}
+
+.scratch-status-badge--neutral {
+  @apply bg-slate-100 text-slate-700 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700;
+}
+
+.scratch-status-badge--good {
+  @apply bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-200 dark:ring-emerald-900;
+}
+
+.scratch-status-badge--warn,
+.scratch-status-badge--partial {
+  @apply bg-amber-50 text-amber-800 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-900;
+}
+
+.scratch-status-badge--bad {
+  @apply bg-red-50 text-red-700 ring-1 ring-red-200 dark:bg-red-950/40 dark:text-red-200 dark:ring-red-900;
+}
+
+.scratch-status-badge--info {
+  @apply bg-cyan-50 text-cyan-800 ring-1 ring-cyan-200 dark:bg-cyan-950/40 dark:text-cyan-200 dark:ring-cyan-900;
+}
+
+.scratch-metric-grid {
+  @apply my-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4;
+}
+
+.scratch-metric-grid section {
+  @apply rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-metric-grid p {
+  @apply m-0 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+}
+
+.scratch-metric-grid strong {
+  @apply mt-2 block text-2xl font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-metric-grid span {
+  @apply mt-1 block text-sm text-slate-600 dark:text-slate-300;
+}
+
+.scratch-section--hero {
+  @apply border-sky-200 bg-sky-50 shadow-md dark:border-sky-900 dark:bg-sky-950/30;
+}
+
+.scratch-section--recessed {
+  @apply bg-slate-50 shadow-inner dark:bg-slate-900;
+}
+
+.scratch-section--accent {
+  @apply border-l-4 border-l-cyan-500;
+}
+
+.scratch-section-label {
+  @apply m-0 mb-3 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-cyan-300;
+}
+
+.scratch-icon-heading {
+  @apply flex items-center gap-2;
+}
+
+.scratch-icon-heading svg {
+  @apply h-4 w-4 shrink-0 text-cyan-600 dark:text-cyan-300;
+}
+
+.scratch-icon-label {
+  @apply inline-flex items-center gap-2;
+}
+
+.scratch-icon-label svg {
+  @apply h-3.5 w-3.5 shrink-0;
+}
+
+.scratch-pipeline {
+  @apply my-6 grid gap-3;
+}
+
+.scratch-pipeline--horizontal {
+  @apply lg:grid-flow-col lg:auto-cols-fr;
+}
+
+.scratch-pipeline li {
+  @apply relative flex min-w-0 gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-pipeline li > span {
+  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 font-mono text-xs font-semibold text-white dark:bg-cyan-300 dark:text-slate-950;
+}
+
+.scratch-pipeline strong {
+  @apply block text-sm font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-pipeline p {
+  @apply m-0 mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300;
+}
+
+.scratch-callout {
+  @apply my-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200;
+}
+
+.scratch-callout strong {
+  @apply mb-1 block text-slate-950 dark:text-white;
+}
+
+.scratch-callout--warning,
+.scratch-callout--warn {
+  @apply border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100;
+}
+
+.scratch-callout--bad {
+  @apply border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-100;
+}
+
+.scratch-callout--good {
+  @apply border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100;
+}
+
+.scratch-callout--info,
+.scratch-callout--neutral,
+.scratch-callout--partial {
+  @apply border-cyan-200 bg-cyan-50 text-cyan-950 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-100;
+}
+
+.scratch-timeline {
+  @apply my-6 grid gap-0;
+}
+
+.scratch-timeline li {
+  @apply relative grid grid-cols-[1rem_minmax(0,1fr)] gap-4 pb-6 text-sm;
+}
+
+.scratch-timeline li::before {
+  @apply absolute bottom-0 left-2 top-4 w-px bg-slate-200 content-[''] dark:bg-slate-800;
+}
+
+.scratch-timeline li:last-child {
+  @apply pb-0;
+}
+
+.scratch-timeline li:last-child::before {
+  @apply hidden;
+}
+
+.scratch-timeline-marker {
+  @apply mt-1 h-4 w-4 rounded-full border-2 border-slate-300 bg-white dark:border-cyan-700 dark:bg-slate-950;
+}
+
+.scratch-timeline-time {
+  @apply m-0 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+}
+
+.scratch-timeline strong,
+.scratch-step-list strong,
+.scratch-flow-card strong,
+.scratch-artifact-links strong {
+  @apply block text-sm font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-artifact-links strong {
+  @apply flex items-center gap-2;
+}
+
+.scratch-artifact-links strong svg {
+  @apply h-4 w-4 shrink-0 text-cyan-600 dark:text-cyan-300;
+}
+
+.scratch-timeline p:not(.scratch-timeline-time),
+.scratch-step-list p,
+.scratch-flow-card span,
+.scratch-artifact-links span {
+  @apply m-0 mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300;
+}
+
+.scratch-decision-record,
+.scratch-concept-map,
+.scratch-source-callout {
+  @apply my-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-decision-record h3,
+.scratch-concept-map h3 {
+  @apply mt-0 mb-3 text-lg font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-decision-body {
+  @apply rounded-md border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900;
+}
+
+.scratch-decision-body strong {
+  @apply block text-base font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-decision-body p {
+  @apply m-0 mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200;
+}
+
+.scratch-decision-record ul {
+  @apply mt-4 grid gap-2 pl-5 text-sm leading-6 text-slate-700 dark:text-slate-200;
+}
+
+.scratch-concept-map dl,
+.scratch-comparison-grid dl,
+.scratch-glossary {
+  @apply grid gap-3;
+}
+
+.scratch-concept-map dl > div,
+.scratch-comparison-grid dl > div,
+.scratch-glossary > div {
+  @apply rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900;
+}
+
+.scratch-concept-map dt,
+.scratch-comparison-grid dt,
+.scratch-glossary dt {
+  @apply font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+}
+
+.scratch-concept-map dd,
+.scratch-comparison-grid dd,
+.scratch-glossary dd {
+  @apply mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200;
+}
+
+.scratch-flow-card {
+  @apply my-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-flow-card p {
+  @apply m-0 mb-2 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+}
+
+.scratch-comparison-grid {
+  @apply my-6 grid gap-4 lg:grid-cols-2;
+}
+
+.scratch-comparison-grid section {
+  @apply rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-comparison-grid h3 {
+  @apply mt-0 mb-4 text-base font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-source-callout {
+  @apply border-l-4 border-l-cyan-500;
+}
+
+.scratch-source-callout > p {
+  @apply m-0 font-mono text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-cyan-300;
+}
+
+.scratch-source-callout > strong {
+  @apply mt-1 block text-sm font-semibold text-slate-950 dark:text-white;
+}
+
+.scratch-source-callout > div {
+  @apply mt-3 text-sm leading-6 text-slate-700 dark:text-slate-200;
+}
+
+.scratch-step-list {
+  @apply my-6 grid gap-3;
+}
+
+.scratch-step-list li {
+  @apply flex min-w-0 gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-step-list li > span {
+  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-900 font-mono text-xs font-semibold text-white dark:bg-cyan-300 dark:text-slate-950;
+}
+
+.scratch-artifact-links {
+  @apply my-6 grid gap-3 sm:grid-cols-2;
+}
+
+.scratch-artifact-links a,
+.scratch-artifact-links div {
+  @apply rounded-lg border border-slate-200 bg-white p-4 no-underline shadow-sm transition-colors hover:border-sky-400 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-cyan-400;
+}
+
+.scratch-lottie-demo {
+  @apply my-8 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-lottie-demo-grid {
+  @apply grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:items-stretch;
+}
+
+.scratch-lottie {
+  @apply m-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-800 dark:bg-slate-900;
+}
+
+.scratch-lottie-toolbar {
+  @apply flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-lottie-toolbar figcaption {
+  @apply min-w-0 truncate font-mono text-xs font-semibold uppercase text-slate-600 dark:text-cyan-300;
+  letter-spacing: 0;
+}
+
+.scratch-lottie-actions {
+  @apply flex shrink-0 items-center gap-1;
+}
+
+.scratch-lottie-actions button {
+  @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition-colors hover:border-sky-400 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400 dark:hover:text-white;
+}
+
+.scratch-lottie-actions svg {
+  @apply h-4 w-4;
+}
+
+.scratch-lottie-stage {
+  @apply grid aspect-[2/1] min-h-64 place-items-center overflow-hidden bg-white dark:bg-slate-950;
+}
+
+.scratch-lottie-stage > div {
+  @apply h-full w-full;
+}
+
+.scratch-lottie-caption {
+  @apply m-0 border-t border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300;
+}
+
+.scratch-lottie-error {
+  @apply p-6 text-sm text-red-700 dark:text-red-200;
+}
+
+.scratch-lottie-notes {
+  @apply rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900;
+}
+
+.scratch-lottie-notes h3 {
+  @apply m-0 text-lg font-semibold leading-7 text-slate-950 dark:text-white;
+}
+
+.scratch-lottie-notes dl {
+  @apply mt-4 grid gap-3;
+}
+
+.scratch-lottie-notes dl > div {
+  @apply rounded-md border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950;
+}
+
+.scratch-lottie-notes dt {
+  @apply font-mono text-xs font-semibold uppercase text-slate-500 dark:text-slate-400;
+  letter-spacing: 0;
+}
+
+.scratch-lottie-notes dd {
+  @apply m-0 mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200;
+}
+
+/* END Scratch EXPLAINER LAYOUT STYLES */

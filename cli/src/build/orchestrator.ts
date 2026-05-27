@@ -7,6 +7,7 @@ import log from '../logger';
 // Import all steps
 import {
   ensureDependenciesStep,
+  generateExplainerDataStep,
   resetDirectoriesStep,
   createTsxEntriesStep,
   tailwindCssStep,
@@ -36,6 +37,7 @@ const PROGRESS_MESSAGES: Record<string, string> = {
  */
 const BUILD_STEPS: (BuildStep | BuildStep[])[] = [
   ensureDependenciesStep,
+  generateExplainerDataStep,
   resetDirectoriesStep,
   checkConflictsStep, // Must run early to catch conflicts before build fails for other reasons
   createTsxEntriesStep,

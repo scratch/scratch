@@ -80,6 +80,11 @@ scratch build
 scratch build --no-ssg        # disable static site generation
 scratch build --development   # unminified, with source maps
 
+# Explainer workflow
+scratch skills                 # install scratch-explain into the current repo
+scratch regenerate             # regenerate explainer pages from prompt frontmatter
+scratch publish                # publish and prune unpublished explainer pages
+
 # Preview production build locally
 scratch preview
 
